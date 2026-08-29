@@ -107,6 +107,16 @@ const elementSchema = z.discriminatedUnion('type', [
     }),
     z.object({
         ...baseFields,
+        type: z.literal('asset'),
+        geometry: z.object({
+            assetId: z.string().min(1),
+            width: finiteNumber.positive(),
+            height: finiteNumber.positive(),
+            mirrored: z.boolean(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
         type: z.literal('text'),
         geometry: z.object({
             content: z.string(),

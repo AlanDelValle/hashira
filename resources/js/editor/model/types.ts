@@ -136,6 +136,15 @@ export interface TextElement extends BaseElement {
     geometry: { content: string; fontSize: number; align: TextAlign };
 }
 
+/**
+ * A block from the library. The document stores which block and how big, never its geometry —
+ * so a drawing stays small and a corrected block improves every drawing that uses it.
+ */
+export interface AssetElement extends BaseElement {
+    type: 'asset';
+    geometry: { assetId: string; width: number; height: number; mirrored: boolean };
+}
+
 export type Element =
     | WallElement
     | LineElement
@@ -145,6 +154,7 @@ export type Element =
     | RoomElement
     | DoorElement
     | WindowElement
+    | AssetElement
     | TextElement;
 
 export type ElementType = Element['type'];

@@ -50,15 +50,15 @@ loaded a real document from the database.
 Exit criteria: drawing and manipulating basic shapes feels precise and immediate. We do not
 move on until it does.
 
-### Phase 3 — Architecture tools `[ ]`
+### Phase 3 — Architecture tools `[x]`
 
-- [ ] Wall _tool_: chained drawing and thickness on creation (poché rendering landed in Phase 2)
-- [ ] Door and window _tools_ (hosted openings already render)
-- [ ] Room / space element with derived area
-- [ ] Snap engine: grid, endpoint, midpoint, intersection, axis alignment, with indicators
-- [ ] Properties panel driven by real values (length, thickness, angle, position, layer)
-- [ ] Layers panel: visibility, lock, ordering
-- [ ] Local element library, roughly 30–50 parametric furniture and fixture blocks
+- [x] Wall tool: chained drawing, thickness on creation (poché rendering landed in Phase 2)
+- [x] Door and window tools, placed on the wall they cut
+- [x] Room element with derived area
+- [x] Snap engine: grid, endpoint, midpoint, intersection, axis alignment, with indicators
+- [x] Properties panel driven by real values (length, thickness, angle, position, layer)
+- [x] Layers panel: visibility, lock, ordering, and which layer is active
+- [x] Local element library — 37 parametric blocks across seven categories
 
 ### Phase 4 — History and persistence `[ ]`
 

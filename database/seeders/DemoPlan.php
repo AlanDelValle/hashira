@@ -40,7 +40,14 @@ final class DemoPlan
             self::opening('door', $south['id'], offset: 1200, width: 900),
             self::opening('window', $north['id'], offset: self::WIDTH / 2, width: 1600),
 
-            self::roomLabel('Living', self::WIDTH / 2, self::DEPTH / 2),
+            self::roomLabel('Living', self::WIDTH / 2, 700),
+
+            // A few blocks from the library, so a fresh install opens on a furnished plan
+            // rather than an empty shell.
+            self::block('bed-double', 1400, 2000, 1000, 1200),
+            self::block('sofa-2', 1600, 900, 3900, 1000),
+            self::block('table-round', 1200, 1200, 4400, 2900),
+            self::block('wardrobe', 1200, 600, 1000, 3400),
         ];
 
         return $document;
@@ -71,6 +78,28 @@ final class DemoPlan
         }
 
         return self::element($type, DocumentSchema::LAYER_OPENINGS, $geometry);
+    }
+
+    /**
+     * A library block. The document records which block and how big it is; the drawing of it
+     * lives in the editor's library, so a plan never carries a few hundred coordinates for a
+     * sofa.
+     *
+     * @return array<string, mixed>
+     */
+    private static function block(
+        string $assetId,
+        int $width,
+        int $height,
+        int $x,
+        int $y,
+    ): array {
+        return self::element(
+            'asset',
+            DocumentSchema::LAYER_FURNITURE,
+            ['assetId' => $assetId, 'width' => $width, 'height' => $height, 'mirrored' => false],
+            ['x' => $x, 'y' => $y, 'rotation' => 0],
+        );
     }
 
     /** @return array<string, mixed> */

@@ -1,5 +1,6 @@
 import type { Point } from '@/editor/geometry/vec';
 import type { Element } from '@/editor/model/types';
+import type { SnapResult } from '@/editor/snapping/engine';
 
 /**
  * Transient interaction state, deliberately outside React and outside every store.
@@ -45,6 +46,11 @@ export interface InteractionState {
      * the commit uses means the preview cannot look different from the result.
      */
     preview: Element | null;
+    /**
+     * What caught the pointer last, so the overlay can say why it moved. Grid snaps are not
+     * recorded: they happen on every move, and a marker that is always on says nothing.
+     */
+    snap: SnapResult | null;
     /** True while the space bar or middle button is panning the view. */
     panning: boolean;
 }
@@ -57,6 +63,7 @@ export const interaction: InteractionState = {
     drag: null,
     draftPoints: [],
     preview: null,
+    snap: null,
     panning: false,
 };
 
@@ -66,5 +73,6 @@ export function resetInteraction(): void {
     interaction.drag = null;
     interaction.draftPoints = [];
     interaction.preview = null;
+    interaction.snap = null;
     interaction.panning = false;
 }

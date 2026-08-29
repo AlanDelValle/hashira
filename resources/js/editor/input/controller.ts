@@ -14,12 +14,20 @@ import { useEditorStore, type ToolId } from '@/editor/store/editorStore';
 import { interaction, resetInteraction } from '@/editor/store/interaction';
 import { useViewportStore } from '@/editor/store/viewportStore';
 import {
+    createAssetTool,
+    createDoorTool,
+    createRoomTool,
+    createWallTool,
+    createWindowTool,
+} from '@/editor/tools/architectureTools';
+import {
     createCircleTool,
     createLineTool,
     createPolygonTool,
     createRectTool,
 } from '@/editor/tools/drawTools';
 import { createSelectTool } from '@/editor/tools/selectTool';
+import { snapPoint } from '@/editor/snapping/engine';
 import type { Tool, ToolContext, ToolEvent } from '@/editor/tools/types';
 import { panByScreen, toWorld, zoomAt } from '@/editor/viewport/viewport';
 import { unionBounds, type Bounds } from '@/editor/geometry/bbox';
@@ -34,6 +42,9 @@ import { unionBounds, type Bounds } from '@/editor/geometry/bbox';
 /** How close the pointer has to be to something to pick it, in screen pixels. */
 const PICK_TOLERANCE_PX = 6;
 
+/** Snapping reaches a little further than picking: it is a suggestion, not a selection. */
+const SNAP_TOLERANCE_PX = 10;
+
 /** One wheel notch. */
 const ZOOM_STEP = 1.12;
 
@@ -41,6 +52,10 @@ const DUPLICATE_OFFSET_MM = 200;
 
 const TOOL_SHORTCUTS: Record<string, ToolId> = {
     v: 'select',
+    w: 'wall',
+    d: 'door',
+    n: 'window',
+    o: 'room',
     l: 'line',
     r: 'rect',
     c: 'circle',
@@ -59,10 +74,15 @@ export class InputController {
         this.canvas = canvas;
         this.tools = {
             select: createSelectTool(),
+            wall: createWallTool(),
+            door: createDoorTool(),
+            window: createWindowTool(),
+            room: createRoomTool(),
             line: createLineTool(),
             rect: createRectTool(),
             circle: createCircleTool(),
             polygon: createPolygonTool(),
+            asset: createAssetTool(),
         };
     }
 
@@ -125,14 +145,31 @@ export class InputController {
         const drawing = useDocumentStore.getState().document;
         const { viewport } = useViewportStore.getState();
         const { activeLayerId, snapToGrid: gridSnapEnabled } = useEditorStore.getState();
+        const tolerance = PICK_TOLERANCE_PX / viewport.zoom;
 
         return {
             drawing,
             lookup: makeLookup(drawing),
             viewport,
-            tolerance: PICK_TOLERANCE_PX / viewport.zoom,
+            tolerance,
             activeLayerId,
-            snap: (p) => roundToGrid(p, drawing, gridSnapEnabled),
+            snap: (p) => {
+                const result = snapPoint(p, {
+                    drawing,
+                    settings: drawing.settings.snapping,
+                    gridSnapEnabled: gridSnapEnabled && drawing.settings.grid.snap,
+                    gridSize: drawing.settings.grid.size,
+                    tolerance: SNAP_TOLERANCE_PX / viewport.zoom,
+                    exclude: this.tool.snapExclusions?.() ?? undefined,
+                    anchors: this.tool.anchors?.() ?? undefined,
+                });
+
+                // The grid catches every move, so recording it would leave an indicator
+                // permanently lit and saying nothing. Only meaningful snaps are shown.
+                interaction.snap = result.kind === null || result.kind === 'grid' ? null : result;
+
+                return result;
+            },
         };
     }
 
@@ -143,7 +180,7 @@ export class InputController {
         return {
             screen,
             rawWorld,
-            world: context.snap(rawWorld),
+            world: context.snap(rawWorld).point,
             shift: event.shiftKey,
             alt: event.altKey,
             mod: event.ctrlKey || event.metaKey,
@@ -442,16 +479,6 @@ function selectableIds(drawing: HashiraDocument): string[] {
     return drawing.elements
         .filter((element) => selectable.has(element.layerId))
         .map((element) => element.id);
-}
-
-function roundToGrid(p: Point, drawing: HashiraDocument, enabled: boolean): Point {
-    const step = drawing.settings.grid.size;
-
-    if (!enabled || !drawing.settings.grid.snap || step <= 0) {
-        return p;
-    }
-
-    return { x: Math.round(p.x / step) * step, y: Math.round(p.y / step) * step };
 }
 
 /** Keys typed into a field belong to the field, not to the editor. */

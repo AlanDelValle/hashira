@@ -152,7 +152,8 @@ export function elementWorldPoints(element: Element, lookup: ElementLookup): Poi
                 localToWorld(element.transform, element.geometry.b),
             ];
 
-        case 'rect': {
+        case 'rect':
+        case 'asset': {
             const halfWidth = element.geometry.width / 2;
             const halfHeight = element.geometry.height / 2;
 
@@ -311,6 +312,14 @@ export function hitTestElement(
         case 'rect':
             return distanceToPolyline(elementWorldPoints(element, lookup), p, true) <= tolerance;
 
+        case 'asset': {
+            // A block is an object, not construction geometry: clicking a sofa should select
+            // the sofa, so its whole footprint is a target and not only its outline.
+            const points = elementWorldPoints(element, lookup);
+
+            return pointInPolygon(points, p) || distanceToPolyline(points, p, true) <= tolerance;
+        }
+
         case 'polygon':
             return (
                 distanceToPolyline(
@@ -421,6 +430,7 @@ export function rotateElement(
 export function elementSize(element: Element): { width: number; height: number } | null {
     switch (element.type) {
         case 'rect':
+        case 'asset':
             return { width: element.geometry.width, height: element.geometry.height };
         case 'circle':
             return { width: element.geometry.radius * 2, height: element.geometry.radius * 2 };

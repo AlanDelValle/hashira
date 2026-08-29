@@ -142,6 +142,10 @@ export function createSelectTool(): Tool {
         id: 'select',
         cursor: 'default',
 
+        // While a selection is being dragged its own geometry is meaningless as a snap target,
+        // and would pin the drag to where it started.
+        snapExclusions: () => new Set(interaction.drag?.before.map((element) => element.id) ?? []),
+
         onPointerDown(event, context) {
             pressScreen = event.screen;
 

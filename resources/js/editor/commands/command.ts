@@ -1,4 +1,4 @@
-import type { Element, HashiraDocument } from '@/editor/model/types';
+import type { Element, HashiraDocument, Layer } from '@/editor/model/types';
 
 /**
  * The only way the document changes.
@@ -139,4 +139,24 @@ export function coalesce(previous: Command, next: Command): Command | null {
     }
 
     return replaceElements(previous.before, next.after, next.label, next.coalesceKey);
+}
+
+/**
+ * Replace the layer list.
+ *
+ * Layer visibility, locking and order live in the document, so changing one is an edit like
+ * any other — and undoable like any other. Hiding a layer by mistake is exactly the kind of
+ * thing someone reaches for Ctrl+Z after.
+ */
+export function replaceLayers(
+    before: readonly Layer[],
+    after: readonly Layer[],
+    label: string,
+): Command {
+    return {
+        label,
+        coalesceKey: null,
+        execute: (document) => ({ ...document, layers: [...after] }),
+        undo: (document) => ({ ...document, layers: [...before] }),
+    };
 }

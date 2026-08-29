@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 
-export type ToolId = 'select' | 'line' | 'rect' | 'circle' | 'polygon';
+export type ToolId =
+    | 'select'
+    | 'wall'
+    | 'door'
+    | 'window'
+    | 'room'
+    | 'line'
+    | 'rect'
+    | 'circle'
+    | 'polygon'
+    | 'asset';
 
 /**
  * What the interface is doing, as opposed to what the drawing contains.
  *
- * None of this is saved with the document: which tool is active and what is selected belong
- * to the person editing, not to the drawing.
+ * None of this is saved with the document: which tool is active, what is selected and which
+ * layer new work lands on belong to the person editing, not to the drawing.
  */
 interface EditorStore {
     tool: ToolId;
@@ -15,9 +25,15 @@ interface EditorStore {
     activeLayerId: string;
     gridVisible: boolean;
     snapToGrid: boolean;
+    /** Thickness applied to the next wall drawn, in millimetres. */
+    wallThickness: number;
+    /** The library block the asset tool will place, if any. */
+    pendingAssetId: string | null;
 
     setTool: (tool: ToolId) => void;
     setActiveLayer: (layerId: string) => void;
+    setWallThickness: (thickness: number) => void;
+    setPendingAsset: (assetId: string | null) => void;
     select: (ids: string[]) => void;
     toggleInSelection: (id: string) => void;
     clearSelection: () => void;
@@ -31,9 +47,20 @@ export const useEditorStore = create<EditorStore>((set) => ({
     activeLayerId: 'layer_architecture',
     gridVisible: true,
     snapToGrid: true,
+    wallThickness: 150,
+    pendingAssetId: null,
 
-    setTool: (tool) => set({ tool }),
+    setTool: (tool) =>
+        set((state) => ({
+            tool,
+            // Choosing any other tool puts the library block down.
+            pendingAssetId: tool === 'asset' ? state.pendingAssetId : null,
+        })),
+
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
+    setWallThickness: (wallThickness) => set({ wallThickness }),
+    setPendingAsset: (pendingAssetId) =>
+        set({ pendingAssetId, ...(pendingAssetId === null ? {} : { tool: 'asset' as const }) }),
 
     select: (ids) =>
         set((state) =>

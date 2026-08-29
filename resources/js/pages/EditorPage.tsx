@@ -1,9 +1,10 @@
 import { ChevronLeft, Maximize2, Redo2, Undo2 } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { documentBounds } from '@/editor/model/elements';
 import { CanvasHost } from '@/editor/react/CanvasHost';
+import { LibraryPanel } from '@/editor/react/LibraryPanel';
 import { SidePanel } from '@/editor/react/SidePanel';
 import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
@@ -25,6 +26,7 @@ export function EditorPage() {
     const dropped = useDocumentStore((state) => state.dropped);
     const drawingId = useDocumentStore((state) => state.document.id);
     const size = useViewportStore((state) => state.size);
+    const [libraryOpen, setLibraryOpen] = useState(false);
 
     useEffect(() => {
         if (payload !== null) {
@@ -100,12 +102,21 @@ export function EditorPage() {
             <div className="bg-canvas hidden h-screen grid-rows-[3rem_1fr_1.75rem] lg:grid">
                 <EditorHeader name={payload.name} />
 
-                <div className="grid grid-cols-[2.75rem_1fr_15rem] overflow-hidden">
-                    <Toolbar />
-                    <div className="border-line border-r">
+                <div className="flex overflow-hidden">
+                    <Toolbar
+                        libraryOpen={libraryOpen}
+                        onToggleLibrary={() => setLibraryOpen((open) => !open)}
+                    />
+
+                    {libraryOpen && <LibraryPanel />}
+
+                    <div className="border-line min-w-0 flex-1 border-r">
                         <CanvasHost />
                     </div>
-                    <SidePanel />
+
+                    <div className="w-60 shrink-0">
+                        <SidePanel />
+                    </div>
                 </div>
 
                 <StatusBar />

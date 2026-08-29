@@ -4,6 +4,7 @@ import type { Point } from '@/editor/geometry/vec';
 import { elementBounds } from '@/editor/model/elements';
 import type { Element } from '@/editor/model/types';
 import type { Marquee } from '@/editor/store/interaction';
+import type { SnapResult } from '@/editor/snapping/engine';
 
 import { paintElement, type PaintContext } from './painters';
 
@@ -153,6 +154,72 @@ export function paintExtentMarks(pc: PaintContext, bounds: Bounds): void {
         ctx.lineTo(corner.x + arm, corner.y);
         ctx.moveTo(corner.x, corner.y - arm);
         ctx.lineTo(corner.x, corner.y + arm);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+}
+
+/**
+ * Why the pointer moved.
+ *
+ * Each kind of snap gets its own mark, because "you landed on a corner" and "you are lined up
+ * with something over there" are different pieces of information, and a drafter reads the
+ * difference at a glance. Alignment also draws the guide back to what it lined up with — the
+ * mark alone would say a coordinate is locked without saying to what.
+ */
+export function paintSnapIndicator(pc: PaintContext, snap: SnapResult): void {
+    const { ctx } = pc;
+    const size = 4.5 * pc.px;
+    const { x, y } = snap.point;
+
+    ctx.save();
+    ctx.strokeStyle = pc.theme.accent;
+    ctx.lineWidth = 1.5 * pc.px;
+    ctx.setLineDash([]);
+
+    if (snap.reference !== undefined) {
+        ctx.save();
+        ctx.setLineDash([5 * pc.px, 4 * pc.px]);
+        ctx.lineWidth = pc.px;
+        ctx.beginPath();
+        ctx.moveTo(snap.reference.x, snap.reference.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.beginPath();
+
+    switch (snap.kind) {
+        case 'endpoint':
+            ctx.rect(x - size, y - size, size * 2, size * 2);
+            break;
+
+        case 'midpoint':
+            ctx.moveTo(x - size, y + size);
+            ctx.lineTo(x + size, y + size);
+            ctx.lineTo(x, y - size);
+            ctx.closePath();
+            break;
+
+        case 'intersection':
+            ctx.moveTo(x - size, y - size);
+            ctx.lineTo(x + size, y + size);
+            ctx.moveTo(x + size, y - size);
+            ctx.lineTo(x - size, y + size);
+            break;
+
+        case 'horizontal':
+        case 'vertical':
+            ctx.arc(x, y, size * 0.7, 0, TAU);
+            break;
+
+        case 'grid':
+        case null:
+            ctx.restore();
+
+            return;
     }
 
     ctx.stroke();

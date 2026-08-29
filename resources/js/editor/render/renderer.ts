@@ -10,7 +10,13 @@ import { visibleBounds } from '@/editor/viewport/viewport';
 
 import { setInvalidator } from './frame';
 import { paintGrid } from './grid';
-import { paintHover, paintMarquee, paintPreview, paintSelection } from './overlay';
+import {
+    paintHover,
+    paintMarquee,
+    paintPreview,
+    paintSelection,
+    paintSnapIndicator,
+} from './overlay';
 import { paintElement, type PaintContext } from './painters';
 import { writeReadout } from './readout';
 import { readTheme, type CanvasTheme } from './theme';
@@ -180,6 +186,10 @@ export class CanvasRenderer {
 
         if (interaction.preview !== null) {
             paintPreview(pc, interaction.preview, interaction.draftPoints);
+        }
+
+        if (interaction.snap !== null) {
+            paintSnapIndicator(pc, interaction.snap);
         }
 
         this.writeReadouts(drawing, viewport.zoom);

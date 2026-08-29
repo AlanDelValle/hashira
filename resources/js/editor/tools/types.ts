@@ -1,6 +1,7 @@
 import type { Point } from '@/editor/geometry/vec';
 import type { ElementLookup } from '@/editor/model/elements';
 import type { HashiraDocument } from '@/editor/model/types';
+import type { SnapResult } from '@/editor/snapping/engine';
 import type { ToolId } from '@/editor/store/editorStore';
 import type { Viewport } from '@/editor/viewport/viewport';
 
@@ -30,8 +31,8 @@ export interface ToolContext {
     /** Pick tolerance in world millimetres, converted from a fixed screen distance. */
     tolerance: number;
     activeLayerId: string;
-    /** Round a world point to the grid, when grid snapping is on. */
-    snap: (p: Point) => Point;
+    /** Run a world point through the snap engine. Also records the result for the overlay. */
+    snap: (p: Point) => SnapResult;
 }
 
 export interface Tool {
@@ -45,6 +46,12 @@ export interface Tool {
 
     /** Return true when the tool consumed the key. */
     onKeyDown?: (key: string, context: ToolContext) => boolean;
+
+    /** Points already placed, which alignment guides are measured from. */
+    anchors?: () => readonly Point[];
+
+    /** Elements the snap engine should ignore — a shape must not snap to itself while moving. */
+    snapExclusions?: () => ReadonlySet<string>;
 
     /** Abandon whatever is in progress, on Escape or when the tool is switched away. */
     cancel: () => void;

@@ -1,8 +1,19 @@
 import { boundsCentre, boundsFromPoints } from '@/editor/geometry/bbox';
 import { midpoint, subtract, type Point } from '@/editor/geometry/vec';
+import type { AssetDefinition } from '@/editor/assets/library';
 
 import { newId } from './id';
-import type { CircleElement, LineElement, PolygonElement, RectElement, WallElement } from './types';
+import type {
+    AssetElement,
+    CircleElement,
+    DoorElement,
+    LineElement,
+    PolygonElement,
+    RectElement,
+    RoomElement,
+    WallElement,
+    WindowElement,
+} from './types';
 
 /**
  * Making new elements.
@@ -96,6 +107,84 @@ export function createPolygon(
         layerId,
         transform: { x: centre.x, y: centre.y, rotation: 0 },
         geometry: { points: points.map((p) => subtract(p, centre)), closed },
+        metadata: metadata(),
+    };
+}
+
+export const DEFAULT_DOOR_WIDTH = 900;
+export const DEFAULT_WINDOW_WIDTH = 1200;
+
+export function createRoom(points: readonly Point[], layerId: string): RoomElement | null {
+    const bounds = boundsFromPoints(points);
+
+    if (bounds === null || points.length < 3) {
+        return null;
+    }
+
+    const centre = boundsCentre(bounds);
+
+    return {
+        id: newId(),
+        type: 'room',
+        layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: { points: points.map((p) => subtract(p, centre)) },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * Openings carry no transform of their own — their position is the distance along the wall
+ * they cut, so the identity transform here is not a placeholder but the truth.
+ */
+export function createDoor(
+    hostId: string,
+    offset: number,
+    layerId: string,
+    width = DEFAULT_DOOR_WIDTH,
+): DoorElement {
+    return {
+        id: newId(),
+        type: 'door',
+        layerId,
+        transform: { x: 0, y: 0, rotation: 0 },
+        geometry: { hostId, offset, width, swing: 'left', flipped: false },
+        metadata: metadata(),
+    };
+}
+
+export function createWindow(
+    hostId: string,
+    offset: number,
+    layerId: string,
+    width = DEFAULT_WINDOW_WIDTH,
+): WindowElement {
+    return {
+        id: newId(),
+        type: 'window',
+        layerId,
+        transform: { x: 0, y: 0, rotation: 0 },
+        geometry: { hostId, offset, width },
+        metadata: metadata(),
+    };
+}
+
+export function createAsset(
+    definition: AssetDefinition,
+    centre: Point,
+    layerId?: string,
+): AssetElement {
+    return {
+        id: newId(),
+        type: 'asset',
+        layerId: layerId ?? definition.layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: {
+            assetId: definition.id,
+            width: definition.width,
+            height: definition.height,
+            mirrored: false,
+        },
         metadata: metadata(),
     };
 }

@@ -11,7 +11,9 @@ resources/js/editor/
 ├── commands/    Command, HistoryStack
 ├── store/       document, editor, viewport, and transient interaction state
 ├── render/      canvas renderer, grid, painters, overlay
-├── tools/       select, line, rectangle, circle, polygon
+├── snapping/    the snap engine and what it collects candidates from
+├── assets/      the block library
+├── tools/       select, wall, door, window, room, line, rectangle, circle, polygon, block
 ├── input/       DOM events → tools, plus pan, zoom and shortcuts
 └── react/       the only React in the editor: canvas host, toolbar, panels, status bar
 ```
@@ -111,7 +113,8 @@ first vertex closes the ring, Enter or a double click finishes it open, Escape t
 | ------------------------------ | ---------------------------------------- |
 | Wheel                          | zoom, anchored under the pointer         |
 | Middle drag, or Space + drag   | pan                                      |
-| `V` `L` `R` `C` `P`            | select, line, rectangle, circle, polygon |
+| `V` `W` `D` `N` `O`            | select, wall, door, window, room         |
+| `L` `R` `C` `P`                | line, rectangle, circle, polygon         |
 | `Delete` / `Backspace`         | delete the selection                     |
 | `Escape`                       | cancel the current action and deselect   |
 | Arrow keys                     | nudge by one grid step, or 1 mm with Alt |
@@ -122,16 +125,52 @@ first vertex closes the ring, Enter or a double click finishes it open, Escape t
 
 Keys typed into a form field belong to the field, not to the editor.
 
-## 8. Grid
+## 8. Snapping
+
+One module decides where the pointer lands. Tools never look at the grid, at other elements or
+at the zoom level: they ask for a point and receive one back together with the reason it moved,
+so the overlay can say _why_ — an endpoint marker and an alignment guide are different pieces
+of information.
+
+Candidates are gathered from a small neighbourhood around the pointer, so a plan with thousands
+of elements still compares a handful. Priority runs:
+
+`endpoint → midpoint → intersection → alignment → grid`
+
+An endpoint beats the grid however far away it is, because landing exactly on the corner of an
+existing wall matters more than landing on a round number. The grid has no tolerance at all —
+it always offers a candidate, so there is never a dead zone mid-cell where nothing snaps.
+
+Alignment locks only the coordinate that matched, leaving the other where the pointer put it,
+and draws a guide back to the point it lined up with. Tolerance is given in screen pixels and
+converted through the zoom, so snapping feels identical at any magnification. A shape being
+dragged is excluded from its own candidates — otherwise it would pin itself where it started.
+
+## 9. Editing by value
+
+The properties panel writes through `model/edits.ts`, a set of pure functions: type 3.42 into
+the length field and `setSegmentLength` returns a wall 3.42 m long, keeping the `a` end put and
+re-centring the local origin so rotation still pivots on the middle.
+
+Every field commits through a command with a coalesce key of `field:elementId`, so an edit made
+by typing undoes exactly like one made by dragging, and correcting a number twice in a row is
+one history entry rather than two.
+
+## 10. The block library
+
+A block is drawn once in a normalised 0–1 box and scaled to the size the element carries. The
+document stores an id and a size — never geometry — so plans stay small, one definition serves
+every size, and the library panel's thumbnails are rendered from the same definitions the
+canvas uses and cannot drift out of date.
+
+## 11. Grid
 
 The document's grid size is what snapping uses. The grid that is _drawn_ is the first multiple
 of it (×1, ×2, ×5, by decade) still at least nine pixels apart, so zooming out thins the lines
 out instead of turning them into a grey wash. Major lines every fifth minor one, and the drawing
 origin is marked so absolute coordinates have something to refer to.
 
-## 9. What is not here yet
+## 12. What is not here yet
 
-Snapping beyond the grid, the properties panel, wall and opening _tools_, layers you can edit,
-autosave, and export. Those are Phases 3 to 5 in [roadmap.md](roadmap.md). Walls, doors, windows
-and text already **render**, because the demo drawing contains them and an element the editor
-cannot show is worse than one it cannot yet create.
+Autosave, versions and export — Phases 4 and 5 in [roadmap.md](roadmap.md). Dimensions and
+measurement annotations are further out still.

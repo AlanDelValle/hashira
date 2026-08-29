@@ -18,6 +18,7 @@ import {
 import type { Element, HostedElement, WallElement } from '@/editor/model/types';
 import type { HostedFrame } from '@/editor/model/elements';
 
+import { paintAsset } from './assetPainter';
 import type { CanvasTheme } from './theme';
 
 /**
@@ -81,6 +82,9 @@ export function paintElement(pc: PaintContext, element: Element): void {
                 element.geometry.radius,
                 element.style?.fill ?? null,
             );
+            break;
+        case 'asset':
+            paintAsset(pc.ctx, element, HAIRLINE_PX * pc.px, stroke);
             break;
         case 'text':
             paintText(pc, element, stroke);

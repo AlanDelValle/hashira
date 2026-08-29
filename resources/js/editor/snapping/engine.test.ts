@@ -1,0 +1,176 @@
+import { describe, expect, it } from 'vitest';
+
+import { point } from '@/editor/geometry/vec';
+import { defaultLayers } from '@/editor/model/document';
+import { createLine, createWall } from '@/editor/model/factories';
+import type { Element, HashiraDocument, SnapSettings } from '@/editor/model/types';
+
+import { snapPoint, type SnapOptions } from './engine';
+
+const LAYER = 'layer_architecture';
+
+const ALL_ON: SnapSettings = {
+    enabled: true,
+    endpoint: true,
+    midpoint: true,
+    intersection: true,
+    axis: true,
+};
+
+function drawingWith(elements: Element[]): HashiraDocument {
+    return {
+        schemaVersion: 1,
+        id: 'doc',
+        name: 'Test',
+        settings: {
+            unit: 'm',
+            scale: 50,
+            grid: { size: 100, subdivisions: 2, visible: true, snap: true },
+            snapping: ALL_ON,
+            sheet: { size: 'A3', orientation: 'landscape' },
+            title: 'Test',
+        },
+        layers: defaultLayers(),
+        elements,
+    };
+}
+
+function options(elements: Element[], overrides: Partial<SnapOptions> = {}): SnapOptions {
+    return {
+        drawing: drawingWith(elements),
+        settings: ALL_ON,
+        gridSnapEnabled: true,
+        gridSize: 100,
+        tolerance: 60,
+        ...overrides,
+    };
+}
+
+describe('the snap engine', () => {
+    const wall = createWall(point(0, 0), point(4000, 0), LAYER, 150);
+
+    it('returns the raw point when snapping is switched off', () => {
+        const raw = point(1234, 567);
+        const result = snapPoint(raw, options([wall], { settings: { ...ALL_ON, enabled: false } }));
+
+        expect(result.point).toEqual(raw);
+        expect(result.kind).toBeNull();
+    });
+
+    it('lands on an endpoint in preference to the grid', () => {
+        // 4020,30 is 30 mm from the wall's end and also near the 4000,0 grid intersection.
+        const result = snapPoint(point(4020, 30), options([wall]));
+
+        expect(result.kind).toBe('endpoint');
+        expect(result.point).toEqual({ x: 4000, y: 0 });
+    });
+
+    it('lands on a midpoint', () => {
+        const result = snapPoint(point(2010, 20), options([wall]));
+
+        expect(result.kind).toBe('midpoint');
+        expect(result.point.x).toBeCloseTo(2000);
+        expect(result.point.y).toBeCloseTo(0);
+    });
+
+    it('prefers an endpoint over a midpoint when both are in range', () => {
+        const short = createWall(point(0, 0), point(100, 0), LAYER, 150);
+        const result = snapPoint(point(48, 5), options([short], { tolerance: 60 }));
+
+        expect(result.kind).toBe('endpoint');
+    });
+
+    it('finds where two walls cross', () => {
+        // Both walls are placed so that neither's midpoint lands on the crossing: a crossing
+        // that coincides with a midpoint is reported as the midpoint, which is the same point
+        // anyway, and would make this test prove nothing.
+        const across = createWall(point(1500, -200), point(1500, 1000), LAYER, 150);
+        const result = snapPoint(point(1520, 20), options([wall, across], { tolerance: 40 }));
+
+        expect(result.kind).toBe('intersection');
+        expect(result.point.x).toBeCloseTo(1500);
+        expect(result.point.y).toBeCloseTo(0);
+    });
+
+    it('holds an alignment with a point the tool has already placed', () => {
+        const anchor = point(1234, 0);
+        const result = snapPoint(
+            point(1250, 3000),
+            options([], { anchors: [anchor], gridSnapEnabled: false, tolerance: 60 }),
+        );
+
+        expect(result.kind).toBe('vertical');
+        expect(result.point.x).toBe(anchor.x);
+        // Only the aligned coordinate is locked; the other stays where the pointer was.
+        expect(result.point.y).toBe(3000);
+        expect(result.reference).toEqual(anchor);
+    });
+
+    it('falls back to the grid when nothing else is near', () => {
+        const result = snapPoint(point(1234, 5678), options([]));
+
+        expect(result.kind).toBe('grid');
+        expect(result.point).toEqual({ x: 1200, y: 5700 });
+    });
+
+    it('never leaves a dead zone: the grid always offers a candidate', () => {
+        // Half a grid cell from any line, so the grid is far away but must still win.
+        const result = snapPoint(point(1250, 1250), options([], { tolerance: 10 }));
+
+        expect(result.kind).toBe('grid');
+    });
+
+    it('leaves the point alone when the grid is off and nothing is near', () => {
+        const raw = point(1234, 5678);
+        const result = snapPoint(raw, options([], { gridSnapEnabled: false }));
+
+        expect(result.kind).toBeNull();
+        expect(result.point).toEqual(raw);
+    });
+
+    it('ignores an element it was told to exclude', () => {
+        const result = snapPoint(
+            point(4020, 30),
+            options([wall], { exclude: new Set([wall.id]), gridSnapEnabled: false }),
+        );
+
+        expect(result.kind).not.toBe('endpoint');
+    });
+
+    it('ignores elements on a hidden layer', () => {
+        const drawing = drawingWith([wall]);
+        const hidden = {
+            ...drawing,
+            layers: drawing.layers.map((layer) =>
+                layer.id === LAYER ? { ...layer, visible: false } : layer,
+            ),
+        };
+
+        const result = snapPoint(point(4020, 30), {
+            ...options([wall], { gridSnapEnabled: false }),
+            drawing: hidden,
+        });
+
+        expect(result.kind).toBeNull();
+    });
+
+    it('honours each snap type being turned off individually', () => {
+        const withoutEndpoints = snapPoint(
+            point(4020, 30),
+            options([wall], {
+                settings: { ...ALL_ON, endpoint: false, axis: false, intersection: false },
+                gridSnapEnabled: false,
+            }),
+        );
+
+        expect(withoutEndpoints.kind).toBeNull();
+    });
+
+    it('snaps to the end of a line as readily as a wall', () => {
+        const line = createLine(point(500, 500), point(900, 500), LAYER);
+        const result = snapPoint(point(910, 495), options([line], { tolerance: 30 }));
+
+        expect(result.kind).toBe('endpoint');
+        expect(result.point.x).toBeCloseTo(900);
+    });
+});

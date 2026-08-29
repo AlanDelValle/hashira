@@ -130,8 +130,8 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 
 `Point` is `{ "x": number, "y": number }`.
 
-Dimensions, markers and library assets are not element types yet. Adding a type is additive and
-needs no version bump, so each arrives with the phase that draws it.
+Dimensions and markers are not element types yet. Adding a type is additive and needs no
+version bump, so each arrives with the phase that draws it.
 
 ### 4.3 Hosted openings
 
@@ -146,6 +146,22 @@ the opening with it, and dragging an opening constrains it to slide along its wa
 painter subtracts every hosted opening from the wall's poché.
 
 An opening whose `hostId` no longer resolves is dropped on load, with a warning — see §6.
+
+### 4.5 Library blocks
+
+An `asset` records _which_ block and how big it is, never the block's geometry:
+
+```jsonc
+{ "assetId": "sofa-3", "width": 2100, "height": 900, "mirrored": false }
+```
+
+The drawing of a sofa lives once in the editor's library, in a normalised 0–1 box scaled to
+whatever size the element carries. A plan therefore never stores a few hundred coordinates for
+a piece of furniture, the same block can be any size without a second definition, and
+correcting a block improves every drawing that uses it.
+
+An `assetId` the reader does not know is not dropped: its footprint is drawn as a dashed
+rectangle, because a block someone placed still occupies that space.
 
 ### 4.4 Style
 
