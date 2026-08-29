@@ -320,6 +320,10 @@ export function createAssetTool(): Tool {
         },
 
         cancel() {
+            // Escape should put the block down, not leave the tool armed with an invisible
+            // one. This writes to the store from inside a store notification, which is safe
+            // because the controller advances its record of the current tool before
+            // cancelling — see InputController.attach.
             clearDraft();
             useEditorStore.getState().setPendingAsset(null);
         },

@@ -100,11 +100,21 @@ export class InputController {
 
         this.activeToolId = useEditorStore.getState().tool;
         this.unsubscribe = useEditorStore.subscribe((state) => {
-            if (state.tool !== this.activeToolId) {
-                this.tool.cancel();
-                this.activeToolId = state.tool;
-                this.applyCursor();
+            if (state.tool === this.activeToolId) {
+                return;
             }
+
+            /*
+             * The outgoing tool is captured and `activeToolId` advanced *before* cancelling,
+             * because a tool's cancel may touch the very store this subscription listens to.
+             * Updating the guard afterwards left the re-entrant notification still believing
+             * the old tool was current, and it cancelled again — for ever.
+             */
+            const outgoing = this.tool;
+
+            this.activeToolId = state.tool;
+            this.applyCursor();
+            outgoing.cancel();
         });
 
         this.applyCursor();

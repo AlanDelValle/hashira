@@ -59,8 +59,21 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
     setWallThickness: (wallThickness) => set({ wallThickness }),
+    /*
+     * Choosing a block arms the tool; clearing it disarms the tool as well. Leaving the block
+     * tool active with nothing to place would be a state where clicking does nothing and the
+     * cursor still promises it will.
+     */
     setPendingAsset: (pendingAssetId) =>
-        set({ pendingAssetId, ...(pendingAssetId === null ? {} : { tool: 'asset' as const }) }),
+        set((state) => ({
+            pendingAssetId,
+            tool:
+                pendingAssetId === null
+                    ? state.tool === 'asset'
+                        ? ('select' as const)
+                        : state.tool
+                    : ('asset' as const),
+        })),
 
     select: (ids) =>
         set((state) =>
