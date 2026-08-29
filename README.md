@@ -1,58 +1,151 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<h1>Hashira</h1>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Design spaces. Precisely.**
 
-## About Laravel
+A free and open-source 2D design tool for floor plans, interiors and technical drawings —
+in the browser.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> **Status: early development.** Phase 0 (architecture and specification) is complete.
+> The editor is being built in the open, phase by phase — see the [roadmap](docs/roadmap.md).
+> This README documents what the project is and how it is put together; it does not yet
+> describe a finished product.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## What it is
 
-## Learning Laravel
+Hashira is a drafting tool, not a diagram editor. Walls have thickness and produce real
+poché. Doors and windows belong to a wall and cut an opening in it. Everything is measured
+in millimetres and can be set by typing an exact value, not only by dragging. Drawings
+export as vectors at a real scale on a real page size.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+It is deliberately small. There is no 3D, no BIM, no AI, no DWG. There is one thing —
+drawing an accurate 2D plan — done properly.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Screenshots
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+_Coming with Phase 2, when there is an editor worth photographing. Placeholder images are
+worse than none._
 
-## Agentic Development
+## Stack
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+| | |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Editor core | Plain TypeScript — no React in the document, geometry or command layers |
+| Rendering | Canvas 2D for the viewport; independent serializers for SVG, PNG and PDF export |
+| Backend | Laravel 13, PHP 8.4, REST, Sanctum (stateful cookie auth) |
+| Database | PostgreSQL — relational metadata, JSONB for the drawing itself |
+| Tests | Vitest + Testing Library, Pest, Playwright |
+| CI | GitHub Actions |
+
+Local development targets [Laravel Herd](https://herd.laravel.com), which already provides
+PHP, Nginx and PostgreSQL. Containers are on the roadmap for self-hosting, not required to
+contribute.
+
+## Running it locally
+
+**Requirements:** Laravel Herd (PHP 8.3+), Node 22+, PostgreSQL 15+.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/AlanDelValle/hashira.git
+cd hashira
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Create the database and point `.env` at it:
+
+```bash
+createdb hashira
+```
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=hashira
+DB_USERNAME=postgres
+DB_PASSWORD=
+```
+
+Then:
+
+```bash
+php artisan migrate --seed
+npm run dev
+```
+
+Herd serves the directory automatically at `https://hashira.test`. Without Herd,
+`php artisan serve` works the same way at `http://localhost:8000` — set `APP_URL` to match.
+
+The seeder creates a demo account and a sample plan:
+
+```
+demo@hashira.test  ·  password
+```
+
+## Architecture
+
+The full reasoning lives in [`docs/architecture.md`](docs/architecture.md). The short
+version is one rule:
+
+> The drawing is not React state. The document, the geometry and the commands that mutate
+> it are plain TypeScript. React renders the chrome around the drawing; it never owns it.
+
+Which gives:
+
+- a document model that is serialisable, versioned and testable without a DOM —
+  [`docs/document-format.md`](docs/document-format.md);
+- a command layer that makes undo/redo correct by construction rather than by remembering
+  to snapshot;
+- a snapping engine that is a single pipeline stage, not logic scattered through components;
+- a canvas renderer where dragging a wall across a large plan causes zero React renders.
+
+Documentation index:
+
+| Document | What is in it |
+|---|---|
+| [architecture.md](docs/architecture.md) | System shape, the decisions and why they were made |
+| [document-format.md](docs/document-format.md) | The drawing schema, versioning and migration rules |
+| [data-model.md](docs/data-model.md) | Database tables and the REST API surface |
+| [roadmap.md](docs/roadmap.md) | Phases, MVP scope and everything deliberately deferred |
+
+## Roadmap
+
+Phase 0 discovery is done. Phase 1 builds the foundation (auth, dashboard, CI); Phases 2–3
+build the editor itself; Phases 4–6 add history, persistence, export, sharing and polish.
+Collaboration, DXF, plugins and 3D are recorded as later phases so they stay out of the
+MVP. Details in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+the code standards, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for how we treat each
+other. Good first issues are labelled as such once Phase 1 lands.
 
-## Code of Conduct
+## Licence
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+[MIT](LICENSE).
 
-## Security Vulnerabilities
+MIT was chosen over a copyleft licence such as AGPL deliberately. The value of this project
+is the tool and the people who improve it, not licence leverage over people who host it.
+Permissive licensing also means the editor core — the geometry, document and command
+layers — can be lifted into other projects without a legal conversation, which is the most
+useful thing this codebase can offer. If the project ever grows a hosted commercial edition,
+that is a reason to add a separate licence for that edition, not to restrict this one.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Name
 
-## License
+*Hashira* (柱) is the Japanese word for a structural pillar or column — the vertical member
+that holds a building up, and the reference line everything else in a traditional plan is
+set out from. The alternatives considered were *Poché*, *Parti*, *Datum* and *Planum*; the
+reasoning is in [`docs/architecture.md`](docs/architecture.md). The name is provisional.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Acknowledgements
+
+Hashira is an independent project. It is inspired by the general direction of modern
+browser-based design tools, but it is not affiliated with, derived from, or a clone of any
+of them.

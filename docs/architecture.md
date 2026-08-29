@@ -1,0 +1,285 @@
+# Architecture
+
+> Status: living document. Started at Phase 0, updated as each phase lands.
+
+Hashira is a browser-based 2D drafting tool for floor plans, interiors and technical
+drawings. This document explains how it is put together and, more importantly, *why*.
+
+---
+
+## 1. Shape of the system
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│  Browser                                                      │
+│                                                               │
+│   React (UI shell)          Editor core (plain TypeScript)    │
+│   ├── Landing               ├── model      document + types   │
+│   ├── Auth                  ├── geometry   pure math          │
+│   ├── Dashboard             ├── viewport   world <-> screen   │
+│   └── Editor chrome ───────▶├── commands   undo/redo          │
+│       toolbar, panels,      ├── tools      input state machs  │
+│       status bar            ├── snapping   snap engine        │
+│                             ├── render     canvas painter     │
+│                             └── export     svg / png / pdf    │
+│                                     │                         │
+│                             persistence (autosave, api client)│
+└─────────────────────────────────────┼─────────────────────────┘
+                                      │ REST + session cookie
+┌─────────────────────────────────────┼─────────────────────────┐
+│  Laravel                            ▼                         │
+│   Http (Controllers, Requests, Resources, Policies)           │
+│   Domain                                                      │
+│    ├── Projects   Project model + actions                     │
+│    ├── Documents  Document, DocumentVersion, schema guard     │
+│    └── Sharing    ShareLink, token issuing/revocation         │
+│                                      │                        │
+│                          PostgreSQL (relational + JSONB)      │
+└───────────────────────────────────────────────────────────────┘
+```
+
+The single most important structural rule:
+
+> **The drawing is not React state.** The document, the geometry and the commands that
+> mutate them are plain TypeScript with no React import anywhere. React renders the
+> *chrome* around the drawing and reads the document; it never owns it.
+
+Everything else in this document follows from that rule.
+
+---
+
+## 2. Decisions and why
+
+### 2.1 SPA + REST, not Inertia
+
+The brief calls for a REST API, a public read-only share route and an autosaving editor.
+Inertia is excellent for CRUD-shaped apps, but here the client is a long-lived editor that
+talks to a handful of resource endpoints (`GET/PUT document`, `POST version`,
+`POST share`). Introducing a page-props protocol on top of that would blur an API boundary
+we actually want explicit and testable.
+
+So: one Blade shell boots a React SPA; all data moves over `/api/*`. Because the SPA is
+served from the same origin as the API, we use **Laravel Sanctum in stateful (cookie)
+mode** — real session auth, CSRF included, no token in `localStorage`, no CORS setup.
+Password reset uses Laravel's built-in broker.
+
+### 2.2 Canvas 2D for the viewport, an independent serializer for export
+
+The two realistic options were an SVG scene graph rendered by React, or an imperative
+Canvas 2D renderer.
+
+SVG loses on the requirement that matters most: dragging a wall across a 400-element plan
+must not re-run React reconciliation at 120 Hz. Keeping SVG fast would mean fighting React
+with memo boundaries and refs until it was, effectively, an imperative renderer with extra
+steps.
+
+So the viewport is **Canvas 2D**, driven by a `requestAnimationFrame` loop that reads the
+stores imperatively. React never renders during a drag.
+
+Export is then *not* "screenshot the DOM". Because we already own a scene description, the
+exporters are pure functions over the document:
+
+```
+Document ──▶ scene items ──┬──▶ SVG string       (vector, editable downstream)
+                           ├──▶ canvas @ N× DPI ──▶ PNG
+                           └──▶ pdf-lib page     (vector, real page size and scale)
+```
+
+The cost of this choice is that hit-testing is ours to write. That cost is not really new:
+snapping needs point-to-segment distance, polygon containment and intersection math
+regardless, so the `geometry` module pays for selection and snapping at the same time.
+
+### 2.3 Millimetres are the only unit in storage
+
+Every coordinate, length and thickness in the document is a number of **millimetres**.
+`settings.unit` (`mm | cm | m`) is a *display* preference; it changes formatting and input
+parsing, never stored values. Switching display units is therefore lossless and cannot
+accumulate float drift.
+
+Pixels never appear in the document model. The only place pixels exist is the viewport
+transform (§3).
+
+### 2.4 Commands own every mutation
+
+There is exactly one way to change the document:
+
+```ts
+interface Command {
+  readonly label: string;
+  execute(doc: DocumentDraft): void;
+  undo(doc: DocumentDraft): void;
+}
+```
+
+`HistoryStack` executes, pushes, and can pop. Nothing else writes to the document — not a
+React handler, not a tool, not the properties panel. Undo/redo is therefore correct by
+construction rather than by remembering to snapshot, and the same commands are the natural
+seam for future collaboration and for a scripting/plugin API.
+
+Property edits coalesce: consecutive `UpdatePropertyCommand`s targeting the same element
+and field within a short window merge into one history entry, so dragging a number input
+does not produce sixty undo steps.
+
+### 2.5 Four kinds of state, deliberately separated
+
+| State | Lives in | Changes on | Who reads it |
+|---|---|---|---|
+| **Document** | `documentStore` (Zustand) | command execution only | renderer, panels, autosave |
+| **Viewport** | `viewportStore` | zoom / pan | renderer, status bar |
+| **Selection & tool** | `editorStore` | click, keypress | renderer, panels, toolbar |
+| **Interaction** | plain object, *not* a store | every pointer move | renderer only |
+
+Interaction state — the rubber band, the in-progress wall, the active snap indicator — is
+deliberately outside React and outside Zustand. It is mutated directly and read by the next
+animation frame. A drag produces **zero** React renders; on pointer-up a single command
+runs and the panels update once.
+
+Zustand is used as a subscription container, not as the model: the document is a plain data
+structure that happens to be held in a store, so it stays serialisable and testable without
+a DOM.
+
+### 2.6 Snapping is a layer, not a feature sprinkled around
+
+```
+pointer event → screen point → world point → SnapEngine → snapped point → tool → command
+```
+
+`SnapEngine` takes a world point plus context (the document, the viewport scale, which
+element is being edited) and returns the best candidate together with its kind, so the
+renderer can draw the right indicator. Providers are independent and ordered by priority:
+
+`endpoint → midpoint → intersection → axis alignment → grid`
+
+Tolerance is expressed in **screen pixels** and converted to world units using the current
+zoom, so snapping feels identical at every zoom level. No React component ever contains
+snapping logic.
+
+### 2.7 Openings are hosted, not floating
+
+A door or window is not a rectangle that happens to sit on a wall. It stores `hostId` and a
+distance along that wall; the renderer subtracts the opening from the wall's poché when
+painting. Move the wall and the opening follows; drag the opening and it slides along the
+wall it belongs to. This is a small amount of code that produces most of the "this is a real
+drafting tool" feeling.
+
+### 2.8 The document is one JSONB column
+
+Storing each element as a row would buy nothing in the MVP — there is no per-element query,
+no per-element permission and no partial fetch — while making every save a diff problem.
+The document is stored as `documents.data` (JSONB) with `schema_version` alongside it.
+
+PostgreSQL is chosen over SQLite/MySQL specifically because JSONB gives us indexable,
+queryable structure if and when we need to extract entities (`data -> 'elements'`), so this
+decision is reversible rather than a dead end.
+
+Saves are **optimistically concurrent**: `documents.revision` increments on every write and
+the client sends the revision its edit was based on. A mismatch returns `409` instead of
+silently overwriting a newer version saved from another tab.
+
+### 2.9 Domain folders, but only where there is domain
+
+```
+app/
+├── Domain/
+│   ├── Projects/    Project model, CreateProject, DuplicateProject, DeleteProject
+│   ├── Documents/   Document, DocumentVersion, SaveDocument, CreateDocumentVersion
+│   └── Sharing/     ShareLink, IssueShareLink, RevokeShareLink
+├── Http/            Controllers, Requests, Resources
+├── Policies/
+└── Models/          User (stays where Laravel expects it)
+```
+
+Actions exist where there is real logic: duplicating a project must deep-copy its document;
+issuing a share link must generate an unguessable token and revoke prior ones. Anything
+that is genuinely a two-line CRUD call stays in the controller. We are not adding a service
+class per endpoint for symmetry.
+
+---
+
+## 3. Coordinate systems
+
+Three spaces, never mixed:
+
+- **World** — millimetres, Y grows downward, origin at the plan origin. The document lives here.
+- **Screen** — CSS pixels inside the canvas element.
+- **Device** — screen × `devicePixelRatio`, used only when sizing the canvas backing store.
+
+The viewport is `{ x, y, zoom }` where `zoom` is screen pixels per millimetre:
+
+```
+screen = (world - offset) * zoom
+world  = screen / zoom + offset
+```
+
+Every conversion goes through `viewport.toWorld()` / `viewport.toScreen()`. Ad-hoc
+arithmetic on coordinates inside a component is treated as a bug.
+
+Drawing **scale** (1:50, 1:100) is a separate concept: it affects export page geometry and
+the printed scale bar, not on-screen zoom.
+
+---
+
+## 4. Rendering
+
+One `<canvas>`, one rAF loop, painted in a fixed order:
+
+```
+1. paper / sheet background
+2. grid              (adaptive: subdivisions fade out as you zoom away)
+3. document elements, in layer order, hidden layers skipped
+4. selection outlines and transform handles
+5. active-tool preview (in-progress wall, rubber band)
+6. snap indicator
+7. dimension and measurement overlay
+```
+
+The loop paints only when something is marked dirty, so an idle editor costs nothing.
+Layers 1–3 come from the document; 4–7 come from interaction state, which is why they can
+update at pointer rate without touching React.
+
+---
+
+## 5. Persistence and autosave
+
+```
+command executed → document dirty → debounce 1.2 s (10 s hard ceiling)
+                 → PUT /api/projects/{id}/document  { revision, data }
+                 → status: Editing… / Saving… / Saved
+```
+
+The editor stays fully interactive during a save; an in-flight request never blocks input.
+Failures surface in the status bar and are retried with backoff rather than dropped
+silently. `Ctrl/Cmd+S` forces an immediate flush, and versions can be created on demand
+(`document_versions`) so the structure for history exists before the UI for it does.
+
+---
+
+## 6. Testing strategy
+
+Testing effort follows risk, not coverage percentage.
+
+- **Pure unit tests (Vitest)** — geometry, snapping, unit parsing/formatting, command
+  execute/undo round-trips, document migrations. Cheap, fast, and where the real bugs live.
+- **Component tests (Testing Library)** — properties panel editing, layer panel, shortcuts.
+- **Feature tests (Pest)** — authorization above all: a user must not read or write another
+  user's project; a share token exposes the shared document and nothing else.
+- **E2E (Playwright)** — one honest path: register → create project → draw a wall → reload →
+  the wall is still there.
+
+We are explicitly not writing a test per getter.
+
+---
+
+## 7. What we are deliberately not building yet
+
+3D, BIM, DWG/DXF, generative AI, CRDT multiplayer, comments, payments, organisations, a
+large block library, a mobile editor. See [roadmap.md](roadmap.md). The architecture leaves
+room for them — commands for collaboration, JSONB for entity extraction, share-link roles
+for permissions — without paying for them now.
+
+---
+
+## 8. Related documents
+
+- [document-format.md](document-format.md) — the on-disk / on-wire document schema
+- [roadmap.md](roadmap.md) — phases, and what lands when

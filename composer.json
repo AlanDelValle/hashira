@@ -1,11 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "alandelvalle/hashira",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Open-source 2D design tool for floor plans, interiors and technical drawings.",
     "keywords": [
-        "laravel",
-        "framework"
+        "cad",
+        "floor-plan",
+        "architecture",
+        "drafting",
+        "laravel"
     ],
     "license": "MIT",
     "require": {
