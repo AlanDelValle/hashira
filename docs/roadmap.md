@@ -19,15 +19,19 @@ Legend: `[ ]` planned · `[~]` in progress · `[x]` done
 - [x] Decide the database model and the API surface
 - [x] Open-source scaffolding: README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT
 
-### Phase 1 — Foundation `[ ]`
+### Phase 1 — Foundation `[~]`
 
-- [ ] PostgreSQL connection, migrations for `projects`, `documents`, `document_versions`, `share_links`
-- [ ] Authentication: register, login, logout, password reset (Sanctum, stateful)
-- [ ] React + TypeScript + Vite + Tailwind SPA shell, routing, design tokens
-- [ ] Landing page
-- [ ] Projects dashboard: create, rename, duplicate, delete
-- [ ] Empty editor route that loads a real document
-- [ ] Pint, ESLint, Prettier, TypeScript strict, Vitest, Pest, GitHub Actions CI
+- [x] Migrations for `projects`, `documents`, `document_versions`, `share_links`
+- [x] Authentication: register, login, logout, password reset (session + CSRF)
+- [x] REST API: projects, document load and save, versions, share links, public share
+- [x] React + TypeScript + Vite + Tailwind SPA shell, routing, design tokens
+- [x] Landing page
+- [x] Projects dashboard: create, rename, duplicate, delete
+- [x] Editor route that loads a real document
+- [x] Pint, PHPStan, ESLint, Prettier, TypeScript strict, Vitest, Pest, GitHub Actions CI
+- [ ] Verified against a local PostgreSQL instance — the suite is green, but so far only on
+      SQLite, so `jsonb` storage and the conditional-UPDATE save path are unproven locally.
+      CI runs it against PostgreSQL 17.
 
 Exit criteria: you can register, sign in, create a project and land in an editor that has
 loaded a real document from the database.

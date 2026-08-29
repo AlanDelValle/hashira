@@ -14,8 +14,9 @@ See [Running it locally](README.md#running-it-locally) in the README. In short: 
 ## Before you open a pull request
 
 ```bash
-composer pint          # PHP formatting
-composer test          # Pest
+composer lint          # Pint (PHP formatting)
+composer analyse       # PHPStan / Larastan
+composer test          # Pest (needs a local PostgreSQL: hashira_testing)
 npm run lint           # ESLint
 npm run typecheck      # tsc --noEmit
 npm run test           # Vitest
@@ -56,7 +57,7 @@ passes, so it saves everyone time to run them first.
 
 - Laravel Pint, default preset. Types on every parameter and return.
 - Controllers stay thin: validate with a Form Request, authorize with a Policy, respond with
-  a Resource. Real logic goes in a `Domain/*/Actions` class — but only when there *is* real
+  a Resource. Real logic goes in a `Domain/*/Actions` class — but only when there _is_ real
   logic. Do not add an action class to wrap a single Eloquent call.
 - Never trust request input for ownership. Authorization comes from a policy against the
   authenticated user, always.

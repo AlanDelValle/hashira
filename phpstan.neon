@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - database
+        - routes
+
+    # Eloquent's magic makes level 8+ noisy rather than useful on models; the value here is
+    # catching wrong types at the boundaries — actions, controllers and resources.
+    checkModelProperties: true

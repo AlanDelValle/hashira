@@ -1,25 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
+use App\Domain\Documents\DocumentSchema;
+use App\Domain\Projects\Actions\CreateProject;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+/**
+ * Seeds a demo account so that a fresh clone can be evaluated without signing up first.
+ * Idempotent: running it twice does not produce a second demo user or duplicate projects.
+ */
+final class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
+    public const DEMO_EMAIL = 'demo@hashira.test';
 
-    /**
-     * Seed the application's database.
-     */
-    public function run(): void
+    public const DEMO_PASSWORD = 'password';
+
+    public function run(CreateProject $createProject): void
     {
-        // User::factory(10)->create();
+        $demo = User::query()->firstOrCreate(
+            ['email' => self::DEMO_EMAIL],
+            ['name' => 'Demo', 'password' => self::DEMO_PASSWORD],
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        if ($demo->projects()->exists()) {
+            return;
+        }
+
+        $studio = $createProject->handle(
+            owner: $demo,
+            name: 'Studio Apartment',
+            description: 'A sample plan to open, edit and export.',
+        );
+
+        $document = $studio->document;
+
+        if ($document !== null) {
+            $document->update([
+                'schema_version' => DocumentSchema::CURRENT_VERSION,
+                'data' => DemoPlan::document($studio->name),
+            ]);
+        }
+
+        // A second, empty project so the dashboard shows more than one row.
+        $createProject->handle($demo, 'House Renovation');
     }
 }

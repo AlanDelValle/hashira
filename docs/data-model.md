@@ -72,18 +72,18 @@ Notes on the shape:
 
 ## 2. API
 
-All routes under `/api` are JSON, session-authenticated via Sanctum's stateful guard, and
-authorized by policy. Ownership is always checked against the authenticated user — never
-inferred from the request body.
+All routes under `/api` are JSON, run on the `web` middleware group (browser session plus
+CSRF — see [architecture.md §2.1](architecture.md)), and are authorized by policy. Ownership
+is always checked against the authenticated user, never inferred from the request body.
 
 ### Authentication
 
 ```
-POST   /register
-POST   /login
-POST   /logout
-POST   /forgot-password
-POST   /reset-password
+POST   /api/register
+POST   /api/login
+POST   /api/logout
+POST   /api/forgot-password
+POST   /api/reset-password
 GET    /api/user
 ```
 
@@ -101,12 +101,17 @@ POST   /api/projects/{project}/duplicate
 ### Document
 
 ```
-GET    /api/projects/{project}/document       → { id, revision, schemaVersion, data }
+GET    /api/projects/{project}/document       → { id, revision, schemaVersion, drawing }
 PUT    /api/projects/{project}/document       { revision, data } → 200 | 409 Conflict
 ```
 
 `PUT` is the autosave endpoint. It validates `schemaVersion`, rejects payloads over a size
 ceiling, and returns the new `revision`.
+
+The document JSON is called `drawing` in responses, not `data`. Laravel skips its own `data`
+envelope for any resource whose payload already contains that key, which would silently leave
+these two endpoints shaped differently from every other one. Requests still send it as `data`,
+matching the validation rule name.
 
 ### Versions
 
@@ -128,7 +133,7 @@ DELETE /api/projects/{project}/share          revokes
 
 ```
 GET    /share/{token}                         the read-only viewer page
-GET    /api/share/{token}                     { name, schemaVersion, data } and nothing else
+GET    /api/share/{token}                     { name, schemaVersion, drawing } and nothing else
 ```
 
 The public endpoint is deliberately a different controller with its own resource. It never

@@ -1,0 +1,18 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 4,
+  "printWidth": 100,
+  "trailingComma": "all",
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "overrides": [
+    {
+      "files": ["*.json", "*.yml", "*.yaml", "*.md"],
+      "options": { "tabWidth": 2 }
+    },
+    {
+      "files": "*.blade.php",
+      "options": { "parser": "html" }
+    }
+  ]
+}

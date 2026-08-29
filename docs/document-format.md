@@ -16,11 +16,11 @@ Two rules make everything else predictable:
 ```jsonc
 {
   "schemaVersion": 1,
-  "id": "01JBQ8...",          // ULID, stable for the life of the drawing
+  "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
-  "settings": { /* §2 */ },
-  "layers":   [ /* §3 */ ],
-  "elements": [ /* §4 */ ]
+  "settings": {/* §2 */},
+  "layers": [/* §3 */],
+  "elements": [/* §4 */],
 }
 ```
 
@@ -33,23 +33,23 @@ determined by `layer.order`, not by array position.
 
 ```jsonc
 {
-  "unit": "m",                       // "mm" | "cm" | "m" — display only
-  "scale": 50,                       // 1:50, used for export and the scale bar
+  "unit": "m", // "mm" | "cm" | "m" — display only
+  "scale": 50, // 1:50, used for export and the scale bar
   "grid": {
-    "size": 100,                     // mm between major grid lines
+    "size": 100, // mm between major grid lines
     "subdivisions": 2,
     "visible": true,
-    "snap": true
+    "snap": true,
   },
   "snapping": {
     "enabled": true,
     "endpoint": true,
     "midpoint": true,
     "intersection": true,
-    "axis": true
+    "axis": true,
   },
   "sheet": { "size": "A3", "orientation": "landscape" },
-  "title": "Ground floor — 1:50"     // printed in the export title block
+  "title": "Ground floor — 1:50", // printed in the export title block
 }
 ```
 
@@ -66,7 +66,7 @@ Grid presets offered in the UI: 50 mm, 100 mm, 250 mm, 500 mm, 1000 mm.
   "color": "#1F2328",
   "visible": true,
   "locked": false,
-  "order": 0
+  "order": 0,
 }
 ```
 
@@ -89,9 +89,9 @@ Every element shares the same envelope:
   "type": "wall",
   "layerId": "layer_architecture",
   "transform": { "x": 0, "y": 0, "rotation": 0 },
-  "geometry": { /* type specific, in LOCAL coordinates */ },
-  "style": { /* optional overrides of the layer defaults */ },
-  "metadata": { "createdAt": "2026-08-29T12:00:00Z", "label": null }
+  "geometry": {/* type specific, in LOCAL coordinates */},
+  "style": {/* optional overrides of the layer defaults */},
+  "metadata": { "createdAt": "2026-08-29T12:00:00Z", "label": null },
 }
 ```
 
@@ -113,20 +113,20 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 
 ### 4.2 Types
 
-| `type` | `geometry` | Notes |
-|---|---|---|
-| `wall` | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm |
-| `line` | `{ a: Point, b: Point }` | |
-| `rect` | `{ width: number, height: number }` | local origin at the centre |
-| `circle` | `{ radius: number }` | local origin at the centre |
-| `polygon` | `{ points: Point[], closed: boolean }` | |
-| `room` | `{ points: Point[] }` | area is derived, never stored |
-| `door` | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3 |
-| `window` | `{ hostId, offset, width }` | hosted on a wall — §4.3 |
-| `asset` | `{ assetId, width, height, mirrored }` | from the local element library |
-| `text` | `{ content, fontSize, align }` | `fontSize` in mm at 1:1 |
-| `dimension` | `{ a: Point, b: Point, offset: number }` | `offset` is the perpendicular distance of the dimension line |
-| `marker` | `{ label, kind }` | a labelled point annotation |
+| `type`      | `geometry`                                  | Notes                                                        |
+| ----------- | ------------------------------------------- | ------------------------------------------------------------ |
+| `wall`      | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm                                 |
+| `line`      | `{ a: Point, b: Point }`                    |                                                              |
+| `rect`      | `{ width: number, height: number }`         | local origin at the centre                                   |
+| `circle`    | `{ radius: number }`                        | local origin at the centre                                   |
+| `polygon`   | `{ points: Point[], closed: boolean }`      |                                                              |
+| `room`      | `{ points: Point[] }`                       | area is derived, never stored                                |
+| `door`      | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3                                      |
+| `window`    | `{ hostId, offset, width }`                 | hosted on a wall — §4.3                                      |
+| `asset`     | `{ assetId, width, height, mirrored }`      | from the local element library                               |
+| `text`      | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1                                      |
+| `dimension` | `{ a: Point, b: Point, offset: number }`    | `offset` is the perpendicular distance of the dimension line |
+| `marker`    | `{ label, kind }`                           | a labelled point annotation                                  |
 
 `Point` is `{ "x": number, "y": number }`.
 
@@ -151,7 +151,7 @@ An opening whose `hostId` no longer resolves is dropped on load, with a warning 
 ```
 
 All fields are optional; anything absent falls back to the layer, then to the document
-theme. `strokeWidth` is in millimetres *on the printed sheet* (a 0.35 mm pen), not in world
+theme. `strokeWidth` is in millimetres _on the printed sheet_ (a 0.35 mm pen), not in world
 millimetres — so line weights stay constant as you zoom and match the plotted output.
 
 ---
@@ -167,13 +167,33 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
     "unit": "m",
     "scale": 50,
     "grid": { "size": 100, "subdivisions": 2, "visible": true, "snap": true },
-    "snapping": { "enabled": true, "endpoint": true, "midpoint": true, "intersection": true, "axis": true },
+    "snapping": {
+      "enabled": true,
+      "endpoint": true,
+      "midpoint": true,
+      "intersection": true,
+      "axis": true
+    },
     "sheet": { "size": "A3", "orientation": "landscape" },
     "title": "Studio"
   },
   "layers": [
-    { "id": "layer_architecture", "name": "Architecture", "color": "#1F2328", "visible": true, "locked": false, "order": 0 },
-    { "id": "layer_openings", "name": "Openings", "color": "#1F2328", "visible": true, "locked": false, "order": 1 }
+    {
+      "id": "layer_architecture",
+      "name": "Architecture",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 0
+    },
+    {
+      "id": "layer_openings",
+      "name": "Openings",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 1
+    }
   ],
   "elements": [
     {
@@ -189,7 +209,13 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
       "type": "door",
       "layerId": "layer_openings",
       "transform": { "x": 0, "y": 0, "rotation": 0 },
-      "geometry": { "hostId": "01JBQ9A0000000000000000001", "offset": 1200, "width": 800, "swing": "left", "flipped": false },
+      "geometry": {
+        "hostId": "01JBQ9A0000000000000000001",
+        "offset": 1200,
+        "width": 800,
+        "swing": "left",
+        "flipped": false
+      },
       "metadata": { "createdAt": "2026-08-29T12:00:05Z" }
     }
   ]

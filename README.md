@@ -29,15 +29,15 @@ worse than none._
 
 ## Stack
 
-| | |
-|---|---|
-| Frontend | React, TypeScript, Vite, Tailwind CSS |
-| Editor core | Plain TypeScript — no React in the document, geometry or command layers |
-| Rendering | Canvas 2D for the viewport; independent serializers for SVG, PNG and PDF export |
-| Backend | Laravel 13, PHP 8.4, REST, Sanctum (stateful cookie auth) |
-| Database | PostgreSQL — relational metadata, JSONB for the drawing itself |
-| Tests | Vitest + Testing Library, Pest, Playwright |
-| CI | GitHub Actions |
+|             |                                                                                 |
+| ----------- | ------------------------------------------------------------------------------- |
+| Frontend    | React, TypeScript, Vite, Tailwind CSS                                           |
+| Editor core | Plain TypeScript — no React in the document, geometry or command layers         |
+| Rendering   | Canvas 2D for the viewport; independent serializers for SVG, PNG and PDF export |
+| Backend     | Laravel 13, PHP 8.4, REST, session authentication with CSRF                     |
+| Database    | PostgreSQL — relational metadata, JSONB for the drawing itself                  |
+| Tests       | Vitest + Testing Library, Pest, Playwright                                      |
+| CI          | GitHub Actions                                                                  |
 
 Local development targets [Laravel Herd](https://herd.laravel.com), which already provides
 PHP, Nginx and PostgreSQL. Containers are on the roadmap for self-hosting, not required to
@@ -106,12 +106,12 @@ Which gives:
 
 Documentation index:
 
-| Document | What is in it |
-|---|---|
-| [architecture.md](docs/architecture.md) | System shape, the decisions and why they were made |
-| [document-format.md](docs/document-format.md) | The drawing schema, versioning and migration rules |
-| [data-model.md](docs/data-model.md) | Database tables and the REST API surface |
-| [roadmap.md](docs/roadmap.md) | Phases, MVP scope and everything deliberately deferred |
+| Document                                      | What is in it                                          |
+| --------------------------------------------- | ------------------------------------------------------ |
+| [architecture.md](docs/architecture.md)       | System shape, the decisions and why they were made     |
+| [document-format.md](docs/document-format.md) | The drawing schema, versioning and migration rules     |
+| [data-model.md](docs/data-model.md)           | Database tables and the REST API surface               |
+| [roadmap.md](docs/roadmap.md)                 | Phases, MVP scope and everything deliberately deferred |
 
 ## Roadmap
 
@@ -139,9 +139,9 @@ that is a reason to add a separate licence for that edition, not to restrict thi
 
 ## Name
 
-*Hashira* (柱) is the Japanese word for a structural pillar or column — the vertical member
+_Hashira_ (柱) is the Japanese word for a structural pillar or column — the vertical member
 that holds a building up, and the reference line everything else in a traditional plan is
-set out from. The alternatives considered were *Poché*, *Parti*, *Datum* and *Planum*; the
+set out from. The alternatives considered were _Poché_, _Parti_, _Datum_ and _Planum_; the
 reasoning is in [`docs/architecture.md`](docs/architecture.md). The name is provisional.
 
 ## Acknowledgements

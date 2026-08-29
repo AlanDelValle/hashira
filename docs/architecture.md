@@ -3,7 +3,7 @@
 > Status: living document. Started at Phase 0, updated as each phase lands.
 
 Hashira is a browser-based 2D drafting tool for floor plans, interiors and technical
-drawings. This document explains how it is put together and, more importantly, *why*.
+drawings. This document explains how it is put together and, more importantly, _why_.
 
 ---
 
@@ -42,7 +42,7 @@ The single most important structural rule:
 
 > **The drawing is not React state.** The document, the geometry and the commands that
 > mutate them are plain TypeScript with no React import anywhere. React renders the
-> *chrome* around the drawing and reads the document; it never owns it.
+> _chrome_ around the drawing and reads the document; it never owns it.
 
 Everything else in this document follows from that rule.
 
@@ -50,7 +50,7 @@ Everything else in this document follows from that rule.
 
 ## 2. Decisions and why
 
-### 2.1 SPA + REST, not Inertia
+### 2.1 SPA + REST, not Inertia — and session auth, not tokens
 
 The brief calls for a REST API, a public read-only share route and an autosaving editor.
 Inertia is excellent for CRUD-shaped apps, but here the client is a long-lived editor that
@@ -58,10 +58,19 @@ talks to a handful of resource endpoints (`GET/PUT document`, `POST version`,
 `POST share`). Introducing a page-props protocol on top of that would blur an API boundary
 we actually want explicit and testable.
 
-So: one Blade shell boots a React SPA; all data moves over `/api/*`. Because the SPA is
-served from the same origin as the API, we use **Laravel Sanctum in stateful (cookie)
-mode** — real session auth, CSRF included, no token in `localStorage`, no CORS setup.
-Password reset uses Laravel's built-in broker.
+So: one Blade shell boots a React SPA; all data moves over `/api/*`.
+
+The API is served by the same application, on the same origin, to the same browser session
+as the pages — so it runs on Laravel's **`web` middleware group**: real session
+authentication and real CSRF verification. Sanctum was tried first and then removed. Its
+stateful mode exists to bridge a _separately hosted_ SPA, and it decides whether to start a
+session by sniffing the `Origin`/`Referer` header against a configured domain list. For an
+SPA this application serves itself, that is a conditional session for no benefit and one more
+thing to misconfigure. Password reset uses Laravel's built-in broker.
+
+There is therefore no token anywhere: no bearer header to attach, nothing in `localStorage`,
+and no CORS configuration. The client's one piece of bookkeeping is mirroring the
+`XSRF-TOKEN` cookie into the `X-XSRF-TOKEN` header.
 
 ### 2.2 Canvas 2D for the viewport, an independent serializer for export
 
@@ -76,7 +85,7 @@ steps.
 So the viewport is **Canvas 2D**, driven by a `requestAnimationFrame` loop that reads the
 stores imperatively. React never renders during a drag.
 
-Export is then *not* "screenshot the DOM". Because we already own a scene description, the
+Export is then _not_ "screenshot the DOM". Because we already own a scene description, the
 exporters are pure functions over the document:
 
 ```
@@ -92,7 +101,7 @@ regardless, so the `geometry` module pays for selection and snapping at the same
 ### 2.3 Millimetres are the only unit in storage
 
 Every coordinate, length and thickness in the document is a number of **millimetres**.
-`settings.unit` (`mm | cm | m`) is a *display* preference; it changes formatting and input
+`settings.unit` (`mm | cm | m`) is a _display_ preference; it changes formatting and input
 parsing, never stored values. Switching display units is therefore lossless and cannot
 accumulate float drift.
 
@@ -122,12 +131,12 @@ does not produce sixty undo steps.
 
 ### 2.5 Four kinds of state, deliberately separated
 
-| State | Lives in | Changes on | Who reads it |
-|---|---|---|---|
-| **Document** | `documentStore` (Zustand) | command execution only | renderer, panels, autosave |
-| **Viewport** | `viewportStore` | zoom / pan | renderer, status bar |
-| **Selection & tool** | `editorStore` | click, keypress | renderer, panels, toolbar |
-| **Interaction** | plain object, *not* a store | every pointer move | renderer only |
+| State                | Lives in                    | Changes on             | Who reads it               |
+| -------------------- | --------------------------- | ---------------------- | -------------------------- |
+| **Document**         | `documentStore` (Zustand)   | command execution only | renderer, panels, autosave |
+| **Viewport**         | `viewportStore`             | zoom / pan             | renderer, status bar       |
+| **Selection & tool** | `editorStore`               | click, keypress        | renderer, panels, toolbar  |
+| **Interaction**      | plain object, _not_ a store | every pointer move     | renderer only              |
 
 Interaction state — the rubber band, the in-progress wall, the active snap indicator — is
 deliberately outside React and outside Zustand. It is mutated directly and read by the next

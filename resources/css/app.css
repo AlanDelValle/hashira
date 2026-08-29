@@ -1,9 +1,120 @@
 @import 'tailwindcss';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+@source '../js/**/*.{ts,tsx}';
+@source '../views/**/*.blade.php';
 
+/*
+ * Design tokens.
+ *
+ * The palette is deliberately narrow: warm paper neutrals for everything structural, ink for
+ * text, and a single accent that is only ever used to mean "selected" or "active". Anything
+ * that needs to stand out earns it through type and spacing, not colour.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Every measurement, coordinate and dimension is set in this face, tabular figures on. */
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Mono', monospace;
+
+    /* Surfaces */
+    --color-canvas: #f4f3f0;
+    --color-surface: #ffffff;
+    --color-sunken: #faf9f7;
+    --color-overlay: #17191d;
+
+    /* Lines */
+    --color-line: #e5e3de;
+    --color-line-strong: #d1cec7;
+
+    /* Ink */
+    --color-ink: #17191d;
+    --color-ink-muted: #5f636b;
+    --color-ink-subtle: #8b8f97;
+    --color-ink-inverse: #f8f8f6;
+
+    /* Meaning */
+    --color-accent: #2c58c4;
+    --color-accent-strong: #23479f;
+    --color-accent-soft: #ecf1fc;
+    --color-danger: #a9302a;
+    --color-danger-soft: #fbeeed;
+    --color-positive: #2f6b45;
+
+    /* Drafting surface — the sheet inside the editor, always paper regardless of UI theme */
+    --color-sheet: #ffffff;
+    --color-grid-minor: #e9e7e2;
+    --color-grid-major: #d8d5ce;
+
+    /* Corners stay tight. Soft, pill-shaped chrome reads as a marketing site, not a tool. */
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    /* Elevation is a hint, not an effect. */
+    --shadow-panel: 0 1px 2px rgb(23 25 29 / 0.04), 0 10px 30px -18px rgb(23 25 29 / 0.25);
+    --shadow-popover: 0 1px 2px rgb(23 25 29 / 0.06), 0 12px 28px -12px rgb(23 25 29 / 0.22);
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-feature-settings: 'cv05' 1;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Numeric fields must not jitter as digits change during a drag. */
+    .font-mono,
+    input[type='number'] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    ::selection {
+        background-color: var(--color-accent-soft);
+        color: var(--color-accent-strong);
+    }
+
+    /* Visible focus for keyboard users, invisible for pointer users. */
+    :focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 1px;
+        border-radius: var(--radius-sm);
+    }
+
+    [hidden] {
+        display: none !important;
+    }
+}
+
+@layer utilities {
+    /* A hairline that stays one physical pixel on high-DPI screens. */
+    .border-hairline {
+        border-width: 1px;
+        border-color: var(--color-line);
+    }
+
+    /* Indeterminate progress: a mark travelling along a rule, not a spinning graphic. */
+    .animate-sweep {
+        animation: sweep 1.2s ease-in-out infinite;
+    }
+}
+
+@keyframes sweep {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(300%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-sweep {
+        animation: none;
+    }
 }
