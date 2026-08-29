@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { summarize } from '@/editor/model/summary';
+import { parseDocument } from '@/editor/model/document';
 import { api, type Envelope } from '@/lib/api';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Wordmark } from '@/ui/Logo';
@@ -53,7 +53,8 @@ export function SharedPlanPage() {
         );
     }
 
-    const summary = summarize(document.drawing);
+    // The same parser the editor uses, rather than a second, looser reader of the format.
+    const parsed = parseDocument(document.drawing);
 
     return (
         <div className="bg-canvas flex min-h-screen flex-col">
@@ -71,9 +72,9 @@ export function SharedPlanPage() {
 
             <main className="flex flex-1 items-center justify-center px-6">
                 <p className="text-ink-subtle max-w-xs text-center text-[13px]">
-                    The read-only drawing view arrives with the renderer. This drawing has{' '}
-                    {summary.elementCount} {summary.elementCount === 1 ? 'element' : 'elements'} at
-                    1:{summary.scale}.
+                    {parsed.ok
+                        ? `The read-only drawing view arrives with the renderer. This drawing has ${parsed.document.elements.length} ${parsed.document.elements.length === 1 ? 'element' : 'elements'} at 1:${parsed.document.settings.scale}.`
+                        : parsed.reason}
                 </p>
             </main>
         </div>

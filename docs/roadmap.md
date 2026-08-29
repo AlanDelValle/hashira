@@ -35,24 +35,25 @@ Legend: `[ ]` planned · `[~]` in progress · `[x]` done
 Exit criteria: you can register, sign in, create a project and land in an editor that has
 loaded a real document from the database.
 
-### Phase 2 — Editor core `[ ]`
+### Phase 2 — Editor core `[x]`
 
-- [ ] Canvas host, device-pixel-ratio handling, resize
-- [ ] Viewport: world/screen transform, zoom to cursor, pan, zoom to fit, zoom to selection
-- [ ] Adaptive grid with configurable spacing
-- [ ] Document store, command bus, history stack
-- [ ] Selection: click, shift-add, box select, hover feedback
-- [ ] Move, rotate, duplicate, delete
-- [ ] Line, rectangle, circle, polygon
-- [ ] Status bar: cursor coordinates, zoom, scale, grid and snap toggles
+- [x] Canvas host, device-pixel-ratio handling, resize
+- [x] Viewport: world/screen transform, zoom to cursor, pan, zoom to fit, zoom to selection
+- [x] Adaptive grid with configurable spacing
+- [x] Document store, command bus, history stack
+- [x] Selection: click, shift-add, box select (window and crossing), hover feedback
+- [x] Move, rotate, duplicate, delete, grid snapping, arrow-key nudge
+- [x] Line, rectangle, circle, polygon
+- [x] Status bar: cursor coordinates, zoom, scale, grid and snap toggles
+- [x] Rendering for every element type the format defines, including hosted openings
 
 Exit criteria: drawing and manipulating basic shapes feels precise and immediate. We do not
 move on until it does.
 
 ### Phase 3 — Architecture tools `[ ]`
 
-- [ ] Wall with thickness, chained drawing, poché rendering
-- [ ] Doors and windows hosted on walls, opening cut into the wall
+- [ ] Wall _tool_: chained drawing and thickness on creation (poché rendering landed in Phase 2)
+- [ ] Door and window _tools_ (hosted openings already render)
 - [ ] Room / space element with derived area
 - [ ] Snap engine: grid, endpoint, midpoint, intersection, axis alignment, with indicators
 - [ ] Properties panel driven by real values (length, thickness, angle, position, layer)
@@ -80,6 +81,7 @@ move on until it does.
 - [ ] Focus management, ARIA labelling, contrast audit
 - [ ] Small-screen message for the editor; responsive landing and dashboard
 - [ ] Performance pass against a several-hundred-element plan
+- [ ] Split the editor out of the landing bundle — one chunk is over 500 kB today
 - [ ] Demo account and seed drawing, screenshots in the README
 
 ---

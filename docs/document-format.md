@@ -103,32 +103,35 @@ Every element shares the same envelope:
 world = rotate(local, rotation) + { x, y }
 ```
 
-Rotation pivots around the local origin. Freshly drawn path elements are created with
-`transform = { x: 0, y: 0, rotation: 0 }` and absolute points in `geometry`; moving them
-edits `transform.x/y` rather than rewriting every point, which is what makes dragging a
-100-vertex polygon cheap.
+Rotation pivots around the local origin, and every factory places that origin at the element's
+own centre — so `transform.x/y` is where the element _is_, and a rotation handle turns it about
+itself rather than swinging it around the drawing origin.
+
+Moving an element therefore edits two numbers instead of rewriting every vertex, which is what
+makes dragging a 100-vertex polygon cheap. A document written by hand with absolute points and
+an identity transform still reads correctly; it simply rotates about its own first point.
 
 A single helper, `worldPoints(element)`, is the only sanctioned way to read an element's
 world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 
 ### 4.2 Types
 
-| `type`      | `geometry`                                  | Notes                                                        |
-| ----------- | ------------------------------------------- | ------------------------------------------------------------ |
-| `wall`      | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm                                 |
-| `line`      | `{ a: Point, b: Point }`                    |                                                              |
-| `rect`      | `{ width: number, height: number }`         | local origin at the centre                                   |
-| `circle`    | `{ radius: number }`                        | local origin at the centre                                   |
-| `polygon`   | `{ points: Point[], closed: boolean }`      |                                                              |
-| `room`      | `{ points: Point[] }`                       | area is derived, never stored                                |
-| `door`      | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3                                      |
-| `window`    | `{ hostId, offset, width }`                 | hosted on a wall — §4.3                                      |
-| `asset`     | `{ assetId, width, height, mirrored }`      | from the local element library                               |
-| `text`      | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1                                      |
-| `dimension` | `{ a: Point, b: Point, offset: number }`    | `offset` is the perpendicular distance of the dimension line |
-| `marker`    | `{ label, kind }`                           | a labelled point annotation                                  |
+| `type`    | `geometry`                                  | Notes                         |
+| --------- | ------------------------------------------- | ----------------------------- |
+| `wall`    | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm  |
+| `line`    | `{ a: Point, b: Point }`                    |                               |
+| `rect`    | `{ width: number, height: number }`         | local origin at the centre    |
+| `circle`  | `{ radius: number }`                        | local origin at the centre    |
+| `polygon` | `{ points: Point[], closed: boolean }`      |                               |
+| `room`    | `{ points: Point[] }`                       | area is derived, never stored |
+| `door`    | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3       |
+| `window`  | `{ hostId, offset, width }`                 | hosted on a wall — §4.3       |
+| `text`    | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1       |
 
 `Point` is `{ "x": number, "y": number }`.
+
+Dimensions, markers and library assets are not element types yet. Adding a type is additive and
+needs no version bump, so each arrives with the phase that draws it.
 
 ### 4.3 Hosted openings
 

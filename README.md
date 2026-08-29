@@ -110,7 +110,9 @@ Documentation index:
 | --------------------------------------------- | ------------------------------------------------------ |
 | [architecture.md](docs/architecture.md)       | System shape, the decisions and why they were made     |
 | [document-format.md](docs/document-format.md) | The drawing schema, versioning and migration rules     |
-| [data-model.md](docs/data-model.md)           | Database tables and the REST API surface               |
+| [editor.md](docs/editor.md)                   | How the drawing surface is built                       |
+| [geometry.md](docs/geometry.md)               | The maths layer and its conventions                    |
+|                                               | Database tables and the REST API surface               |
 | [roadmap.md](docs/roadmap.md)                 | Phases, MVP scope and everything deliberately deferred |
 
 ## Roadmap

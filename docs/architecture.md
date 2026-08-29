@@ -115,19 +115,26 @@ There is exactly one way to change the document:
 ```ts
 interface Command {
   readonly label: string;
-  execute(doc: DocumentDraft): void;
-  undo(doc: DocumentDraft): void;
+  readonly coalesceKey: string | null;
+  execute(document: HashiraDocument): HashiraDocument;
+  undo(document: HashiraDocument): HashiraDocument;
 }
 ```
+
+Both halves are pure functions returning a _new_ document rather than mutating one, so a
+command can be replayed, inspected, or sent over a wire without carrying hidden state.
 
 `HistoryStack` executes, pushes, and can pop. Nothing else writes to the document — not a
 React handler, not a tool, not the properties panel. Undo/redo is therefore correct by
 construction rather than by remembering to snapshot, and the same commands are the natural
 seam for future collaboration and for a scripting/plugin API.
 
-Property edits coalesce: consecutive `UpdatePropertyCommand`s targeting the same element
-and field within a short window merge into one history entry, so dragging a number input
-does not produce sixty undo steps.
+Three commands cover every edit so far: `addElements`, `deleteElements` and
+`replaceElements` — a move, a rotation and a property edit are all the last one.
+
+Edits sharing a `coalesceKey` and arriving within 600 ms merge into one history entry, so
+holding an arrow key produces a single undo step rather than sixty. The merged command keeps
+the original `before`, which is what makes that undo return to where the edit began.
 
 ### 2.5 Four kinds of state, deliberately separated
 
@@ -152,6 +159,9 @@ a DOM.
 ```
 pointer event → screen point → world point → SnapEngine → snapped point → tool → command
 ```
+
+Only grid snapping exists today; the engine below is what Phase 3 builds, and the pipeline is
+already shaped for it — tools receive a `snap` function rather than reaching for the grid.
 
 `SnapEngine` takes a world point plus context (the document, the viewport scale, which
 element is being edited) and returns the best candidate together with its kind, so the
@@ -291,4 +301,7 @@ for permissions — without paying for them now.
 ## 8. Related documents
 
 - [document-format.md](document-format.md) — the on-disk / on-wire document schema
+- [editor.md](editor.md) — how the drawing surface is built
+- [geometry.md](geometry.md) — the maths layer and its conventions
+- [data-model.md](data-model.md) — database tables and the REST API
 - [roadmap.md](roadmap.md) — phases, and what lands when
