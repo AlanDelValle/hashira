@@ -67,20 +67,48 @@ it('counts views on the link', function (): void {
         ->and($link->last_viewed_at)->not->toBeNull();
 });
 
-it('answers 404 for unknown, revoked and expired tokens alike', function (): void {
-    $owner = User::factory()->create();
-    $project = sharedProject($owner);
-    $issue = app(IssueShareLink::class);
+/*
+ * Unknown, revoked and expired are three different reasons, and a caller must not be able to
+ * tell them apart. They are three tests so that a regression names which one broke.
+ */
 
+it('answers 404 for a token that never existed', function (): void {
     $this->getJson('/api/share/'.str_repeat('a', 43))->assertNotFound();
+});
 
-    $revoked = $issue->handle($project, $owner);
-    $revoked->forceFill(['revoked_at' => now()])->save();
-    $this->getJson("/api/share/{$revoked->token}")->assertNotFound();
+it('answers 404 for a revoked token', function (): void {
+    $owner = User::factory()->create();
+    $link = app(IssueShareLink::class)->handle(sharedProject($owner), $owner);
 
-    $expired = $issue->handle($project, $owner);
-    $expired->forceFill(['expires_at' => now()->subMinute()])->save();
-    $this->getJson("/api/share/{$expired->token}")->assertNotFound();
+    $link->forceFill(['revoked_at' => now()])->save();
+
+    $this->getJson("/api/share/{$link->token}")->assertNotFound();
+});
+
+it('reads an expiry back as the instant it was given', function (): void {
+    $owner = User::factory()->create();
+    $expiresAt = now()->addHour();
+
+    $link = app(IssueShareLink::class)->handle(sharedProject($owner), $owner, $expiresAt);
+
+    /*
+     * Regression guard for the connection time zone. `timestamptz` interprets a naive value
+     * using the session zone, so a connection left on the server's locale shifts every write
+     * by its offset — enough to keep an expired link alive for hours.
+     */
+    expect($link->fresh()->expires_at?->diffInSeconds($expiresAt, absolute: true))
+        ->toBeLessThan(2);
+
+    $this->getJson("/api/share/{$link->token}")->assertOk();
+});
+
+it('answers 404 for an expired token', function (): void {
+    $owner = User::factory()->create();
+    $link = app(IssueShareLink::class)->handle(sharedProject($owner), $owner);
+
+    $link->forceFill(['expires_at' => now()->subMinute()])->save();
+
+    $this->getJson("/api/share/{$link->token}")->assertNotFound();
 });
 
 it('revokes on request', function (): void {

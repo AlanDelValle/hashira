@@ -93,6 +93,16 @@ return [
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
+            /*
+             * Pinned, not left to the server's locale.
+             *
+             * Laravel normalises every datetime to config('app.timezone') and sends it as a
+             * naive string. A `timestamptz` column interprets a naive string using the
+             * session time zone, so on a server set to anything but UTC every write is
+             * silently shifted — which made a share link that expired a minute ago read back
+             * as expiring hours from now.
+             */
+            'timezone' => env('DB_TIMEZONE', 'UTC'),
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',

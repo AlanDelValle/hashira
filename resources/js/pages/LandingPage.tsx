@@ -85,7 +85,9 @@ export function LandingPage() {
 
                 <section aria-label="Example drawing" className="mx-auto max-w-5xl px-6 pb-24">
                     <div className="border-line bg-sheet shadow-panel overflow-hidden rounded-lg border">
-                        <PlanDrawing className="w-full" />
+                        {/* Height capped so the sheet never eats more than part of a fold;
+                            the drawing centres itself in whatever width is left. */}
+                        <PlanDrawing className="max-h-[28rem] w-full" />
                     </div>
                     <p className="text-ink-subtle mt-3 text-xs">
                         Walls carry thickness. Openings belong to the wall they cut. Dimensions are

@@ -3,8 +3,15 @@ const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-const absolute = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+/*
+ * Pinned to English rather than the browser locale. The interface is not translated, and
+ * "Updated há 4 minutos" is worse than either language on its own. When there is real i18n,
+ * this reads the active locale instead.
+ */
+const LOCALE = 'en';
+
+const relative = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
+const absolute = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'medium' });
 
 /**
  * "just now", "10 minutes ago", "yesterday" — and a plain date once "N weeks ago" stops

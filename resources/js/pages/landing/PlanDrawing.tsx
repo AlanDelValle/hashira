@@ -10,6 +10,7 @@ export function PlanDrawing({ className }: { className?: string }) {
     return (
         <svg
             viewBox="0 0 720 540"
+            preserveAspectRatio="xMidYMid meet"
             className={className}
             role="img"
             aria-label="Floor plan of a six by four metre room with a door and a window, dimensioned"
