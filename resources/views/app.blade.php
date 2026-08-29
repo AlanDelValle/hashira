@@ -10,6 +10,10 @@
             content="A free and open-source 2D design tool for floor plans, interiors and technical drawings."
         />
 
+        {{-- React Refresh's preamble, and it must come before the app script. Without it
+        @vitejs/plugin-react throws while evaluating the first module and nothing mounts — a blank
+        page in dev only, since the production build has no refresh runtime at all. The directive
+        emits nothing when not running `vite dev`. --}} @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
     </head>
     <body>
