@@ -12,6 +12,8 @@ resources/js/editor/
 ├── store/       document, editor, viewport, and transient interaction state
 ├── render/      canvas renderer, grid, painters, overlay
 ├── snapping/    the snap engine and what it collects candidates from
+├── scene/       the document as primitives — the one description every output consumes
+├── export/      SVG, PNG and PDF, plus sheet layout
 ├── assets/      the block library
 ├── tools/       select, wall, door, window, room, line, rectangle, circle, polygon, block
 ├── input/       DOM events → tools, plus pan, zoom and shortcuts
@@ -201,7 +203,46 @@ Restoring runs through `replaceDocument`, a command like any other — so going 
 is itself undoable. A restore is a decision someone can regret, and the drawing they left
 should be one Ctrl+Z away rather than gone.
 
-## 14. What is not here yet
+## 14. One drawing, four outputs
 
-Export — Phase 5 in [roadmap.md](roadmap.md). Dimensions and measurement annotations are
-further out still.
+`scene/build.ts` turns the document into primitives — polylines, circles, ellipses, arcs and
+text, in world millimetres. It is the only place that knows what a wall with a door in it looks
+like, and four consumers read it:
+
+```
+document ──▶ scene ──┬──▶ canvas          the screen
+                     ├──▶ canvas @ N×     PNG
+                     ├──▶ SVG             a file, layers intact
+                     └──▶ pdf-lib         a page at a real scale
+```
+
+Writing that geometry four times would guarantee four slightly different answers. This way a
+PDF cannot disagree with what was on screen.
+
+The distinction the scene carries that matters most is **line weight**. A `pen` width is a
+plotted weight — 0.25 mm on the finished sheet — so it stays a constant thickness on screen
+however far you zoom, and prints at 0.25 mm whatever the drawing's scale. A `world` width is a
+real dimension: a 150 mm wall is 150 mm, and it shrinks as you zoom out because the wall does.
+Each output converts pens its own way; nothing else has to think about it.
+
+Hidden layers are absent from the scene, so hiding a layer hides it in an export too. A wall's
+openings come only from openings on visible layers, which is why hiding _Openings_ gives solid
+walls rather than walls full of holes with nothing in them.
+
+## 15. Export
+
+SVG is written in world millimetres with `width` and `height` set to the drawing divided by its
+scale, so a 1:50 file opens at a fiftieth of the building anywhere. Layers survive as groups.
+
+PDF is a real page. The scale is never quietly adjusted to make a drawing fit: it steps to the
+next standard ratio, the title block says which one was used, and a scale bar gives the reader
+something to measure even if the page was resized on the way to them. pdf-lib is around 350 kB
+and most sessions never export a PDF, so it is imported at the moment someone asks for one.
+
+PNG is the same scene on an off-screen canvas at a chosen size. Pen weights follow the zoom, so
+a larger export gets crisper lines rather than thicker ones.
+
+## 16. What is not here yet
+
+Dimensions and measurement annotations, DXF, and anything collaborative. See
+[roadmap.md](roadmap.md).

@@ -33,7 +33,7 @@ const emptyDrawing: HashiraDocument = {
     elements: [],
 };
 
-const lookup = makeLookup(emptyDrawing);
+const lookup = makeLookup(emptyDrawing.elements);
 
 describe('editing by value', () => {
     it('lengthens a wall from its far end, leaving the near end where it was', () => {

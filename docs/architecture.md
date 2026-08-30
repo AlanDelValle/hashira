@@ -85,14 +85,20 @@ steps.
 So the viewport is **Canvas 2D**, driven by a `requestAnimationFrame` loop that reads the
 stores imperatively. React never renders during a drag.
 
-Export is then _not_ "screenshot the DOM". Because we already own a scene description, the
-exporters are pure functions over the document:
+Export is then _not_ "screenshot the DOM". The document is turned into a scene of primitives
+once, and four outputs consume it — so the screen and a PDF cannot disagree about what a wall
+with a door in it looks like:
 
 ```
-Document ──▶ scene items ──┬──▶ SVG string       (vector, editable downstream)
-                           ├──▶ canvas @ N× DPI ──▶ PNG
-                           └──▶ pdf-lib page     (vector, real page size and scale)
+document ──▶ scene ──┬──▶ canvas          the screen
+                     ├──▶ canvas @ N×     PNG
+                     ├──▶ SVG string      vector, layers intact
+                     └──▶ pdf-lib page    a real page at a real scale
 ```
+
+The scene carries line weight as _intent_ rather than as a number: a pen weight is a width on
+the finished sheet, a world width is a real dimension. Each output converts pens its own way,
+which is why a hairline stays a hairline at any zoom and still plots at 0.25 mm.
 
 The cost of this choice is that hit-testing is ours to write. That cost is not really new:
 snapping needs point-to-segment distance, polygon containment and intersection math

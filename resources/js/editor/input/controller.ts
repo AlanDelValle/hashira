@@ -63,16 +63,26 @@ const TOOL_SHORTCUTS: Record<string, ToolId> = {
     p: 'polygon',
 };
 
+export interface InputOptions {
+    /**
+     * A viewer rather than an editor: pan and zoom work, nothing else does. Used by the public
+     * share page, where there is no tool to dispatch to and nothing to edit.
+     */
+    readOnly?: boolean;
+}
+
 export class InputController {
     private readonly canvas: HTMLCanvasElement;
+    private readonly readOnly: boolean;
     private tools: Record<ToolId, Tool>;
     private activeToolId: ToolId = 'select';
     private spaceHeld = false;
     private panningFrom: Point | null = null;
     private unsubscribe: (() => void) | null = null;
 
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, options: InputOptions = {}) {
         this.canvas = canvas;
+        this.readOnly = options.readOnly ?? false;
         this.tools = {
             select: createSelectTool(),
             wall: createWallTool(),
@@ -143,7 +153,7 @@ export class InputController {
     }
 
     private applyCursor(): void {
-        this.canvas.style.cursor = this.spaceHeld ? 'grab' : this.tool.cursor;
+        this.canvas.style.cursor = this.readOnly || this.spaceHeld ? 'grab' : this.tool.cursor;
     }
 
     private screenPoint(event: PointerEvent | WheelEvent | MouseEvent): Point {
@@ -160,7 +170,7 @@ export class InputController {
 
         return {
             drawing,
-            lookup: makeLookup(drawing),
+            lookup: makeLookup(drawing.elements),
             viewport,
             tolerance,
             activeLayerId,
@@ -202,8 +212,9 @@ export class InputController {
     private onPointerDown = (event: PointerEvent): void => {
         this.canvas.focus();
 
-        // Middle button, or the space bar, always pans — whichever tool is active.
-        if (event.button === 1 || this.spaceHeld) {
+        // Middle button, or the space bar, always pans — whichever tool is active. In a
+        // viewer, so does the left button: there is nothing else for it to do.
+        if (event.button === 1 || this.spaceHeld || this.readOnly) {
             this.panningFrom = this.screenPoint(event);
             interaction.panning = true;
             this.canvas.setPointerCapture(event.pointerId);
@@ -246,6 +257,12 @@ export class InputController {
             return;
         }
 
+        if (this.readOnly) {
+            requestRepaint();
+
+            return;
+        }
+
         this.tool.onPointerMove?.(toolEvent, context);
         requestRepaint();
     };
@@ -260,6 +277,10 @@ export class InputController {
             interaction.panning = false;
             this.applyCursor();
 
+            return;
+        }
+
+        if (this.readOnly) {
             return;
         }
 
@@ -292,6 +313,16 @@ export class InputController {
 
     private onKeyDown = (event: KeyboardEvent): void => {
         if (isTypingTarget(event.target)) {
+            return;
+        }
+
+        // A viewer keeps the two framing shortcuts and nothing that could change a drawing.
+        if (this.readOnly) {
+            if (event.shiftKey && (event.code === 'Digit1' || event.code === 'Digit2')) {
+                event.preventDefault();
+                this.zoomTo('drawing');
+            }
+
             return;
         }
 
@@ -409,7 +440,7 @@ export class InputController {
 
     private selectedElements(): Element[] {
         const drawing = useDocumentStore.getState().document;
-        const lookup = makeLookup(drawing);
+        const lookup = makeLookup(drawing.elements);
 
         return useEditorStore.getState().selection.flatMap((id) => {
             const element = lookup(id);
@@ -429,7 +460,7 @@ export class InputController {
         const copies = duplicateElements(
             originals,
             point(DUPLICATE_OFFSET_MM, DUPLICATE_OFFSET_MM),
-            makeLookup(drawing),
+            makeLookup(drawing.elements),
         );
 
         runCommand(addElements(copies, 'Duplicate'));
@@ -459,7 +490,7 @@ export class InputController {
             return;
         }
 
-        const lookup = makeLookup(drawing);
+        const lookup = makeLookup(drawing.elements);
         const moved = selected.map((element) => translateElement(element, delta, lookup));
         const key = `nudge:${selected.map((element) => element.id).join(',')}`;
 
@@ -479,7 +510,7 @@ export class InputController {
     }
 
     private selectionBounds(drawing: HashiraDocument): Bounds | null {
-        const lookup = makeLookup(drawing);
+        const lookup = makeLookup(drawing.elements);
         let bounds: Bounds | null = null;
 
         for (const element of this.selectedElements()) {

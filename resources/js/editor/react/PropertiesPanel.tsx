@@ -59,7 +59,7 @@ export function PropertiesPanel() {
     const drawing = useDocumentStore((state) => state.document);
     const selection = useEditorStore((state) => state.selection);
 
-    const lookup = makeLookup(drawing);
+    const lookup = makeLookup(drawing.elements);
     const selected = selection.flatMap((id) => {
         const element = lookup(id);
 
@@ -360,7 +360,7 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
 /** Area is measured from the geometry, so it is shown rather than offered for editing. */
 function RoomArea({ element, unit }: { element: Element & { type: 'room' }; unit: DisplayUnit }) {
     const drawing = useDocumentStore.getState().document;
-    const points = elementWorldPoints(element, makeLookup(drawing));
+    const points = elementWorldPoints(element, makeLookup(drawing.elements));
     const squareMillimetres = polygonArea(points);
 
     const value =

@@ -1,16 +1,19 @@
-import { boundsCorners, unionBounds, type Bounds } from '@/editor/geometry/bbox';
 import { TAU } from '@/editor/geometry/angle';
+import { boundsCorners, unionBounds, type Bounds } from '@/editor/geometry/bbox';
 import type { Point } from '@/editor/geometry/vec';
-import { elementBounds } from '@/editor/model/elements';
-import type { Element } from '@/editor/model/types';
+import { elementBounds, type ElementLookup } from '@/editor/model/elements';
+import type { Element, Layer } from '@/editor/model/types';
+import { buildScene } from '@/editor/scene/build';
+import type { ScenePalette } from '@/editor/scene/types';
 import type { Marquee } from '@/editor/store/interaction';
 import type { SnapResult } from '@/editor/snapping/engine';
 
-import { paintElement, type PaintContext } from './painters';
+import { paintScene } from './canvasScene';
+import type { CanvasTheme } from './theme';
 
 /**
  * Everything drawn on top of the drawing: what is hovered, what is selected, the rubber band,
- * and the shape currently being drawn.
+ * the shape being drawn, and why the pointer moved.
  *
  * All of it comes from interaction state rather than the document, which is why it can change
  * at pointer rate without anything else in the application noticing.
@@ -20,51 +23,76 @@ import { paintElement, type PaintContext } from './painters';
 const ROTATE_HANDLE_OFFSET_PX = 26;
 const ROTATE_HANDLE_RADIUS_PX = 4.5;
 
+export interface OverlayContext {
+    ctx: CanvasRenderingContext2D;
+    theme: CanvasTheme;
+    palette: ScenePalette;
+    layers: readonly Layer[];
+    lookup: ElementLookup;
+    /** One screen pixel in world millimetres. */
+    px: number;
+}
+
 export function selectionBounds(
     elements: readonly Element[],
-    pc: Pick<PaintContext, 'lookup'>,
+    context: { lookup: ElementLookup },
 ): Bounds | null {
     let result: Bounds | null = null;
 
     for (const element of elements) {
-        result = unionBounds(result, elementBounds(element, pc.lookup));
+        result = unionBounds(result, elementBounds(element, context.lookup));
     }
 
     return result;
 }
 
-export function paintHover(pc: PaintContext, element: Element): void {
-    pc.ctx.save();
-    pc.ctx.globalAlpha = 0.5;
-    paintElement({ ...pc, layerColor: () => pc.theme.accent }, element);
-    pc.ctx.restore();
-}
-
-export function paintSelection(pc: PaintContext, elements: readonly Element[]): void {
+/** Draw elements in the accent colour, through the same builder the document uses. */
+function paintAccented(context: OverlayContext, elements: readonly Element[], alpha = 1): void {
     if (elements.length === 0) {
         return;
     }
 
-    for (const element of elements) {
-        paintElement({ ...pc, layerColor: () => pc.theme.accent }, element);
-    }
+    context.ctx.save();
+    context.ctx.globalAlpha = alpha;
 
-    const bounds = selectionBounds(elements, pc);
+    paintScene(
+        context.ctx,
+        buildScene(elements, context.layers, {
+            palette: context.palette,
+            overrideColor: context.theme.accent,
+            // What is selected is drawn whatever its layer says, because the selection is a
+            // fact about this moment rather than about the drawing.
+            includeHidden: true,
+        }),
+        { px: context.px },
+    );
+
+    context.ctx.restore();
+}
+
+export function paintHover(context: OverlayContext, element: Element): void {
+    paintAccented(context, [element], 0.5);
+}
+
+export function paintSelection(context: OverlayContext, elements: readonly Element[]): void {
+    paintAccented(context, elements);
+
+    const bounds = selectionBounds(elements, context);
 
     if (bounds === null) {
         return;
     }
 
-    const { ctx } = pc;
+    const { ctx, px } = context;
 
     ctx.save();
-    ctx.strokeStyle = pc.theme.accent;
-    ctx.lineWidth = pc.px;
-    ctx.setLineDash([4 * pc.px, 3 * pc.px]);
+    ctx.strokeStyle = context.theme.accent;
+    ctx.lineWidth = px;
+    ctx.setLineDash([4 * px, 3 * px]);
     ctx.strokeRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
     ctx.restore();
 
-    paintRotateHandle(pc, rotateHandlePosition(bounds, pc.px));
+    paintRotateHandle(context, rotateHandlePosition(bounds, px));
 }
 
 /** Where the rotation handle sits for a given selection, in world millimetres. */
@@ -79,84 +107,70 @@ export function rotateHandleRadius(px: number): number {
     return ROTATE_HANDLE_RADIUS_PX * px;
 }
 
-function paintRotateHandle(pc: PaintContext, at: Point): void {
-    const { ctx } = pc;
+function paintRotateHandle(context: OverlayContext, at: Point): void {
+    const { ctx, px } = context;
 
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(at.x, at.y);
-    ctx.lineTo(at.x, at.y + ROTATE_HANDLE_OFFSET_PX * pc.px);
-    ctx.strokeStyle = pc.theme.accent;
-    ctx.lineWidth = pc.px;
+    ctx.lineTo(at.x, at.y + ROTATE_HANDLE_OFFSET_PX * px);
+    ctx.strokeStyle = context.theme.accent;
+    ctx.lineWidth = px;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(at.x, at.y, rotateHandleRadius(pc.px), 0, TAU);
-    ctx.fillStyle = pc.theme.sheet;
+    ctx.arc(at.x, at.y, rotateHandleRadius(px), 0, TAU);
+    ctx.fillStyle = context.theme.sheet;
     ctx.fill();
-    ctx.strokeStyle = pc.theme.accent;
-    ctx.lineWidth = 1.5 * pc.px;
+    ctx.strokeStyle = context.theme.accent;
+    ctx.lineWidth = 1.5 * px;
     ctx.stroke();
     ctx.restore();
 }
 
 /**
  * The rubber band. Solid means "only what is completely inside"; dashed means "anything I
- * touch" — the same left-to-right and right-to-left convention drafting tools have used for
- * decades, so the shape of the band tells you what it will catch.
+ * touch" — the convention drafting tools have used for decades, so the shape of the band
+ * tells you what it will catch.
  */
-export function paintMarquee(pc: PaintContext, marquee: Marquee): void {
-    const { ctx } = pc;
+export function paintMarquee(context: OverlayContext, marquee: Marquee): void {
+    const { ctx, px } = context;
     const x = Math.min(marquee.from.x, marquee.to.x);
     const y = Math.min(marquee.from.y, marquee.to.y);
     const width = Math.abs(marquee.to.x - marquee.from.x);
     const height = Math.abs(marquee.to.y - marquee.from.y);
 
     ctx.save();
-    ctx.fillStyle = pc.theme.accentSoft;
+    ctx.fillStyle = context.theme.accentSoft;
     ctx.globalAlpha = 0.55;
     ctx.fillRect(x, y, width, height);
     ctx.globalAlpha = 1;
 
-    ctx.strokeStyle = pc.theme.accent;
-    ctx.lineWidth = pc.px;
-    ctx.setLineDash(marquee.mode === 'crossing' ? [4 * pc.px, 3 * pc.px] : []);
+    ctx.strokeStyle = context.theme.accent;
+    ctx.lineWidth = px;
+    ctx.setLineDash(marquee.mode === 'crossing' ? [4 * px, 3 * px] : []);
     ctx.strokeRect(x, y, width, height);
     ctx.restore();
 }
 
-export function paintPreview(pc: PaintContext, element: Element, vertices: readonly Point[]): void {
-    pc.ctx.save();
-    paintElement({ ...pc, layerColor: () => pc.theme.accent }, element);
+export function paintPreview(
+    context: OverlayContext,
+    element: Element,
+    vertices: readonly Point[],
+): void {
+    paintAccented(context, [element]);
 
-    for (const vertex of vertices) {
-        pc.ctx.beginPath();
-        pc.ctx.arc(vertex.x, vertex.y, 3 * pc.px, 0, TAU);
-        pc.ctx.fillStyle = pc.theme.accent;
-        pc.ctx.fill();
-    }
-
-    pc.ctx.restore();
-}
-
-/** Corner ticks around the drawing extent — quiet, and only useful while zoomed out. */
-export function paintExtentMarks(pc: PaintContext, bounds: Bounds): void {
-    const { ctx } = pc;
-    const arm = 8 * pc.px;
+    const { ctx, px } = context;
 
     ctx.save();
-    ctx.strokeStyle = pc.theme.line;
-    ctx.lineWidth = pc.px;
-    ctx.beginPath();
+    ctx.fillStyle = context.theme.accent;
 
-    for (const corner of boundsCorners(bounds)) {
-        ctx.moveTo(corner.x - arm, corner.y);
-        ctx.lineTo(corner.x + arm, corner.y);
-        ctx.moveTo(corner.x, corner.y - arm);
-        ctx.lineTo(corner.x, corner.y + arm);
+    for (const vertex of vertices) {
+        ctx.beginPath();
+        ctx.arc(vertex.x, vertex.y, 3 * px, 0, TAU);
+        ctx.fill();
     }
 
-    ctx.stroke();
     ctx.restore();
 }
 
@@ -168,20 +182,20 @@ export function paintExtentMarks(pc: PaintContext, bounds: Bounds): void {
  * difference at a glance. Alignment also draws the guide back to what it lined up with — the
  * mark alone would say a coordinate is locked without saying to what.
  */
-export function paintSnapIndicator(pc: PaintContext, snap: SnapResult): void {
-    const { ctx } = pc;
-    const size = 4.5 * pc.px;
+export function paintSnapIndicator(context: OverlayContext, snap: SnapResult): void {
+    const { ctx, px } = context;
+    const size = 4.5 * px;
     const { x, y } = snap.point;
 
     ctx.save();
-    ctx.strokeStyle = pc.theme.accent;
-    ctx.lineWidth = 1.5 * pc.px;
+    ctx.strokeStyle = context.theme.accent;
+    ctx.lineWidth = 1.5 * px;
     ctx.setLineDash([]);
 
     if (snap.reference !== undefined) {
         ctx.save();
-        ctx.setLineDash([5 * pc.px, 4 * pc.px]);
-        ctx.lineWidth = pc.px;
+        ctx.setLineDash([5 * px, 4 * px]);
+        ctx.lineWidth = px;
         ctx.beginPath();
         ctx.moveTo(snap.reference.x, snap.reference.y);
         ctx.lineTo(x, y);
@@ -220,6 +234,27 @@ export function paintSnapIndicator(pc: PaintContext, snap: SnapResult): void {
             ctx.restore();
 
             return;
+    }
+
+    ctx.stroke();
+    ctx.restore();
+}
+
+/** Corner ticks around the drawing extent — quiet, and only useful while zoomed out. */
+export function paintExtentMarks(context: OverlayContext, bounds: Bounds): void {
+    const { ctx, px } = context;
+    const arm = 8 * px;
+
+    ctx.save();
+    ctx.strokeStyle = context.theme.line;
+    ctx.lineWidth = px;
+    ctx.beginPath();
+
+    for (const corner of boundsCorners(bounds)) {
+        ctx.moveTo(corner.x - arm, corner.y);
+        ctx.lineTo(corner.x + arm, corner.y);
+        ctx.moveTo(corner.x, corner.y - arm);
+        ctx.lineTo(corner.x, corner.y + arm);
     }
 
     ctx.stroke();

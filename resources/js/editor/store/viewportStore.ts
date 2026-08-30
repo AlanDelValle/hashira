@@ -21,7 +21,12 @@ interface ViewportStore {
 
     setViewport: (viewport: Viewport) => void;
     setSize: (size: CanvasSize) => void;
-    fit: (bounds: Bounds, padding?: number) => void;
+    /**
+     * Frame `bounds`, and say whether it could. A canvas mid-layout can report a width but no
+     * height yet; a caller that assumed success there would mark the drawing framed and never
+     * try again.
+     */
+    fit: (bounds: Bounds, padding?: number) => boolean;
 }
 
 export const useViewportStore = create<ViewportStore>((set, get) => ({
@@ -39,7 +44,7 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
         const { size, viewport } = get();
 
         if (size.width === 0 || size.height === 0) {
-            return;
+            return false;
         }
 
         set({
@@ -48,5 +53,7 @@ export const useViewportStore = create<ViewportStore>((set, get) => ({
                 currentZoom: viewport.zoom,
             }),
         });
+
+        return true;
     },
 }));

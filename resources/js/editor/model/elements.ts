@@ -32,8 +32,8 @@ export type ElementLookup = (id: string) => Element | undefined;
 /** Rough advance width per character as a fraction of font size, for text hit-testing. */
 const TEXT_WIDTH_RATIO = 0.55;
 
-export function makeLookup(document: HashiraDocument): ElementLookup {
-    const index = new Map(document.elements.map((element) => [element.id, element]));
+export function makeLookup(elements: readonly Element[]): ElementLookup {
+    const index = new Map(elements.map((element) => [element.id, element]));
 
     return (id) => index.get(id);
 }
@@ -250,7 +250,7 @@ export function elementBounds(element: Element, lookup: ElementLookup): Bounds |
 }
 
 export function documentBounds(document: HashiraDocument): Bounds | null {
-    const lookup = makeLookup(document);
+    const lookup = makeLookup(document.elements);
     let result: Bounds | null = null;
 
     for (const element of document.elements) {

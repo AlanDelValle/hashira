@@ -42,7 +42,7 @@ function documentWith(elements: Element[]): HashiraDocument {
     };
 }
 
-const noLookup = makeLookup(documentWith([]));
+const noLookup = makeLookup([]);
 
 describe('units', () => {
     it('formats millimetres in the display unit', () => {
@@ -209,7 +209,7 @@ describe('hosted openings', () => {
         geometry: { hostId: wall.id, offset: 1000, width: 900, swing: 'left', flipped: false },
     };
 
-    const lookup = makeLookup(documentWith([wall, door]));
+    const lookup = makeLookup([wall, door]);
 
     it('positions the opening along its wall', () => {
         const bounds = elementBounds(door, lookup);

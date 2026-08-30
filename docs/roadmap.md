@@ -67,12 +67,12 @@ move on until it does.
 - [x] Reopen a project and get the exact drawing back
 - [x] Manual "create version" snapshots, listed and restorable through an undoable command
 
-### Phase 5 — Export and share `[ ]`
+### Phase 5 — Export and share `[x]`
 
-- [ ] SVG export (vector, layer-aware)
-- [ ] PNG export at selectable resolution
-- [ ] PDF export with real page size, scale, scale bar and title block
-- [ ] Read-only share links at `/share/{token}`, revocable
+- [x] SVG export — vector, layer-aware, sized so 1:50 opens at a fiftieth
+- [x] PNG export at selectable resolution
+- [x] PDF export with real page size, standard scale stepping, scale bar and title block
+- [x] Read-only share links at `/share/{token}`, revocable, with a real pan-and-zoom viewer
 
 ### Phase 6 — Polish `[ ]`
 
@@ -81,7 +81,8 @@ move on until it does.
 - [ ] Focus management, ARIA labelling, contrast audit
 - [ ] Small-screen message for the editor; responsive landing and dashboard
 - [ ] Performance pass against a several-hundred-element plan
-- [ ] Split the editor out of the landing bundle — one chunk is over 500 kB today
+- [ ] Split the editor out of the landing bundle — the main chunk is 559 kB (pdf-lib already
+      loads on demand)
 - [ ] Demo account and seed drawing, screenshots in the README
 
 ---

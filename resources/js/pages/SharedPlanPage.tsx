@@ -1,31 +1,55 @@
-import { useEffect, useState } from 'react';
+import { Maximize2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { parseDocument } from '@/editor/model/document';
+import { documentBounds } from '@/editor/model/elements';
+import { formatScale } from '@/editor/model/units';
+import { CanvasHost } from '@/editor/react/CanvasHost';
+import { useDocumentStore } from '@/editor/store/documentStore';
+import { useEditorStore } from '@/editor/store/editorStore';
+import { useViewportStore } from '@/editor/store/viewportStore';
+import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
 import { api, type Envelope } from '@/lib/api';
+import type { SharedDocumentPayload } from '@/types/api';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Wordmark } from '@/ui/Logo';
-import type { SharedDocumentPayload } from '@/types/api';
 
 /**
- * What a link recipient sees. No account, no editing, and no way from here to the project it
- * belongs to — the endpoint behind this page returns the drawing and nothing else.
+ * What a link recipient sees: the drawing, and a way to look around it.
+ *
+ * It is the same renderer the editor uses, with an input controller that only pans and zooms —
+ * so a viewer gets a real drawing to inspect rather than a flat picture, while there is nothing
+ * here that could change it. The endpoint behind this page returns the drawing and nothing
+ * else: no project, no owner, no identifiers.
  */
 export function SharedPlanPage() {
     const { token } = useParams<{ token: string }>();
-    const [document, setDocument] = useState<SharedDocumentPayload | null>(null);
+    const [name, setName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const load = useDocumentStore((state) => state.load);
+    const parseError = useDocumentStore((state) => state.error);
+    const drawingId = useDocumentStore((state) => state.document.id);
+    const scale = useDocumentStore((state) => state.document.settings.scale);
+    const size = useViewportStore((state) => state.size);
 
     useEffect(() => {
         let cancelled = false;
 
+        // Nothing here can select or edit, and a selection left over from an editor session in
+        // the same tab would paint accent-coloured geometry into a read-only view.
+        useEditorStore.getState().clearSelection();
+
         void api
             .get<Envelope<SharedDocumentPayload>>(`/api/share/${token ?? ''}`)
             .then((response) => {
-                if (!cancelled) setDocument(response.data);
+                if (cancelled) return;
+
+                load(response.data.drawing);
+                setName(response.data.name);
             })
             .catch(() => {
-                /* An unknown, revoked or expired link all land in the same empty state. */
+                /* Unknown, revoked and expired links all land in the same empty state. */
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -34,17 +58,57 @@ export function SharedPlanPage() {
         return () => {
             cancelled = true;
         };
-    }, [token]);
+    }, [token, load]);
+
+    const framed = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (name === null || size.width === 0 || size.height === 0) {
+            return;
+        }
+
+        if (framed.current === drawingId) {
+            return;
+        }
+
+        const viewport = useViewportStore.getState();
+        const bounds = documentBounds(useDocumentStore.getState().document);
+
+        if (bounds === null) {
+            viewport.setViewport(
+                centreOn({ x: 0, y: 0, zoom: DEFAULT_ZOOM }, { x: 0, y: 0 }, size),
+            );
+            framed.current = drawingId;
+
+            return;
+        }
+
+        // Recorded only when the framing actually happened, so a canvas that was still
+        // mid-layout gets another go rather than being written off as done.
+        if (viewport.fit(bounds)) {
+            framed.current = drawingId;
+        }
+    }, [name, drawingId, size]);
+
+    function zoomToFit() {
+        const bounds = documentBounds(useDocumentStore.getState().document);
+
+        if (bounds !== null) {
+            useViewportStore.getState().fit(bounds);
+        }
+    }
 
     if (loading) {
         return <FullPageSpinner label="Opening shared drawing" />;
     }
 
-    if (document === null) {
+    if (name === null || parseError !== null) {
         return (
             <div className="bg-canvas flex min-h-screen items-center justify-center px-6">
                 <div className="max-w-sm text-center">
-                    <h1 className="text-ink text-sm font-medium">This link is no longer active</h1>
+                    <h1 className="text-ink text-sm font-medium">
+                        {parseError ?? 'This link is no longer active'}
+                    </h1>
                     <p className="text-ink-muted mt-1.5 text-sm">
                         It may have been revoked by its owner, or it may have expired.
                     </p>
@@ -53,30 +117,33 @@ export function SharedPlanPage() {
         );
     }
 
-    // The same parser the editor uses, rather than a second, looser reader of the format.
-    const parsed = parseDocument(document.drawing);
-
     return (
-        <div className="bg-canvas flex min-h-screen flex-col">
-            <header className="border-line bg-surface flex h-12 items-center justify-between border-b px-4">
-                <div className="flex items-center gap-3">
-                    <Link to="/" className="rounded-sm" aria-label="Hashira home">
-                        <Wordmark />
-                    </Link>
-                    <span className="bg-line h-4 w-px" aria-hidden />
-                    <h1 className="text-ink text-[13px] font-medium">{document.name}</h1>
-                </div>
+        <div className="bg-canvas grid h-screen grid-rows-[3rem_1fr]">
+            <header className="border-line bg-surface flex items-center gap-3 border-b px-4">
+                <Link to="/" className="rounded-sm" aria-label="Hashira home">
+                    <Wordmark />
+                </Link>
 
-                <span className="text-ink-subtle font-mono text-[11px]">read only</span>
+                <span className="bg-line h-4 w-px" aria-hidden />
+
+                <h1 className="text-ink text-[13px] font-medium">{name}</h1>
+
+                <span className="text-ink-subtle ml-auto font-mono text-[11px]">
+                    {formatScale(scale)} · read only
+                </span>
+
+                <button
+                    type="button"
+                    title="Zoom to fit  ·  Shift 1"
+                    aria-label="Zoom to fit"
+                    onClick={zoomToFit}
+                    className="text-ink-muted hover:bg-sunken hover:text-ink flex size-7 items-center justify-center rounded-md transition-colors"
+                >
+                    <Maximize2 className="size-3.5" aria-hidden />
+                </button>
             </header>
 
-            <main className="flex flex-1 items-center justify-center px-6">
-                <p className="text-ink-subtle max-w-xs text-center text-[13px]">
-                    {parsed.ok
-                        ? `The read-only drawing view arrives with the renderer. This drawing has ${parsed.document.elements.length} ${parsed.document.elements.length === 1 ? 'element' : 'elements'} at 1:${parsed.document.settings.scale}.`
-                        : parsed.reason}
-                </p>
-            </main>
+            <CanvasHost readOnly />
         </div>
     );
 }

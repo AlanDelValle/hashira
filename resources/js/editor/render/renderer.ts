@@ -1,13 +1,16 @@
 import { boundsIntersect } from '@/editor/geometry/bbox';
 import { elementBounds, makeLookup } from '@/editor/model/elements';
+import type { Element, HashiraDocument } from '@/editor/model/types';
 import { formatLength } from '@/editor/model/units';
-import type { Element, HashiraDocument, HostedElement } from '@/editor/model/types';
+import { buildScene } from '@/editor/scene/build';
+import type { ScenePalette } from '@/editor/scene/types';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { interaction } from '@/editor/store/interaction';
 import { useViewportStore } from '@/editor/store/viewportStore';
 import { visibleBounds } from '@/editor/viewport/viewport';
 
+import { paintScene } from './canvasScene';
 import { setInvalidator } from './frame';
 import { paintGrid } from './grid';
 import {
@@ -16,8 +19,8 @@ import {
     paintPreview,
     paintSelection,
     paintSnapIndicator,
+    type OverlayContext,
 } from './overlay';
-import { paintElement, type PaintContext } from './painters';
 import { writeReadout } from './readout';
 import { readTheme, type CanvasTheme } from './theme';
 
@@ -28,6 +31,9 @@ import { readTheme, type CanvasTheme } from './theme';
  * owns it. It pulls from the stores imperatively and repaints only when something has marked
  * itself dirty, so an idle editor costs nothing and a drag costs one frame per frame — with
  * no React render anywhere in that path.
+ *
+ * What it paints comes from the same scene builder the exporters use, so the screen and a PDF
+ * cannot disagree about what a wall with a door in it looks like.
  */
 export class CanvasRenderer {
     private readonly canvas: HTMLCanvasElement;
@@ -120,79 +126,80 @@ export class CanvasRenderer {
 
         const visible = visibleBounds(viewport, size);
         const px = 1 / viewport.zoom;
+        const palette = this.palette();
 
         if (gridVisible && drawing.settings.grid.visible) {
             paintGrid(ctx, viewport, visible, drawing.settings.grid, this.theme);
         }
 
-        const pc: PaintContext = {
-            ctx,
-            theme: this.theme,
-            lookup: makeLookup(drawing),
-            openings: groupOpenings(drawing),
-            px,
-            layerColor: layerColors(drawing, this.theme.ink),
-        };
-
+        // Elements being dragged are painted in their previewed state; the document itself is
+        // untouched until the drag commits.
         const dragged = new Map(
             (interaction.drag?.preview ?? []).map((element) => [element.id, element]),
         );
 
-        const hiddenLayers = new Set(
-            drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
-        );
+        const current = drawing.elements.map((element) => dragged.get(element.id) ?? element);
+        const lookup = makeLookup(current);
 
-        const paintable: Element[] = [];
+        // Off-screen elements cost nothing but a bounds check.
+        const onScreen = current.filter((element) => {
+            const bounds = elementBounds(element, lookup);
 
-        for (const element of orderByLayer(drawing)) {
-            if (hiddenLayers.has(element.layerId)) continue;
+            return bounds === null || boundsIntersect(bounds, visible);
+        });
 
-            const current = dragged.get(element.id) ?? element;
-            const bounds = elementBounds(current, pc.lookup);
+        paintScene(ctx, buildScene(onScreen, drawing.layers, { palette }), { px });
 
-            // Off-screen elements cost nothing but a bounds check.
-            if (bounds !== null && !boundsIntersect(bounds, visible)) continue;
-
-            paintable.push(current);
-        }
-
-        for (const element of paintable) {
-            paintElement(pc, element);
-        }
+        const overlay: OverlayContext = {
+            ctx,
+            theme: this.theme,
+            palette,
+            layers: drawing.layers,
+            lookup,
+            px,
+        };
 
         const selected = new Set(selection);
         const hovered = interaction.hoveredId;
 
         if (hovered !== null && !selected.has(hovered)) {
-            const element = dragged.get(hovered) ?? pc.lookup(hovered);
+            const element = lookup(hovered);
 
-            if (element !== undefined && !hiddenLayers.has(element.layerId)) {
-                paintHover(pc, element);
+            if (element !== undefined) {
+                paintHover(overlay, element);
             }
         }
 
         paintSelection(
-            pc,
-            selection.flatMap((id) => {
-                const element = dragged.get(id) ?? pc.lookup(id);
+            overlay,
+            selection.flatMap((id): Element[] => {
+                const element = lookup(id);
 
                 return element === undefined ? [] : [element];
             }),
         );
 
         if (interaction.marquee !== null) {
-            paintMarquee(pc, interaction.marquee);
+            paintMarquee(overlay, interaction.marquee);
         }
 
         if (interaction.preview !== null) {
-            paintPreview(pc, interaction.preview, interaction.draftPoints);
+            paintPreview(overlay, interaction.preview, interaction.draftPoints);
         }
 
         if (interaction.snap !== null) {
-            paintSnapIndicator(pc, interaction.snap);
+            paintSnapIndicator(overlay, interaction.snap);
         }
 
         this.writeReadouts(drawing, viewport.zoom);
+    }
+
+    private palette(): ScenePalette {
+        return {
+            ink: this.theme.ink,
+            subtle: this.theme.inkSubtle,
+            roomFill: this.theme.accentSoft,
+        };
     }
 
     private writeReadouts(drawing: HashiraDocument, zoom: number): void {
@@ -208,38 +215,4 @@ export class CanvasRenderer {
 
         writeReadout('zoom', `${Math.round(zoom * 1000) / 10}%`);
     }
-}
-
-/** Elements in paint order: by layer order first, then by their position in the document. */
-function orderByLayer(drawing: HashiraDocument): Element[] {
-    const rank = new Map(drawing.layers.map((layer, index) => [layer.id, index]));
-    const fallback = drawing.layers.length;
-
-    return [...drawing.elements].sort(
-        (a, b) => (rank.get(a.layerId) ?? fallback) - (rank.get(b.layerId) ?? fallback),
-    );
-}
-
-function groupOpenings(drawing: HashiraDocument): Map<string, HostedElement[]> {
-    const grouped = new Map<string, HostedElement[]>();
-
-    for (const element of drawing.elements) {
-        if (element.type !== 'door' && element.type !== 'window') continue;
-
-        const existing = grouped.get(element.geometry.hostId);
-
-        if (existing === undefined) {
-            grouped.set(element.geometry.hostId, [element]);
-        } else {
-            existing.push(element);
-        }
-    }
-
-    return grouped;
-}
-
-function layerColors(drawing: HashiraDocument, fallback: string): (layerId: string) => string {
-    const colors = new Map(drawing.layers.map((layer) => [layer.id, layer.color]));
-
-    return (layerId) => colors.get(layerId) ?? fallback;
 }

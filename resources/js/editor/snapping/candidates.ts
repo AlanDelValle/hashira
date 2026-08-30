@@ -69,7 +69,7 @@ export function gatherNear(
     search: Bounds,
     exclude: ReadonlySet<string>,
 ): Neighbourhood {
-    const lookup = makeLookup(drawing);
+    const lookup = makeLookup(drawing.elements);
     const hidden = new Set(
         drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
     );

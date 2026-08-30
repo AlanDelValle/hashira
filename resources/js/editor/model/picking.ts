@@ -39,7 +39,7 @@ function topDown(drawing: HashiraDocument): Element[] {
 
 /** The topmost element under `p`, or null. `tolerance` is in world millimetres. */
 export function pickAt(drawing: HashiraDocument, p: Point, tolerance: number): Element | null {
-    const lookup = makeLookup(drawing);
+    const lookup = makeLookup(drawing.elements);
     const selectable = selectableLayers(drawing);
 
     for (const element of topDown(drawing)) {
@@ -62,7 +62,7 @@ export function pickInBounds(
     bounds: Bounds,
     mode: MarqueeMode,
 ): Element[] {
-    const lookup = makeLookup(drawing);
+    const lookup = makeLookup(drawing.elements);
     const selectable = selectableLayers(drawing);
 
     return drawing.elements.filter((element) => {

@@ -8,7 +8,7 @@ import { CanvasRenderer } from '@/editor/render/renderer';
  * start the renderer and the input controller, once to stop them. Everything that happens on
  * the drawing surface between those two moments happens without React.
  */
-export function CanvasHost() {
+export function CanvasHost({ readOnly = false }: { readOnly?: boolean } = {}) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -21,7 +21,7 @@ export function CanvasHost() {
         }
 
         const renderer = new CanvasRenderer(canvas);
-        const input = new InputController(canvas);
+        const input = new InputController(canvas, { readOnly });
 
         renderer.start();
         input.attach();
@@ -41,7 +41,7 @@ export function CanvasHost() {
             input.detach();
             renderer.stop();
         };
-    }, []);
+    }, [readOnly]);
 
     return (
         <div ref={wrapperRef} className="relative h-full w-full overflow-hidden">

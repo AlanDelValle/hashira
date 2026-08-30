@@ -1,11 +1,13 @@
-import { ChevronLeft, History, Maximize2, Redo2, Undo2 } from 'lucide-react';
+import { ChevronLeft, History, Maximize2, Redo2, Share2, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { documentBounds } from '@/editor/model/elements';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
+import { ExportMenu } from '@/editor/react/ExportMenu';
 import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
+import { ShareDialog } from '@/editor/react/ShareDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
 import { SidePanel } from '@/editor/react/SidePanel';
@@ -66,7 +68,7 @@ export function EditorPage() {
     const framed = useRef<string | null>(null);
 
     useEffect(() => {
-        if (size.width === 0 || framed.current === drawingId) {
+        if (size.width === 0 || size.height === 0 || framed.current === drawingId) {
             return;
         }
 
@@ -77,11 +79,16 @@ export function EditorPage() {
             viewportStore.setViewport(
                 centreOn({ x: 0, y: 0, zoom: DEFAULT_ZOOM }, { x: 0, y: 0 }, size),
             );
-        } else {
-            viewportStore.fit(bounds);
+            framed.current = drawingId;
+
+            return;
         }
 
-        framed.current = drawingId;
+        // Recorded only when the framing actually happened, so a canvas that was still
+        // mid-layout gets another go rather than being written off as done.
+        if (viewportStore.fit(bounds)) {
+            framed.current = drawingId;
+        }
     }, [drawingId, size]);
 
     if (loading) {
@@ -157,6 +164,7 @@ export function EditorPage() {
 function EditorHeader({ name, projectId }: { name: string; projectId: string }) {
     const { canUndo, canRedo, undoLabel, redoLabel } = useHistory();
     const [versionsOpen, setVersionsOpen] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
 
     function zoomToFit() {
         const bounds = documentBounds(useDocumentStore.getState().document);
@@ -208,6 +216,14 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
                 <HeaderButton label="Versions" onClick={() => setVersionsOpen(true)}>
                     <History className="size-3.5" aria-hidden />
                 </HeaderButton>
+
+                <span className="bg-line mx-1.5 h-4 w-px" aria-hidden />
+
+                <ExportMenu />
+
+                <HeaderButton label="Share" onClick={() => setShareOpen(true)}>
+                    <Share2 className="size-3.5" aria-hidden />
+                </HeaderButton>
             </div>
 
             <VersionsDialog
@@ -215,6 +231,8 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
                 open={versionsOpen}
                 onOpenChange={setVersionsOpen}
             />
+
+            <ShareDialog projectId={projectId} open={shareOpen} onOpenChange={setShareOpen} />
         </header>
     );
 }

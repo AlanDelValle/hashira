@@ -114,7 +114,7 @@ describe('history', () => {
         const rect = createRect(point(0, 0), point(400, 200), LAYER);
         history.execute(addElements([rect]));
 
-        const lookup = makeLookup(document);
+        const lookup = makeLookup(document.elements);
         let current: Element = rect;
 
         // Three nudges in quick succession, the way holding an arrow key arrives.
@@ -136,7 +136,7 @@ describe('history', () => {
         const rect = createRect(point(0, 0), point(400, 200), LAYER);
         history.execute(addElements([rect]));
 
-        const lookup = makeLookup(document);
+        const lookup = makeLookup(document.elements);
         const first = translateElement(rect, point(10, 0), lookup);
         history.execute(replaceElements([rect], [first], 'Move', `move:${rect.id}`));
 
@@ -154,7 +154,7 @@ describe('history', () => {
         const b = createRect(point(100, 0), point(110, 10), LAYER);
         history.execute(addElements([a, b]));
 
-        const lookup = makeLookup(document);
+        const lookup = makeLookup(document.elements);
         history.execute(
             replaceElements(
                 [a],
