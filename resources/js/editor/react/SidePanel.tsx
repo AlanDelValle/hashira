@@ -22,6 +22,7 @@ export function SidePanel() {
         <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
             {tool === 'wall' && <WallSettings unit={unit} />}
             {tool === 'text' && <TextSettings unit={unit} />}
+            {tool === 'dimension' && <DimensionSettings unit={unit} />}
 
             <Section title="Properties">
                 <PropertiesPanel />
@@ -62,6 +63,33 @@ function WallSettings({ unit }: { unit: DisplayUnit }) {
                     }}
                     suffix={unit}
                     onCommit={setWallThickness}
+                />
+            </div>
+        </Section>
+    );
+}
+
+/** Shown only while the dimension tool is active: the size the next value will be written at. */
+function DimensionSettings({ unit }: { unit: DisplayUnit }) {
+    const size = useEditorStore((state) => state.dimensionSize);
+    const setDimensionSize = useEditorStore((state) => state.setDimensionSize);
+
+    return (
+        <Section title="New dimension">
+            <div className="px-3">
+                <MeasureField
+                    label="Size"
+                    value={size}
+                    format={(value) => String(Math.round(toDisplay(value, unit) * 1000) / 1000)}
+                    parse={(text) => {
+                        const parsed = Number(text.replace(',', '.'));
+
+                        return Number.isFinite(parsed) && parsed > 0
+                            ? fromDisplay(parsed, unit)
+                            : null;
+                    }}
+                    suffix={unit}
+                    onCommit={setDimensionSize}
                 />
             </div>
         </Section>

@@ -7,7 +7,12 @@ import type { Point } from '@/editor/geometry/vec';
  * measured clockwise. Display units and degrees exist only at the edge of the interface.
  */
 
-export const SCHEMA_VERSION = 1;
+/**
+ * 2 added the `dimension` element. A reader that predates it would drop every dimension in a
+ * drawing and then save the drawing back without them, so an older Hashira refuses the file
+ * outright rather than quietly throwing away the measurements.
+ */
+export const SCHEMA_VERSION = 2;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -130,6 +135,20 @@ export interface WindowElement extends BaseElement {
 
 export type TextAlign = 'left' | 'center' | 'right';
 
+/**
+ * A measurement written on the drawing.
+ *
+ * `a` and `b` are the two points being measured; `offset` is how far the dimension line sits
+ * from them, perpendicular to the measurement, and signed so it can go to either side. The
+ * value itself is never stored — it is read off the geometry every time it is drawn, which is
+ * what stops a drawing from carrying a number that no longer matches what it shows.
+ */
+export interface DimensionElement extends BaseElement {
+    type: 'dimension';
+    /** `fontSize` is millimetres at 1:1, like text: the value scales with the drawing. */
+    geometry: { a: Point; b: Point; offset: number; fontSize: number };
+}
+
 export interface TextElement extends BaseElement {
     type: 'text';
     /** `fontSize` is millimetres at 1:1, so text scales with the drawing, not the screen. */
@@ -155,7 +174,8 @@ export type Element =
     | DoorElement
     | WindowElement
     | AssetElement
-    | TextElement;
+    | TextElement
+    | DimensionElement;
 
 export type ElementType = Element['type'];
 

@@ -6,6 +6,7 @@ import { newId } from './id';
 import type {
     AssetElement,
     CircleElement,
+    DimensionElement,
     DoorElement,
     LineElement,
     PolygonElement,
@@ -213,6 +214,35 @@ export function createText(
         layerId,
         transform: { x: at.x, y: at.y, rotation: 0 },
         geometry: { content, fontSize, align: 'center' },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * Cap height of a dimension's value, in millimetres at 1:1 — a little smaller than a room
+ * label, because a measurement is read when it is looked for and a label is read at a glance.
+ */
+export const DEFAULT_DIMENSION_SIZE = 200;
+
+/**
+ * A measurement between two points. `offset` is signed: which side of the measurement the
+ * dimension line sits on is a decision, not a property of the geometry.
+ */
+export function createDimension(
+    a: Point,
+    b: Point,
+    offset: number,
+    layerId: string,
+    fontSize = DEFAULT_DIMENSION_SIZE,
+): DimensionElement {
+    const centre = midpoint(a, b);
+
+    return {
+        id: newId(),
+        type: 'dimension',
+        layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: { a: subtract(a, centre), b: subtract(b, centre), offset, fontSize },
         metadata: metadata(),
     };
 }

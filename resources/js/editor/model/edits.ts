@@ -209,3 +209,23 @@ export function setTextSize(element: Element, fontSize: number): Element {
         ? { ...element, geometry: { ...element.geometry, fontSize } }
         : element;
 }
+
+/**
+ * Which side of the measurement its line sits on, and how far out. Signed, so dragging it
+ * through zero moves it to the other side rather than stopping at the geometry.
+ *
+ * There is deliberately no setter for a dimension's *value*. A measurement is read off the
+ * two points it spans; letting anyone type over it would produce a drawing that states one
+ * length and shows another, which is the one thing a measured drawing must never do.
+ */
+export function setDimensionOffset(element: Element, offset: number): Element {
+    return element.type === 'dimension'
+        ? { ...element, geometry: { ...element.geometry, offset } }
+        : element;
+}
+
+export function setDimensionSize(element: Element, fontSize: number): Element {
+    return element.type === 'dimension' && fontSize > 0
+        ? { ...element, geometry: { ...element.geometry, fontSize } }
+        : element;
+}

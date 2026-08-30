@@ -55,7 +55,10 @@ export async function exportDocument(
         return null;
     }
 
-    const scene = buildScene(document.elements, document.layers, { palette: EXPORT_PALETTE });
+    const scene = buildScene(document.elements, document.layers, {
+        palette: EXPORT_PALETTE,
+        unit: document.settings.unit,
+    });
     const stem = fileStem(document);
     const title = document.settings.title.trim() === '' ? document.name : document.settings.title;
 

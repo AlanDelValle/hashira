@@ -160,7 +160,11 @@ export class CanvasRenderer {
                 .map((element) => dragged.get(element.id) ?? element);
         }
 
-        paintScene(ctx, buildScene(onScreen, drawing.layers, { palette }), { px });
+        paintScene(
+            ctx,
+            buildScene(onScreen, drawing.layers, { palette, unit: drawing.settings.unit }),
+            { px },
+        );
 
         const overlay: OverlayContext = {
             ctx,
@@ -168,6 +172,7 @@ export class CanvasRenderer {
             palette,
             layers: drawing.layers,
             lookup,
+            unit: drawing.settings.unit,
             px,
         };
 

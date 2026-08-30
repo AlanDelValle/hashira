@@ -1,4 +1,4 @@
-# Document format — schema version 1
+# Document format — schema version 2
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -116,22 +116,43 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 
 ### 4.2 Types
 
-| `type`    | `geometry`                                  | Notes                         |
-| --------- | ------------------------------------------- | ----------------------------- |
-| `wall`    | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm  |
-| `line`    | `{ a: Point, b: Point }`                    |                               |
-| `rect`    | `{ width: number, height: number }`         | local origin at the centre    |
-| `circle`  | `{ radius: number }`                        | local origin at the centre    |
-| `polygon` | `{ points: Point[], closed: boolean }`      |                               |
-| `room`    | `{ points: Point[] }`                       | area is derived, never stored |
-| `door`    | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3       |
-| `window`  | `{ hostId, offset, width }`                 | hosted on a wall — §4.3       |
-| `text`    | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1       |
+| `type`      | `geometry`                                  | Notes                         |
+| ----------- | ------------------------------------------- | ----------------------------- |
+| `wall`      | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm  |
+| `line`      | `{ a: Point, b: Point }`                    |                               |
+| `rect`      | `{ width: number, height: number }`         | local origin at the centre    |
+| `circle`    | `{ radius: number }`                        | local origin at the centre    |
+| `polygon`   | `{ points: Point[], closed: boolean }`      |                               |
+| `room`      | `{ points: Point[] }`                       | area is derived, never stored |
+| `door`      | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.3       |
+| `window`    | `{ hostId, offset, width }`                 | hosted on a wall — §4.3       |
+| `text`      | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1       |
+| `dimension` | `{ a, b, offset, fontSize }`                | the value is derived — §4.4   |
 
 `Point` is `{ "x": number, "y": number }`.
 
-Dimensions and markers are not element types yet. Adding a type is additive and needs no
-version bump, so each arrives with the phase that draws it.
+An earlier draft of this document said a new element type was additive and needed no version
+bump. That was wrong, and `dimension` is why. A reader that predates a type does not ignore
+it — it drops it, because dropping what it cannot parse is exactly how it protects the rest
+of the drawing. It would then autosave the drawing back without the dimensions in it. Adding
+an element type is therefore a version bump like any other change older readers cannot
+handle: they must refuse the file rather than quietly empty it.
+
+### 4.4 Dimensions
+
+A `dimension` stores the two points it measures and nothing else about the measurement:
+
+- `a`, `b` — the measured points, in the element's local space like any other geometry,
+- `offset` — how far the dimension line sits from them, along the perpendicular. Signed, so
+  which side it goes on is a decision rather than a consequence of the point order,
+- `fontSize` — cap height of the value, in millimetres at 1:1, like `text`.
+
+**The measured value is never stored.** It is read off `a` and `b` every time the dimension
+is drawn, in the document's display unit. A stored value is a number that can come to
+disagree with the geometry it describes, and a drawing that states one length while showing
+another is worse than one with no dimension at all. It also means there is deliberately no
+way to type over a dimension: the properties panel shows what it measures and will not let
+you edit it.
 
 ### 4.3 Hosted openings
 
@@ -179,7 +200,7 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {
@@ -253,7 +274,8 @@ raw JSON → version check → migration chain → zod validation → HashiraDoc
 ```
 
 - **Older version** — run each migration in sequence (`v1→v2`, `v2→v3`, …). Migrations are
-  pure functions and each ships with a fixture test.
+  pure functions and each ships with a fixture test written as literal JSON, so it holds on
+  to what an older Hashira really wrote rather than to what today's factories would produce.
 - **Newer version than this build knows** — refuse to open and say so, rather than silently
   discarding fields the user's other device wrote.
 - **Structurally invalid** — reject with the validation path. We never half-load a drawing.
@@ -262,6 +284,13 @@ raw JSON → version check → migration chain → zod validation → HashiraDoc
 
 Validation uses a zod schema derived from the same TypeScript types the editor uses, so the
 runtime contract and the compile-time contract cannot drift apart.
+
+### 6.1 History
+
+| Version | Change                                                                                                               |
+| ------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1       | The original format.                                                                                                 |
+| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged. |
 
 ---
 

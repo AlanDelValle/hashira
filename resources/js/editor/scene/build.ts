@@ -11,14 +11,19 @@ import {
     type Point,
 } from '@/editor/geometry/vec';
 import {
+    dimensionFrame,
+    dimensionStrokes,
     doorSwing,
     elementWorldPoints,
     hostedFrame,
     makeLookup,
     type ElementLookup,
 } from '@/editor/model/elements';
+import { formatLength } from '@/editor/model/units';
 import type {
     AssetElement,
+    DimensionElement,
+    DisplayUnit,
     DoorElement,
     Element,
     HostedElement,
@@ -38,6 +43,11 @@ import { PEN, pen, type ScenePalette, type SceneLayer, type ScenePrimitive } fro
 
 export interface SceneOptions {
     palette: ScenePalette;
+    /**
+     * The unit a dimension writes its value in. A measurement is read off the geometry every
+     * time it is drawn, so the builder needs to know how to say it.
+     */
+    unit?: DisplayUnit;
     /** Paint everything this colour instead of its layer's — selection, hover, previews. */
     overrideColor?: string;
     /** Hidden means hidden, in export as much as on screen. */
@@ -93,6 +103,7 @@ export function buildScene(
             colour,
             palette: options.palette,
             overrideColor: options.overrideColor,
+            unit: options.unit ?? 'm',
         });
 
         if (primitives.length === 0) continue;
@@ -119,6 +130,7 @@ interface BuildContext {
     colour: string;
     palette: ScenePalette;
     overrideColor?: string | undefined;
+    unit: DisplayUnit;
 }
 
 function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[] {
@@ -201,7 +213,46 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
 
         case 'asset':
             return assetPrimitives(element, context);
+
+        case 'dimension':
+            return dimensionPrimitives(element, context);
     }
+}
+
+/**
+ * A measurement: extension lines, a dimension line ticked at both ends, and the distance
+ * written above it.
+ *
+ * The value carries its unit. A drawing leaves the screen as a PDF that is read without any
+ * of this software around it, and "6.00" on a sheet with no unit stated anywhere is a number
+ * somebody will eventually build in the wrong one.
+ */
+function dimensionPrimitives(element: DimensionElement, context: BuildContext): ScenePrimitive[] {
+    const frame = dimensionFrame(element);
+
+    if (frame === null) {
+        return [];
+    }
+
+    const stroke = pen(context.colour, PEN.fine);
+
+    return [
+        ...dimensionStrokes(frame).map(([from, to]): ScenePrimitive => ({
+            kind: 'polyline',
+            points: [from, to],
+            closed: false,
+            stroke,
+        })),
+        {
+            kind: 'text',
+            at: frame.textAt,
+            content: formatLength(frame.length, context.unit),
+            size: element.geometry.fontSize,
+            align: 'center',
+            rotation: frame.textRotation,
+            fill: context.colour,
+        },
+    ];
 }
 
 /**

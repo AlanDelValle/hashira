@@ -122,7 +122,14 @@ from the same viewport transform the renderer uses, so what is being typed sits 
 finished label will sit, at the size it will be. Enter or a click elsewhere commits it, Escape
 throws it away, and blank is not a label.
 
-It is also focused one frame after it appears, which looks like a workaround and is not: the
+The dimension tool takes three clicks, because a dimension is three decisions: what to
+measure from, what to measure to, and which side of it the value is written on. The first two
+go through the ordinary snap engine — endpoints and intersections are exactly what anyone
+wants to measure between — and the third is read off the pointer as a signed offset, so the
+line can be pulled out to either side. What it measures is never one of the decisions: the
+value is read off the two points every time it is drawn, and there is no way to type over it.
+
+The text field is focused one frame after it appears, which looks like a workaround and is not: the
 click that opens it is a click on the canvas, and the browser moves focus to the canvas as the
 _default action_ of that same mousedown — after the handler that opened the field has run.
 Focusing immediately wins for a moment, then loses the keyboard and commits an empty label
@@ -138,6 +145,7 @@ before a character can be typed.
 | Middle drag, or Space + drag   | pan                                      |
 | `V` `W` `D` `N` `O`            | select, wall, door, window, room         |
 | `L` `R` `C` `P`                | line, rectangle, circle, polygon         |
+| `M`                            | dimension                                |
 | `T`                            | text                                     |
 | `B`                            | the block library                        |
 | `G` / `S`                      | grid on or off / snap to grid on or off  |

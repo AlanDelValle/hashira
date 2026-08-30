@@ -117,6 +117,16 @@ const elementSchema = z.discriminatedUnion('type', [
     }),
     z.object({
         ...baseFields,
+        type: z.literal('dimension'),
+        geometry: z.object({
+            a: pointSchema,
+            b: pointSchema,
+            offset: finiteNumber,
+            fontSize: finiteNumber.positive(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
         type: z.literal('text'),
         geometry: z.object({
             content: z.string(),
@@ -266,10 +276,20 @@ function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
 
 /**
  * Bring an older document up to the current schema. Each step is a pure function with its own
- * fixture test; there are none yet because there has only ever been one version.
+ * fixture test.
+ *
+ * 1 → 2 added the `dimension` element. Nothing already written changes shape, so the step only
+ * restamps the version — but it is a real step rather than a silent pass, because the drawing
+ * is genuinely being handed forward and the next one will have work to do.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
-    return raw;
+    let document = raw;
+
+    if (document.schemaVersion === 1) {
+        document = { ...document, schemaVersion: 2 };
+    }
+
+    return document;
 }
 
 export function parseDocument(raw: unknown): ParseResult {

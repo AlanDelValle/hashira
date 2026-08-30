@@ -2,9 +2,16 @@ import { useCallback } from 'react';
 
 import { replaceElements } from '@/editor/commands/command';
 import { polygonArea } from '@/editor/geometry/polygon';
-import { elementLength, elementWorldPoints, makeLookup } from '@/editor/model/elements';
+import {
+    dimensionFrame,
+    elementLength,
+    elementWorldPoints,
+    makeLookup,
+} from '@/editor/model/elements';
 import {
     segmentAngle,
+    setDimensionOffset,
+    setDimensionSize,
     setAssetMirrored,
     setAssetSize,
     setCircleRadius,
@@ -46,6 +53,7 @@ const TYPE_NAMES: Record<Element['type'], string> = {
     window: 'Window',
     asset: 'Block',
     text: 'Text',
+    dimension: 'Dimension',
 };
 
 /**
@@ -330,6 +338,40 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                         parse={toLength}
                         suffix={unit}
                         onCommit={(value) => set(setTextSize(element, value), 'Text size', 'size')}
+                    />
+                </>
+            )}
+
+            {element.type === 'dimension' && (
+                <>
+                    {/*
+                     * Read-only on purpose. The measurement comes from the two points it
+                     * spans; a dimension you can type over is a drawing that says one length
+                     * and shows another.
+                     */}
+                    <ReadonlyRow
+                        label="Measures"
+                        value={formatLength(dimensionFrame(element)?.length ?? 0, unit)}
+                    />
+                    <MeasureField
+                        label="Offset"
+                        value={element.geometry.offset}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(setDimensionOffset(element, value), 'Dimension offset', 'offset')
+                        }
+                    />
+                    <MeasureField
+                        label="Size"
+                        value={element.geometry.fontSize}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(setDimensionSize(element, value), 'Dimension size', 'size')
+                        }
                     />
                 </>
             )}

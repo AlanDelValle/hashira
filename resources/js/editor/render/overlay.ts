@@ -2,7 +2,7 @@ import { TAU } from '@/editor/geometry/angle';
 import { boundsCorners, unionBounds, type Bounds } from '@/editor/geometry/bbox';
 import type { Point } from '@/editor/geometry/vec';
 import { elementBounds, type ElementLookup } from '@/editor/model/elements';
-import type { Element, Layer } from '@/editor/model/types';
+import type { DisplayUnit, Element, Layer } from '@/editor/model/types';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
 import type { Marquee } from '@/editor/store/interaction';
@@ -29,6 +29,8 @@ export interface OverlayContext {
     palette: ScenePalette;
     layers: readonly Layer[];
     lookup: ElementLookup;
+    /** The document's display unit, which a selected dimension still has to write its value in. */
+    unit: DisplayUnit;
     /** One screen pixel in world millimetres. */
     px: number;
 }
@@ -59,6 +61,7 @@ function paintAccented(context: OverlayContext, elements: readonly Element[], al
         context.ctx,
         buildScene(elements, context.layers, {
             palette: context.palette,
+            unit: context.unit,
             overrideColor: context.theme.accent,
             // What is selected is drawn whatever its layer says, because the selection is a
             // fact about this moment rather than about the drawing.

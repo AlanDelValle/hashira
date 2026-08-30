@@ -28,6 +28,7 @@ import {
     createPolygonTool,
     createRectTool,
 } from '@/editor/tools/drawTools';
+import { createDimensionTool } from '@/editor/tools/dimensionTool';
 import { createSelectTool } from '@/editor/tools/selectTool';
 import { createTextTool } from '@/editor/tools/textTool';
 import { LIBRARY_KEY, REFERENCE_KEY, toolForKey } from '@/editor/input/shortcuts';
@@ -85,6 +86,7 @@ export class InputController {
             circle: createCircleTool(),
             polygon: createPolygonTool(),
             text: createTextTool(),
+            dimension: createDimensionTool(),
             asset: createAssetTool(),
         };
     }

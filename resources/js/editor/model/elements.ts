@@ -1,3 +1,4 @@
+import { normalizeAngle } from '@/editor/geometry/angle';
 import { boundsFromPoints, expandBounds, type Bounds } from '@/editor/geometry/bbox';
 import { distanceToPolyline, pointInPolygon } from '@/editor/geometry/polygon';
 import { distanceToSegment, type Segment } from '@/editor/geometry/segment';
@@ -6,6 +7,7 @@ import {
     clamp,
     distance,
     dot,
+    midpoint,
     negate,
     normalize,
     perpendicular,
@@ -15,7 +17,14 @@ import {
     type Point,
 } from '@/editor/geometry/vec';
 
-import type { DoorElement, Element, HashiraDocument, Transform, WallElement } from './types';
+import type {
+    DimensionElement,
+    DoorElement,
+    Element,
+    HashiraDocument,
+    Transform,
+    WallElement,
+} from './types';
 
 /**
  * Where every element actually is.
@@ -169,6 +178,12 @@ export function elementWorldPoints(element: Element, lookup: ElementLookup): Poi
         case 'room':
             return element.geometry.points.map((p) => localToWorld(element.transform, p));
 
+        case 'dimension':
+            return [
+                localToWorld(element.transform, element.geometry.a),
+                localToWorld(element.transform, element.geometry.b),
+            ];
+
         case 'door':
         case 'window': {
             const frame = hostedFrame(element, lookup);
@@ -180,6 +195,103 @@ export function elementWorldPoints(element: Element, lookup: ElementLookup): Poi
         case 'text':
             return [];
     }
+}
+
+export interface DimensionFrame {
+    /** The two points being measured, in world space. */
+    from: Point;
+    to: Point;
+    /** The ends of the dimension line itself, offset perpendicular from the measured points. */
+    lineFrom: Point;
+    lineTo: Point;
+    /** Unit vector along the measurement, and the unit perpendicular the offset runs along. */
+    direction: Point;
+    normal: Point;
+    /** What is being measured, in millimetres. Derived, never stored. */
+    length: number;
+    /** Baseline of the value, and the angle it is written at — never upside down. */
+    textAt: Point;
+    textRotation: number;
+    /** Half an end tick, and the gap left before an extension line starts. */
+    tick: number;
+    gap: number;
+}
+
+/**
+ * Everything a dimension is drawn from, worked out once.
+ *
+ * The renderer, the exporters, the bounding box and the hit test all read this, so a
+ * dimension cannot be drawn in one place and measured in another — the same mistake
+ * `doorSwing` exists to prevent for a door.
+ */
+export function dimensionFrame(element: DimensionElement): DimensionFrame | null {
+    const from = localToWorld(element.transform, element.geometry.a);
+    const to = localToWorld(element.transform, element.geometry.b);
+    const length = distance(from, to);
+
+    if (length === 0) {
+        return null;
+    }
+
+    const { offset, fontSize } = element.geometry;
+    const direction = normalize(subtract(to, from));
+    const normal = perpendicular(direction);
+    const along = scale(normal, offset);
+
+    // Written along the measurement, but flipped when that would leave it upside down. A
+    // drawing is read from one side, and a number the reader has to rotate the sheet for is
+    // a number they will misread.
+    const angle = Math.atan2(direction.y, direction.x);
+    const upright = Math.abs(angle) > Math.PI / 2;
+    const reading = upright ? negate(direction) : direction;
+
+    // Canvas y grows downwards, so "up" from the reader's point of view is the perpendicular
+    // negated. Text sits on its baseline, so this only has to clear the line itself.
+    const up = negate(perpendicular(reading));
+
+    return {
+        from,
+        to,
+        lineFrom: add(from, along),
+        lineTo: add(to, along),
+        direction,
+        normal,
+        length,
+        textAt: add(add(midpoint(from, to), along), scale(up, fontSize * 0.3)),
+        textRotation: upright ? normalizeAngle(angle + Math.PI) : angle,
+        tick: fontSize * 0.45,
+        gap: fontSize * 0.3,
+    };
+}
+
+/**
+ * The polylines a dimension is drawn as: an extension line out from each measured point, the
+ * dimension line between them, and an oblique tick at each end in place of an arrowhead —
+ * which is how a measured drawing has been ticked off since long before there were plotters.
+ */
+export function dimensionStrokes(frame: DimensionFrame): [Point, Point][] {
+    const strokes: [Point, Point][] = [[frame.lineFrom, frame.lineTo]];
+
+    const reach = subtract(frame.lineFrom, frame.from);
+    const distanceOut = Math.hypot(reach.x, reach.y);
+
+    // A dimension line sitting on the measured points has nothing to extend from.
+    if (distanceOut > frame.gap) {
+        const outwards = normalize(reach);
+        const start = scale(outwards, frame.gap);
+        const end = scale(outwards, distanceOut + frame.tick);
+
+        strokes.push([add(frame.from, start), add(frame.from, end)]);
+        strokes.push([add(frame.to, start), add(frame.to, end)]);
+    }
+
+    const oblique = scale(normalize(add(frame.direction, frame.normal)), frame.tick);
+
+    for (const at of [frame.lineFrom, frame.lineTo]) {
+        strokes.push([subtract(at, oblique), add(at, oblique)]);
+    }
+
+    return strokes;
 }
 
 export function elementAnchor(element: Element, lookup: ElementLookup): Point {
@@ -242,6 +354,21 @@ export function elementBounds(element: Element, lookup: ElementLookup): Bounds |
 
             // A wall is a band, not a line: its poché reaches half a thickness either side.
             return bounds === null ? null : expandBounds(bounds, element.geometry.thickness / 2);
+        }
+
+        case 'dimension': {
+            const frame = dimensionFrame(element);
+
+            if (frame === null) {
+                return boundsFromPoints(elementWorldPoints(element, lookup));
+            }
+
+            // The dimension line and its value are ink on the sheet and sit away from what is
+            // being measured, so a zoom to fit that framed only the measured points would cut
+            // the measurement off.
+            const bounds = boundsFromPoints([...dimensionStrokes(frame).flat(), frame.textAt]);
+
+            return bounds === null ? null : expandBounds(bounds, element.geometry.fontSize);
         }
 
         default:
@@ -353,6 +480,18 @@ export function hitTestElement(
                 p.x <= bounds.maxX + tolerance &&
                 p.y >= bounds.minY - tolerance &&
                 p.y <= bounds.maxY + tolerance
+            );
+        }
+
+        case 'dimension': {
+            const frame = dimensionFrame(element);
+
+            if (frame === null) return false;
+
+            // Every line it draws is a line you can grab, including the ticks — the whole
+            // mark is one object and picking should agree with what it looks like.
+            return dimensionStrokes(frame).some(
+                ([a, b]) => distanceToSegment({ a, b }, p) <= tolerance,
             );
         }
     }

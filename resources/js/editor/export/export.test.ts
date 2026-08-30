@@ -6,6 +6,7 @@ import { defaultLayers } from '@/editor/model/document';
 import {
     createAsset,
     createCircle,
+    createDimension,
     createDoor,
     createRect,
     createWall,
@@ -167,6 +168,34 @@ describe('SVG export', () => {
         expect(svg).toContain('width="100mm"');
     });
 
+    it('writes a measurement it read off the geometry', () => {
+        // The four outputs are fed by one scene, so a dimension appearing here is a dimension
+        // appearing on screen, in the PNG and in the PDF as well.
+        const measured = sceneToSvg(
+            buildScene(
+                [createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions')],
+                defaultLayers(),
+                { palette: PALETTE, unit: 'm' },
+            ),
+            { bounds: { minX: 0, minY: 0, maxX: 4000, maxY: 900 }, scale: 50, title: 'Measured' },
+        );
+
+        expect(measured).toContain('4.000 m');
+    });
+
+    it('says a measurement in the drawing’s own unit', () => {
+        const inMillimetres = sceneToSvg(
+            buildScene(
+                [createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions')],
+                defaultLayers(),
+                { palette: PALETTE, unit: 'mm' },
+            ),
+            { bounds: { minX: 0, minY: 0, maxX: 4000, maxY: 900 }, scale: 50, title: 'Measured' },
+        );
+
+        expect(inMillimetres).toContain('4000 mm');
+    });
+
     it('keeps layers as groups', () => {
         expect(svg).toContain('id="layer_architecture"');
         expect(svg).toContain('data-layer="Openings"');
@@ -242,6 +271,7 @@ describe('PDF export', () => {
                 createCircle(point(1000, 1000), 400, LAYER),
                 createRect(point(2000, 800), point(3000, 1600), LAYER),
                 createAsset(ASSET_LIBRARY[0]!, point(4000, 1200)),
+                createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions'),
             ],
             defaultLayers(),
             { palette: PALETTE },

@@ -42,6 +42,9 @@ final class DemoPlan
 
             // Placed in the one part of the floor the furniture leaves clear, the way a label
             // is set out on a real plan rather than dropped in the middle of the sofa.
+            // The overall width, dimensioned below the plan the way it would be on a sheet.
+            self::dimension(0, self::DEPTH, self::WIDTH, self::DEPTH, offset: 900),
+
             self::roomLabel('Living', 2700, 3200),
 
             // A few blocks from the library, so a fresh install opens on a furnished plan
@@ -101,6 +104,31 @@ final class DemoPlan
             DocumentSchema::LAYER_FURNITURE,
             ['assetId' => $assetId, 'width' => $width, 'height' => $height, 'mirrored' => false],
             ['x' => $x, 'y' => $y, 'rotation' => 0],
+        );
+    }
+
+    /**
+     * A measurement between two points. The value is not stored: the editor reads it off the
+     * geometry every time it draws it, so the number on the sheet cannot drift away from the
+     * thing it measures.
+     *
+     * @return array<string, mixed>
+     */
+    private static function dimension(int $ax, int $ay, int $bx, int $by, int $offset): array
+    {
+        $centreX = intdiv($ax + $bx, 2);
+        $centreY = intdiv($ay + $by, 2);
+
+        return self::element(
+            'dimension',
+            DocumentSchema::LAYER_DIMENSIONS,
+            [
+                'a' => ['x' => $ax - $centreX, 'y' => $ay - $centreY],
+                'b' => ['x' => $bx - $centreX, 'y' => $by - $centreY],
+                'offset' => $offset,
+                'fontSize' => 200,
+            ],
+            ['x' => $centreX, 'y' => $centreY, 'rotation' => 0],
         );
     }
 

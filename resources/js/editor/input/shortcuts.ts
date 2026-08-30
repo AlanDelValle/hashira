@@ -30,6 +30,7 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
     { id: 'circle', label: 'Circle', key: 'C' },
     { id: 'polygon', label: 'Polygon', key: 'P' },
     { id: 'text', label: 'Text', key: 'T' },
+    { id: 'dimension', label: 'Dimension', key: 'M' },
 ];
 
 /** The key that opens the block library. Not a tool: the tool arms when a block is chosen. */
@@ -75,7 +76,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     {
         title: 'Drawing',
         shortcuts: [
-            { keys: [['Enter']], label: 'Finish the current chain, polygon or label' },
+            { keys: [['Enter']], label: 'Finish the current chain, polygon or measurement' },
             { keys: [['Esc']], label: 'Cancel what you are drawing, or deselect' },
             { keys: [['Mod', 'Z']], label: 'Undo' },
             { keys: [['Mod', 'Shift', 'Z']], label: 'Redo' },

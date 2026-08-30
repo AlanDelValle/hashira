@@ -7,6 +7,7 @@ import {
     MousePointer2,
     Pentagon,
     Sofa,
+    Ruler,
     Square,
     SquareDashed,
     Type,
@@ -28,6 +29,7 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     circle: Circle,
     polygon: Pentagon,
     text: Type,
+    dimension: Ruler,
     asset: Sofa,
 };
 
@@ -36,7 +38,7 @@ const GROUPS: ToolId[][] = [
     ['select'],
     ['wall', 'door', 'window', 'room'],
     ['line', 'rect', 'circle', 'polygon'],
-    ['text'],
+    ['dimension', 'text'],
 ];
 
 /**

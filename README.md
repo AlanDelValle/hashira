@@ -6,10 +6,10 @@ A free and open-source 2D design tool for floor plans, interiors and technical d
 in the browser.
 
 > **Status: the MVP works end to end.** You can create an account, draw a plan with walls,
-> doors, windows and furniture, set exact dimensions, snap, organise layers, undo, have it
-> saved, reopen it, export it and share a read-only link. Everything past that — dimension
-> chains, DXF, collaboration, 3D — is recorded in the [roadmap](docs/roadmap.md) and is
-> deliberately not here yet.
+> doors, windows and furniture, type exact values, snap, dimension it, label it, organise
+> layers, undo, have it saved, reopen it, export it and share a read-only link. Everything
+> past that — dimension chains, DXF, collaboration, 3D — is recorded in the
+> [roadmap](docs/roadmap.md) and is deliberately not here yet.
 
 ---
 

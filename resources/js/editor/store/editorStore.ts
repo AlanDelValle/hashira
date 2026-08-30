@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import type { Point } from '@/editor/geometry/vec';
-import { DEFAULT_TEXT_SIZE } from '@/editor/model/factories';
+import { DEFAULT_DIMENSION_SIZE, DEFAULT_TEXT_SIZE } from '@/editor/model/factories';
 import { newId } from '@/editor/model/id';
 
 /** A label being typed. The id gives each draft its own identity, and its own empty field. */
@@ -21,6 +21,7 @@ export type ToolId =
     | 'circle'
     | 'polygon'
     | 'text'
+    | 'dimension'
     | 'asset';
 
 /**
@@ -40,6 +41,8 @@ interface EditorStore {
     wallThickness: number;
     /** Cap height applied to the next label written, in millimetres at 1:1. */
     textSize: number;
+    /** Cap height applied to the next measurement's value, in millimetres at 1:1. */
+    dimensionSize: number;
     /**
      * Where a label is being typed, if one is.
      *
@@ -59,6 +62,7 @@ interface EditorStore {
     setActiveLayer: (layerId: string) => void;
     setWallThickness: (thickness: number) => void;
     setTextSize: (size: number) => void;
+    setDimensionSize: (size: number) => void;
     beginText: (at: Point) => void;
     cancelText: () => void;
     setPendingAsset: (assetId: string | null) => void;
@@ -79,6 +83,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     snapToGrid: true,
     wallThickness: 150,
     textSize: DEFAULT_TEXT_SIZE,
+    dimensionSize: DEFAULT_DIMENSION_SIZE,
     textDraft: null,
     pendingAssetId: null,
     libraryOpen: false,
@@ -114,6 +119,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
     setWallThickness: (wallThickness) => set({ wallThickness }),
     setTextSize: (textSize) => set({ textSize }),
+    setDimensionSize: (dimensionSize) => set({ dimensionSize }),
 
     beginText: (at) => set({ textDraft: { id: newId(), at } }),
     cancelText: () => set((state) => (state.textDraft === null ? state : { textDraft: null })),
