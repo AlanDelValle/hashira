@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="169.073mm" height="129.073mm"
+     viewBox="-1690 -763.64 8453.64 6453.64">
+  <title>Studio Apartment</title>
+  <rect x="-1690" y="-763.64" width="8453.64" height="6453.64" fill="#ffffff"/>
+  <g id="layer_architecture" data-layer="Architecture">
+    <path d="M 0 0 L 2200 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 3800 0 L 6000 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 6000 0 L 6000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 4000 L 750 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 1650 4000 L 6000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 4000 L 0 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+  </g>
+  <g id="layer_openings" data-layer="Openings">
+    <path d="M 750 3925 L 750 4075" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 1650 3925 L 1650 4075" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 750 4000 L 750 4900" fill="none" stroke="#1F2328" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 750 4900 A 900 900 0 0 0 1650 4000" fill="none" stroke="#5f636b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 2200 -75 L 2200 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 3800 -75 L 3800 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 2200 -75 L 3800 -75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 2200 75 L 3800 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 2200 0 L 3800 0" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+  </g>
+  <g id="layer_furniture" data-layer="Furniture">
+    <path d="M 300 200 L 1700 200 L 1700 2200 L 300 2200 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 370 260 L 958 260 L 958 520 L 370 520 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1042 260 L 1630 260 L 1630 520 L 1042 520 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 300 700 L 1700 700" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 3100 550 L 4700 550 L 4700 1450 L 3100 1450 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 3228 802 L 4572 802 L 4572 1396 L 3228 1396 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 3900 802 L 3900 1396" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <ellipse cx="4400" cy="2900" rx="600" ry="600" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 400 3100 L 1600 3100 L 1600 3700 L 400 3700 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 400 3592 L 1600 3592" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1000 3100 L 1000 3592" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g id="layer_dimensions" data-layer="Dimensions">
+    <path d="M 0 4900 L 6000 4900" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 0 4060 L 0 4990" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 6000 4060 L 6000 4990" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -63.64 4836.36 L 63.64 4963.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 5936.36 4836.36 L 6063.64 4963.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="3000" y="4840" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4">6.000 m</text>
+    <path d="M -900 4000 L -900 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -60 4000 L -990 4000" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -60 0 L -990 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -963.64 4063.64 L -836.36 3936.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -963.64 63.64 L -836.36 -63.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="-960" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 -960 2000)">4.000 m</text>
+  </g>
+  <g id="layer_annotations" data-layer="Annotations">
+    <text x="2700" y="3200" font-size="250" font-family="sans-serif" text-anchor="middle" fill="#5F636B">Living</text>
+  </g>
+</svg>

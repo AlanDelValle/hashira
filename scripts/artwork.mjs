@@ -1,12 +1,15 @@
 /**
- * Regenerates the screenshots in the README.
+ * Regenerates every picture of the product that the project ships: the README's screenshots,
+ * and the drawing on the landing page.
  *
- * Hand-captured screenshots go stale the moment the interface moves, and nobody notices until
- * the README is describing a product that no longer exists. This drives a real browser against
- * a real local instance and writes the images the README points at, so refreshing them is one
- * command rather than an afternoon with a cropping tool.
+ * Pictures made by hand go stale the moment the interface moves, and nobody notices until the
+ * page is advertising something that no longer exists — or, as happened here, something that
+ * never existed at all, because the landing page's hand-drawn plan promised a dimension for
+ * months before the editor could produce one. Everything written here comes out of a running
+ * instance instead: the screenshots by photographing it, the landing drawing by asking the
+ * editor's own exporter for it.
  *
- *   npm run screenshots
+ *   npm run artwork
  *
  * It needs the application running (Herd at https://hashira.test, or APP_URL set to wherever
  * it is), a seeded demo account, and Chrome. Nothing is installed: the browser is driven over
@@ -22,6 +25,8 @@ const BASE_URL = (process.env.APP_URL ?? 'https://hashira.test').replace(/\/$/, 
 const EMAIL = process.env.DEMO_EMAIL ?? 'demo@hashira.test';
 const PASSWORD = process.env.DEMO_PASSWORD ?? 'password';
 const OUT_DIR = 'docs/images';
+/** The landing page shows the editor's own output, so this is written, not drawn. */
+const LANDING_SVG = 'resources/js/pages/landing/plan.svg';
 const PORT = Number(process.env.CDP_PORT ?? 9222);
 
 /** A wide laptop: enough sheet to be worth photographing, not so wide the panels look lost. */
@@ -96,8 +101,9 @@ async function main() {
         );
 
         await captureFirstDrawing(page, projects);
+        await exportPlanSvg(page);
 
-        console.log(`Wrote ${OUT_DIR}/editor.png and ${OUT_DIR}/dashboard.png.`);
+        console.log(`Wrote ${OUT_DIR}/editor.png, ${OUT_DIR}/dashboard.png and ${LANDING_SVG}.`);
     } finally {
         page?.close();
         chrome.kill();
@@ -138,6 +144,85 @@ async function captureFirstDrawing(page, projects) {
     }
 
     throw new Error('None of the demo projects has a drawing in it — is the database seeded?');
+}
+
+/**
+ * Asks the editor to export the drawing it currently has open, and writes the result straight
+ * into the landing page's folder.
+ *
+ * The export arrives as a download the page starts itself, which is awkward to catch in a
+ * headless browser and pointless to route through the filesystem twice — so the anchor click
+ * is intercepted and the blob read back. Nothing here reimplements the exporter: the bytes are
+ * the ones a person clicking Export would have received.
+ */
+async function exportPlanSvg(page) {
+    await evaluate(
+        page,
+        `(() => {
+            window.__svg = null;
+            const realClick = HTMLAnchorElement.prototype.click;
+
+            HTMLAnchorElement.prototype.click = function () {
+                if (this.download?.endsWith('.svg')) {
+                    window.__svg = fetch(this.href).then((response) => response.text());
+
+                    return;
+                }
+
+                return realClick.call(this);
+            };
+
+            return true;
+        })()`,
+    );
+
+    // Radix opens its menu on pointerdown, so a synthetic click never reaches it.
+    await clickElement(page, 'button[aria-label="Export"]');
+    await waitFor(page, 'document.querySelector(\'[role="menu"]\') !== null');
+    await pause(300);
+    await clickElement(page, '[role="menuitem"]', (item) => `${item}.innerText.startsWith("SVG")`);
+
+    const svg = await evaluate(page, 'window.__svg');
+
+    if (typeof svg !== 'string' || !svg.includes('<svg')) {
+        throw new Error('The editor did not hand back an SVG.');
+    }
+
+    writeFileSync(LANDING_SVG, svg, 'utf8');
+}
+
+/** Clicks something by where it is on screen, which is the only kind of click Radix believes. */
+async function clickElement(page, selector, match = null) {
+    const at = await evaluate(
+        page,
+        `(() => {
+            const found = [...document.querySelectorAll(${JSON.stringify(selector)})]
+                .find((item) => ${match === null ? 'true' : match('item')});
+
+            if (found === undefined) return null;
+
+            const box = found.getBoundingClientRect();
+
+            return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        })()`,
+    );
+
+    if (at === null) {
+        throw new Error(`Nothing on the page matched ${selector}.`);
+    }
+
+    for (const type of ['mousePressed', 'mouseReleased']) {
+        await page.send('Input.dispatchMouseEvent', {
+            type,
+            x: at.x,
+            y: at.y,
+            button: 'left',
+            clickCount: 1,
+            buttons: type === 'mousePressed' ? 1 : 0,
+        });
+    }
+
+    await pause(400);
 }
 
 async function capture(page, url, name, condition) {

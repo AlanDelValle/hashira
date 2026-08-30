@@ -94,14 +94,16 @@ export function LandingPage() {
                     aria-label="Example drawing"
                     className="mx-auto max-w-5xl px-5 pb-20 sm:px-6 sm:pb-24"
                 >
-                    <div className="border-line bg-sheet shadow-panel overflow-hidden rounded-lg border">
-                        {/* Height capped so the sheet never eats more than part of a fold;
-                            the drawing centres itself in whatever width is left. */}
-                        <PlanDrawing className="max-h-[28rem] w-full" />
+                    {/* Narrower than the text column so the sheet fills it rather than
+                        floating in the middle of a wide white card: the drawing carries its
+                        own proportions and is never cropped or stretched to fit. */}
+                    <div className="border-line bg-sheet shadow-panel mx-auto max-w-3xl overflow-hidden rounded-lg border">
+                        <PlanDrawing className="w-full" />
                     </div>
                     <p className="text-ink-subtle mt-3 text-xs">
-                        Walls carry thickness. Openings belong to the wall they cut. Dimensions are
-                        read from the geometry, not typed in by hand.
+                        Not a mock-up: this is the sample plan, exported from the editor as SVG and
+                        dropped in unedited. Walls carry thickness, openings belong to the wall they
+                        cut, and the dimensions are read off the geometry.
                     </p>
                 </section>
 

@@ -16,9 +16,10 @@ php artisan migrate --seed
 npm run dev
 ```
 
-`npm run screenshots` regenerates the README images by driving a headless Chrome against the
-running app, signed in as the seeded demo account. Run it whenever the editor's chrome changes
-shape, rather than cropping a screenshot by hand.
+`npm run artwork` regenerates every picture of the product the project ships — the README
+screenshots and the landing page's drawing — by driving a headless Chrome against the running
+app, signed in as the seeded demo account. Run it whenever the editor's chrome or the sample
+plan changes, rather than cropping a screenshot or editing an illustration by hand.
 
 ## Non-negotiable rules
 
@@ -45,6 +46,11 @@ These exist because breaking them is what turns an editor into an unmaintainable
 9. **Colour is decided by `resources/css/app.css` and policed by `ui/contrast.test.ts`.**
    Components use tokens, never literals, and the audit holds every pair the interface paints
    to WCAG AA. If a token has to be lightened, the pair it breaks has to be dealt with first.
+10. **Pictures of the product are produced by the product.** The README's screenshots and the
+    landing page's plan all come out of a running instance via `npm run artwork`. The landing
+    illustration used to be drawn by hand and spent months advertising a dimension the editor
+    could not draw; nobody caught it, because the picture was not made by the thing it was
+    advertising.
 
 ## Checks before calling anything done
 

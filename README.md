@@ -34,10 +34,12 @@ openings in the wall that hosts them.</em></p>
 
 <p align="center"><em>Projects. One drawing each.</em></p>
 
-These are generated rather than captured by hand — `npm run screenshots` drives a headless
-Chrome against a local instance signed in as the demo account, so they cannot quietly fall
-out of date. It needs the app running and a seeded database; set `APP_URL` if it is not at
-`https://hashira.test`, and `CHROME_PATH` if Chrome is somewhere unusual.
+These are generated rather than captured by hand — `npm run artwork` drives a headless Chrome
+against a local instance signed in as the demo account, so they cannot quietly fall out of
+date. The same command re-exports the drawing on the landing page, which is not an
+illustration of the editor but a file the editor produced. It needs the app running and a
+seeded database; set `APP_URL` if it is not at `https://hashira.test`, and `CHROME_PATH` if
+Chrome is somewhere unusual.
 
 ## Stack
 

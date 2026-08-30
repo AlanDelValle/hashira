@@ -42,8 +42,11 @@ final class DemoPlan
 
             // Placed in the one part of the floor the furniture leaves clear, the way a label
             // is set out on a real plan rather than dropped in the middle of the sofa.
-            // The overall width, dimensioned below the plan the way it would be on a sheet.
+            // Overall width below the plan and overall depth down its left-hand side, which
+            // is where a set-out drawing carries them. The offsets are signed: negative puts
+            // the depth's line outside the west wall rather than inside the room.
             self::dimension(0, self::DEPTH, self::WIDTH, self::DEPTH, offset: 900),
+            self::dimension(0, self::DEPTH, 0, 0, offset: -900),
 
             self::roomLabel('Living', 2700, 3200),
 

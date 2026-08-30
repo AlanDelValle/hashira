@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "screenshots": "node scripts/screenshots.mjs"
+    "artwork": "node scripts/artwork.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
