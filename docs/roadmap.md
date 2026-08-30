@@ -98,11 +98,23 @@ plan with walls, doors, windows and furniture → set exact dimensions → use s
 organise layers → undo and redo → have it saved → reload and find it intact → export it →
 share a link. No mockups, no placeholder features.
 
-**Met.** Walked end to end in a browser against Herd and PostgreSQL at the close of Phase 6:
-register and sign in, the seeded plan opening with its walls, openings, label and blocks, a
-wall drawn with `W` and two clicks, `Ctrl+Z` returning the drawing to where it was, autosave
-settling, the drawing reopening intact, PDF, SVG and PNG coming out of it, and a share link
-serving the same drawing read-only to a signed-out browser.
+**Not met — one gap left.** Everything else was walked end to end in a browser against Herd and
+PostgreSQL: register and sign in, the seeded plan opening with its walls, openings, label and
+blocks, a wall drawn with `W` and two clicks, a label written with `T`, `Ctrl+Z` returning the
+drawing to where it was, autosave settling, the drawing reopening intact, PDF, SVG and PNG
+coming out of it, and a share link serving the same drawing read-only to a signed-out browser.
+
+Two gaps were found after Phase 6 was signed off, both of them the same mistake — reading
+"dimension it" as typing exact values into the properties panel, which is not what it says.
+
+- **No text tool.** ~~`TextElement` was in the format, rendered in all four outputs, was picked,
+  snapped and editable in the properties panel — and nothing could create one.~~ Fixed: `T`
+  places a label and it is typed on the sheet.
+- **No dimension element at all.** Still true. Not in the format, not in the renderer, nothing.
+  Every new document is created with a `Dimensions` layer that is impossible to fill, and the
+  landing page's illustration shows a dimension the editor cannot produce. Phase 7's "advanced
+  dimensioning" assumes a basic one that was never built. The MVP is not done until a dimension
+  can be drawn on the sheet.
 
 ---
 

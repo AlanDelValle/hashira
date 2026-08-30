@@ -30,9 +30,15 @@ final class DatabaseSeeder extends Seeder
             return;
         }
 
-        // The empty one is created first so the sample plan is the most recently touched, and
-        // therefore the row the dashboard lists at the top and the one a demo opens first.
-        $createProject->handle($demo, 'House Renovation');
+        /*
+         * A second, empty project, so the dashboard shows more than one row — dated a day
+         * back. The dashboard orders by recent activity, and two projects seeded in the same
+         * second tie, which would let the empty one sort above the sample plan and make the
+         * first thing anyone sees an empty sheet.
+         */
+        $renovation = $createProject->handle($demo, 'House Renovation');
+        $renovation->timestamps = false;
+        $renovation->update(['created_at' => now()->subDay(), 'updated_at' => now()->subDay()]);
 
         $studio = $createProject->handle(
             owner: $demo,

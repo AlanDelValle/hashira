@@ -87,19 +87,15 @@ async function main() {
             'document.querySelectorAll("main a[href^=\'/projects/\']").length > 0',
         );
 
-        const project = await evaluate(
+        // A picture of the editor wants a drawing in it, and the account has an empty project
+        // as well. Each is opened in turn until one has something on the sheet, rather than
+        // trusting whichever order the dashboard happens to list them in.
+        const projects = await evaluate(
             page,
-            'document.querySelector("main a[href^=\'/projects/\']").getAttribute("href")',
+            '[...document.querySelectorAll("main a[href^=\'/projects/\']")].map((a) => a.getAttribute("href"))',
         );
 
-        // The canvas is painted outside React, so "the page has rendered" is not the same as
-        // "the drawing is on screen". The status bar's own element count is the honest signal.
-        await capture(
-            page,
-            `${BASE_URL}${project}`,
-            'editor',
-            'document.querySelector("canvas") !== null && !/(^|\\s)0 elements/.test(document.body.innerText)',
-        );
+        await captureFirstDrawing(page, projects);
 
         console.log(`Wrote ${OUT_DIR}/editor.png and ${OUT_DIR}/dashboard.png.`);
     } finally {
@@ -116,6 +112,32 @@ async function main() {
             /* Left behind in the temporary directory, where it will be cleaned up anyway. */
         }
     }
+}
+
+/**
+ * Opens each project until one turns out to have a drawing, and photographs that. The canvas
+ * is painted outside React, so "the page has rendered" is not the same as "the drawing is on
+ * screen" — the status bar's own element count is the honest signal that it is.
+ */
+async function captureFirstDrawing(page, projects) {
+    const drawn =
+        'document.querySelector("canvas") !== null && !/(^|\\s)0 elements/.test(document.body.innerText)';
+
+    for (const project of projects) {
+        await page.send('Page.navigate', { url: `${BASE_URL}${project}` });
+
+        try {
+            await waitFor(page, drawn, '', 20);
+        } catch {
+            continue;
+        }
+
+        await capture(page, `${BASE_URL}${project}`, 'editor', drawn);
+
+        return;
+    }
+
+    throw new Error('None of the demo projects has a drawing in it — is the database seeded?');
 }
 
 async function capture(page, url, name, condition) {
@@ -159,8 +181,13 @@ async function signIn(page) {
     );
 }
 
-async function waitFor(page, expression, message = `Timed out waiting for: ${expression}`) {
-    for (let attempt = 0; attempt < 120; attempt++) {
+async function waitFor(
+    page,
+    expression,
+    message = `Timed out waiting for: ${expression}`,
+    attempts = 120,
+) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
         try {
             if ((await evaluate(page, expression)) === true) {
                 return;
@@ -172,7 +199,7 @@ async function waitFor(page, expression, message = `Timed out waiting for: ${exp
         await pause(150);
     }
 
-    throw new Error(message);
+    throw new Error(message === '' ? `Timed out waiting for: ${expression}` : message);
 }
 
 async function evaluate(page, expression) {

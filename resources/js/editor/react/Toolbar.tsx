@@ -9,6 +9,7 @@ import {
     Sofa,
     Square,
     SquareDashed,
+    Type,
 } from 'lucide-react';
 import { useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react';
 
@@ -26,14 +27,16 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     rect: Square,
     circle: Circle,
     polygon: Pentagon,
+    text: Type,
     asset: Sofa,
 };
 
-/** Grouped the way the work goes: pick, build the shape of the space, then draw. */
+/** Grouped the way the work goes: pick, build the space, draw, then say what it is. */
 const GROUPS: ToolId[][] = [
     ['select'],
     ['wall', 'door', 'window', 'room'],
     ['line', 'rect', 'circle', 'polygon'],
+    ['text'],
 ];
 
 /**

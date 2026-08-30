@@ -114,6 +114,20 @@ drawing cannot differ from what lands in the document.
 Line, rectangle and circle are press–drag–release. The polygon collects clicks; clicking its
 first vertex closes the ring, Enter or a double click finishes it open, Escape throws it away.
 
+The text tool is the one that does almost nothing itself. A click decides _where_ the label
+goes and the words are typed into a real input the chrome floats over that point, because a
+canvas has no caret, no selection and no input method — and a tool that cannot take an input
+method cannot write half the names it will be asked to write. The field is sized and placed
+from the same viewport transform the renderer uses, so what is being typed sits where the
+finished label will sit, at the size it will be. Enter or a click elsewhere commits it, Escape
+throws it away, and blank is not a label.
+
+It is also focused one frame after it appears, which looks like a workaround and is not: the
+click that opens it is a click on the canvas, and the browser moves focus to the canvas as the
+_default action_ of that same mousedown — after the handler that opened the field has run.
+Focusing immediately wins for a moment, then loses the keyboard and commits an empty label
+before a character can be typed.
+
 ## 7. Input
 
 `input/controller.ts` is the only place that touches DOM events. Above every tool it handles:
@@ -124,6 +138,7 @@ first vertex closes the ring, Enter or a double click finishes it open, Escape t
 | Middle drag, or Space + drag   | pan                                      |
 | `V` `W` `D` `N` `O`            | select, wall, door, window, room         |
 | `L` `R` `C` `P`                | line, rectangle, circle, polygon         |
+| `T`                            | text                                     |
 | `B`                            | the block library                        |
 | `G` / `S`                      | grid on or off / snap to grid on or off  |
 | `Delete` / `Backspace`         | delete the selection                     |

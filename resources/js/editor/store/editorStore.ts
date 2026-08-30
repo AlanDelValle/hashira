@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 
+import type { Point } from '@/editor/geometry/vec';
+import { DEFAULT_TEXT_SIZE } from '@/editor/model/factories';
+import { newId } from '@/editor/model/id';
+
+/** A label being typed. The id gives each draft its own identity, and its own empty field. */
+export interface TextDraft {
+    id: string;
+    at: Point;
+}
+
 export type ToolId =
     | 'select'
     | 'wall'
@@ -10,6 +20,7 @@ export type ToolId =
     | 'rect'
     | 'circle'
     | 'polygon'
+    | 'text'
     | 'asset';
 
 /**
@@ -27,6 +38,16 @@ interface EditorStore {
     snapToGrid: boolean;
     /** Thickness applied to the next wall drawn, in millimetres. */
     wallThickness: number;
+    /** Cap height applied to the next label written, in millimetres at 1:1. */
+    textSize: number;
+    /**
+     * Where a label is being typed, if one is.
+     *
+     * This is the one thing in flight that has to reach React: a label is typed into a real
+     * input, because a canvas cannot offer a caret, selection or an input method. Everything
+     * else in flight — drags, rubber bands, snap previews — stays out of React by design.
+     */
+    textDraft: TextDraft | null;
     /** The library block the asset tool will place, if any. */
     pendingAssetId: string | null;
     /** Whether the block library is showing. */
@@ -37,6 +58,9 @@ interface EditorStore {
     setTool: (tool: ToolId) => void;
     setActiveLayer: (layerId: string) => void;
     setWallThickness: (thickness: number) => void;
+    setTextSize: (size: number) => void;
+    beginText: (at: Point) => void;
+    cancelText: () => void;
     setPendingAsset: (assetId: string | null) => void;
     toggleLibrary: () => void;
     setShortcutsOpen: (open: boolean) => void;
@@ -54,6 +78,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
     gridVisible: true,
     snapToGrid: true,
     wallThickness: 150,
+    textSize: DEFAULT_TEXT_SIZE,
+    textDraft: null,
     pendingAssetId: null,
     libraryOpen: false,
     shortcutsOpen: false,
@@ -61,8 +87,10 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setTool: (tool) =>
         set((state) => ({
             tool,
-            // Choosing any other tool puts the library block down.
+            // Choosing any other tool puts the library block down and abandons a half-typed
+            // label — neither has anywhere to live once the tool that owns it is gone.
             pendingAssetId: tool === 'asset' ? state.pendingAssetId : null,
+            textDraft: tool === 'text' ? state.textDraft : null,
         })),
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
@@ -85,6 +113,10 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
 
     setWallThickness: (wallThickness) => set({ wallThickness }),
+    setTextSize: (textSize) => set({ textSize }),
+
+    beginText: (at) => set({ textDraft: { id: newId(), at } }),
+    cancelText: () => set((state) => (state.textDraft === null ? state : { textDraft: null })),
     /*
      * Choosing a block arms the tool; clearing it disarms the tool as well. Leaving the block
      * tool active with nothing to place would be a state where clicking does nothing and the

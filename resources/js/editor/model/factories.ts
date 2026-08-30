@@ -11,6 +11,7 @@ import type {
     PolygonElement,
     RectElement,
     RoomElement,
+    TextElement,
     WallElement,
     WindowElement,
 } from './types';
@@ -185,6 +186,33 @@ export function createAsset(
             height: definition.height,
             mirrored: false,
         },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * Cap height in millimetres at 1:1. At 1:50 — the default scale — 250 mm plots as 5 mm on the
+ * sheet, which is what a room label is drawn at by hand.
+ */
+export const DEFAULT_TEXT_SIZE = 250;
+
+/**
+ * Text is the one element whose transform is not its centre: `at` is the anchor the string is
+ * set out from, and `align` decides which end of the string lands on it. That is what makes a
+ * label stay put when its wording changes, instead of drifting as the text gets longer.
+ */
+export function createText(
+    content: string,
+    at: Point,
+    layerId: string,
+    fontSize = DEFAULT_TEXT_SIZE,
+): TextElement {
+    return {
+        id: newId(),
+        type: 'text',
+        layerId,
+        transform: { x: at.x, y: at.y, rotation: 0 },
+        geometry: { content, fontSize, align: 'center' },
         metadata: metadata(),
     };
 }

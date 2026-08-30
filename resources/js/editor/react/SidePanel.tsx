@@ -21,6 +21,7 @@ export function SidePanel() {
     return (
         <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
             {tool === 'wall' && <WallSettings unit={unit} />}
+            {tool === 'text' && <TextSettings unit={unit} />}
 
             <Section title="Properties">
                 <PropertiesPanel />
@@ -61,6 +62,33 @@ function WallSettings({ unit }: { unit: DisplayUnit }) {
                     }}
                     suffix={unit}
                     onCommit={setWallThickness}
+                />
+            </div>
+        </Section>
+    );
+}
+
+/** Shown only while the text tool is active: the size the next label will be written at. */
+function TextSettings({ unit }: { unit: DisplayUnit }) {
+    const size = useEditorStore((state) => state.textSize);
+    const setTextSize = useEditorStore((state) => state.setTextSize);
+
+    return (
+        <Section title="New text">
+            <div className="px-3">
+                <MeasureField
+                    label="Size"
+                    value={size}
+                    format={(value) => String(Math.round(toDisplay(value, unit) * 1000) / 1000)}
+                    parse={(text) => {
+                        const parsed = Number(text.replace(',', '.'));
+
+                        return Number.isFinite(parsed) && parsed > 0
+                            ? fromDisplay(parsed, unit)
+                            : null;
+                    }}
+                    suffix={unit}
+                    onCommit={setTextSize}
                 />
             </div>
         </Section>

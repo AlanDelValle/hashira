@@ -29,6 +29,7 @@ import {
     createRectTool,
 } from '@/editor/tools/drawTools';
 import { createSelectTool } from '@/editor/tools/selectTool';
+import { createTextTool } from '@/editor/tools/textTool';
 import { LIBRARY_KEY, REFERENCE_KEY, toolForKey } from '@/editor/input/shortcuts';
 import { snapPoint } from '@/editor/snapping/engine';
 import type { Tool, ToolContext, ToolEvent } from '@/editor/tools/types';
@@ -83,6 +84,7 @@ export class InputController {
             rect: createRectTool(),
             circle: createCircleTool(),
             polygon: createPolygonTool(),
+            text: createTextTool(),
             asset: createAssetTool(),
         };
     }

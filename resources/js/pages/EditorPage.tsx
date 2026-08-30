@@ -12,6 +12,7 @@ import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
 import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
+import { TextDraft } from '@/editor/react/TextDraft';
 import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
 import { useHistory } from '@/editor/react/useHistory';
@@ -182,6 +183,7 @@ export function EditorPage() {
 
                     <main id="sheet" className="border-line relative min-w-0 flex-1 border-r">
                         <CanvasHost />
+                        <TextDraft />
                         {elementCount === 0 && <EmptySheet />}
                     </main>
 
