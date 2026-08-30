@@ -46,6 +46,12 @@ The single most important structural rule:
 
 Everything else in this document follows from that rule.
 
+The line down the middle of that diagram is also where the bundle is cut. The landing page
+and the sign-in screens are what an unknown visitor loads first and have no business paying
+for a drawing editor they may never open, so every route that reaches into `editor/` is a
+dynamic import. The first load is 282 kB rather than 559 kB; the canvas, the tools, the
+snapping engine and the exporters arrive when a drawing does.
+
 ---
 
 ## 2. Decisions and why

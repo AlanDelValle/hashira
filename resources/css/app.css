@@ -21,14 +21,27 @@
     --color-sunken: #faf9f7;
     --color-overlay: #17191d;
 
-    /* Lines */
+    /*
+     * Lines.
+     *
+     * `line` rules off areas and is decorative — nothing is lost if it goes unseen. Anything
+     * that draws the *edge of a control* uses `line-strong`, which is dark enough to clear
+     * 3:1 against every surface it sits on, because that edge is what says "this is a field
+     * you can type into" (WCAG 1.4.11).
+     */
     --color-line: #e5e3de;
-    --color-line-strong: #d1cec7;
+    --color-line-strong: #8e8a80;
 
-    /* Ink */
+    /*
+     * Ink, in three steps.
+     *
+     * Every step clears 4.5:1 against `canvas`, the lightest background any of them lands on
+     * — including `ink-subtle`, which carries the status-bar readouts and the field hints and
+     * so is real text, not decoration.
+     */
     --color-ink: #17191d;
-    --color-ink-muted: #5f636b;
-    --color-ink-subtle: #8b8f97;
+    --color-ink-muted: #4d5158;
+    --color-ink-subtle: #686c74;
     --color-ink-inverse: #f8f8f6;
 
     /* Meaning */

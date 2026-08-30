@@ -9,6 +9,7 @@ import { Button } from '@/ui/Button';
 import { Wordmark } from '@/ui/Logo';
 import { Menu, MenuItem, MenuSeparator } from '@/ui/Menu';
 import { Modal } from '@/ui/Modal';
+import { SkipLink } from '@/ui/SkipLink';
 import { TextField } from '@/ui/TextField';
 import type { ProjectSummary } from '@/types/api';
 
@@ -16,7 +17,7 @@ type Pending = { kind: 'create' } | { kind: 'rename'; project: ProjectSummary } 
 
 export function DashboardPage() {
     const { user, logout } = useAuth();
-    const { projects, loading, error, create, rename, duplicate, remove } = useProjects();
+    const { projects, loading, error, reload, create, rename, duplicate, remove } = useProjects();
     const navigate = useNavigate();
 
     const [pending, setPending] = useState<Pending>(null);
@@ -57,6 +58,8 @@ export function DashboardPage() {
 
     return (
         <div className="bg-canvas min-h-screen">
+            <SkipLink />
+
             <header className="border-line bg-surface border-b">
                 <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
                     <Wordmark />
@@ -76,7 +79,7 @@ export function DashboardPage() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-4xl px-6 py-12">
+            <main id="content" className="mx-auto max-w-4xl px-6 py-10 sm:py-12">
                 <div className="flex items-baseline justify-between">
                     <h1 className="text-ink text-lg font-semibold tracking-tight">Projects</h1>
 
@@ -87,14 +90,20 @@ export function DashboardPage() {
                 </div>
 
                 <div className="mt-6">
-                    {loading && (
-                        <p className="text-ink-subtle py-16 text-center text-sm">Loading…</p>
-                    )}
+                    {loading && <ProjectsSkeleton />}
 
                     {error !== null && (
-                        <p role="alert" className="text-danger py-16 text-center text-sm">
-                            {error}
-                        </p>
+                        <div className="border-line border-t py-20 text-center">
+                            <p role="alert" className="text-ink text-sm">
+                                {error}
+                            </p>
+                            <p className="text-ink-muted mx-auto mt-1.5 max-w-sm text-sm">
+                                Your projects are safe — this browser could not reach the server.
+                            </p>
+                            <Button variant="secondary" size="sm" className="mt-5" onClick={reload}>
+                                Try again
+                            </Button>
+                        </div>
                     )}
 
                     {!loading && error === null && projects.length === 0 && (
@@ -138,7 +147,7 @@ export function DashboardPage() {
                                     <Menu
                                         trigger={
                                             <button
-                                                className="text-ink-subtle hover:bg-sunken hover:text-ink rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                                className="text-ink-subtle hover:bg-sunken hover:text-ink rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 max-sm:opacity-100"
                                                 aria-label={`Actions for ${project.name}`}
                                             >
                                                 <MoreHorizontal className="size-4" aria-hidden />
@@ -212,6 +221,27 @@ export function DashboardPage() {
                     </Button>
                 </div>
             </Modal>
+        </div>
+    );
+}
+
+/**
+ * The wait for the list.
+ *
+ * Rows rather than a spinner, because the shape of what is coming is already known and a
+ * layout that does not jump when it arrives is worth more than a moving graphic.
+ */
+function ProjectsSkeleton() {
+    return (
+        <div role="status" aria-live="polite" className="border-line border-t">
+            <span className="sr-only">Loading your projects…</span>
+
+            {[0, 1, 2].map((row) => (
+                <div key={row} className="border-line flex flex-col gap-2 border-b py-4">
+                    <span className="bg-line block h-3 w-48 rounded-sm" />
+                    <span className="bg-line block h-2.5 w-28 rounded-sm opacity-60" />
+                </div>
+            ))}
         </div>
     );
 }

@@ -30,6 +30,10 @@ final class DatabaseSeeder extends Seeder
             return;
         }
 
+        // The empty one is created first so the sample plan is the most recently touched, and
+        // therefore the row the dashboard lists at the top and the one a demo opens first.
+        $createProject->handle($demo, 'House Renovation');
+
         $studio = $createProject->handle(
             owner: $demo,
             name: 'Studio Apartment',
@@ -44,8 +48,5 @@ final class DatabaseSeeder extends Seeder
                 'data' => DemoPlan::document($studio->name),
             ]);
         }
-
-        // A second, empty project so the dashboard shows more than one row.
-        $createProject->handle($demo, 'House Renovation');
     }
 }

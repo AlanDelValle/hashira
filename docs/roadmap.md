@@ -74,16 +74,20 @@ move on until it does.
 - [x] PDF export with real page size, standard scale stepping, scale bar and title block
 - [x] Read-only share links at `/share/{token}`, revocable, with a real pan-and-zoom viewer
 
-### Phase 6 — Polish `[ ]`
+### Phase 6 — Polish `[x]`
 
-- [ ] Keyboard shortcuts throughout, with a discoverable reference
-- [ ] Empty, loading and error states everywhere
-- [ ] Focus management, ARIA labelling, contrast audit
-- [ ] Small-screen message for the editor; responsive landing and dashboard
-- [ ] Performance pass against a several-hundred-element plan
-- [ ] Split the editor out of the landing bundle — the main chunk is 559 kB (pdf-lib already
-      loads on demand)
-- [ ] Demo account and seed drawing, screenshots in the README
+- [x] Keyboard shortcuts throughout, dispatched from one table, with a `?` reference built from
+      the same table and advertised in the status bar
+- [x] Empty, loading and error states everywhere, with a way out of each failure
+- [x] Focus management, ARIA labelling, and a contrast audit that runs in the test suite
+- [x] Small-screen message for the editor; responsive landing and dashboard
+- [x] Performance pass against a several-hundred-element plan: one spatial index per document
+      version, so a hover costs 0.01 ms instead of 0.48 ms on 720 elements
+- [x] Split the editor out of the landing bundle — the main chunk is 282 kB, down from 559 kB
+- [x] Demo account and seed drawing, screenshots in the README
+
+Exit criteria, and the MVP's: a person who has never seen the project can create an account,
+draw a plan, dimension it, snap, organise layers, undo, save, reopen, export and share.
 
 ---
 
@@ -93,6 +97,12 @@ A person who has never seen the project can: create an account → create a proj
 plan with walls, doors, windows and furniture → set exact dimensions → use snapping →
 organise layers → undo and redo → have it saved → reload and find it intact → export it →
 share a link. No mockups, no placeholder features.
+
+**Met.** Walked end to end in a browser against Herd and PostgreSQL at the close of Phase 6:
+register and sign in, the seeded plan opening with its walls, openings, label and blocks, a
+wall drawn with `W` and two clicks, `Ctrl+Z` returning the drawing to where it was, autosave
+settling, the drawing reopening intact, PDF, SVG and PNG coming out of it, and a share link
+serving the same drawing read-only to a signed-out browser.
 
 ---
 

@@ -7,6 +7,8 @@ interface ProjectsState {
     projects: ProjectSummary[];
     loading: boolean;
     error: string | null;
+    /** Ask for the list again after a failure. */
+    reload: () => void;
     create: (name: string) => Promise<ProjectSummary>;
     rename: (id: string, name: string) => Promise<void>;
     duplicate: (id: string) => Promise<void>;
@@ -22,6 +24,13 @@ export function useProjects(): ProjectsState {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [attempt, setAttempt] = useState(0);
+
+    const reload = useCallback(() => {
+        setLoading(true);
+        setError(null);
+        setAttempt((current) => current + 1);
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -41,7 +50,7 @@ export function useProjects(): ProjectsState {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [attempt]);
 
     const create = useCallback(async (name: string) => {
         const response = await api.post<Envelope<ProjectSummary>>('/api/projects', { name });
@@ -67,5 +76,5 @@ export function useProjects(): ProjectsState {
         setProjects((current) => current.filter((project) => project.id !== id));
     }, []);
 
-    return { projects, loading, error, create, rename, duplicate, remove };
+    return { projects, loading, error, reload, create, rename, duplicate, remove };
 }

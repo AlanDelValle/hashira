@@ -29,11 +29,17 @@ interface EditorStore {
     wallThickness: number;
     /** The library block the asset tool will place, if any. */
     pendingAssetId: string | null;
+    /** Whether the block library is showing. */
+    libraryOpen: boolean;
+    /** Whether the keyboard reference is showing. */
+    shortcutsOpen: boolean;
 
     setTool: (tool: ToolId) => void;
     setActiveLayer: (layerId: string) => void;
     setWallThickness: (thickness: number) => void;
     setPendingAsset: (assetId: string | null) => void;
+    toggleLibrary: () => void;
+    setShortcutsOpen: (open: boolean) => void;
     select: (ids: string[]) => void;
     toggleInSelection: (id: string) => void;
     clearSelection: () => void;
@@ -49,6 +55,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
     snapToGrid: true,
     wallThickness: 150,
     pendingAssetId: null,
+    libraryOpen: false,
+    shortcutsOpen: false,
 
     setTool: (tool) =>
         set((state) => ({
@@ -58,6 +66,24 @@ export const useEditorStore = create<EditorStore>((set) => ({
         })),
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
+
+    /*
+     * Closing the library also puts down whatever block was armed: leaving the tool loaded
+     * with a panel you can no longer see is a state nothing on screen explains.
+     */
+    toggleLibrary: () =>
+        set((state) =>
+            state.libraryOpen
+                ? {
+                      libraryOpen: false,
+                      pendingAssetId: null,
+                      tool: state.tool === 'asset' ? ('select' as const) : state.tool,
+                  }
+                : { libraryOpen: true },
+        ),
+
+    setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
+
     setWallThickness: (wallThickness) => set({ wallThickness }),
     /*
      * Choosing a block arms the tool; clearing it disarms the tool as well. Leaving the block

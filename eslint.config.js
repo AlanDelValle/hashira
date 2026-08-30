@@ -42,7 +42,9 @@ export default tseslint.config(
         },
     },
     {
-        files: ['**/*.js'],
-        languageOptions: { globals: globals.node },
+        // Config files and the maintenance scripts run in Node, not in a browser.
+        files: ['**/*.{js,mjs}'],
+        languageOptions: { globals: { ...globals.node, WebSocket: 'readonly' } },
+        rules: { 'no-console': 'off' },
     },
 );

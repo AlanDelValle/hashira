@@ -19,7 +19,7 @@ export function SidePanel() {
     const tool = useEditorStore((state) => state.tool);
 
     return (
-        <aside aria-label="Drawing" className="bg-surface overflow-y-auto">
+        <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
             {tool === 'wall' && <WallSettings unit={unit} />}
 
             <Section title="Properties">

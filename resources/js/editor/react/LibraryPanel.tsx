@@ -17,7 +17,10 @@ export function LibraryPanel() {
     const setPendingAsset = useEditorStore((state) => state.setPendingAsset);
 
     return (
-        <div className="border-line bg-surface w-52 shrink-0 overflow-y-auto border-r">
+        <aside
+            aria-label="Block library"
+            className="border-line bg-surface w-52 shrink-0 overflow-y-auto border-r"
+        >
             <h2 className="text-ink-subtle border-line bg-surface sticky top-0 border-b px-3 py-2 text-[11px] font-medium tracking-wide uppercase">
                 Library
             </h2>
@@ -61,7 +64,7 @@ export function LibraryPanel() {
                     </section>
                 );
             })}
-        </div>
+        </aside>
     );
 }
 

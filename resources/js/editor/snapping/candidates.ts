@@ -1,7 +1,8 @@
-import { boundsIntersect, type Bounds } from '@/editor/geometry/bbox';
+import type { Bounds } from '@/editor/geometry/bbox';
 import type { Segment } from '@/editor/geometry/segment';
 import { midpoint, type Point } from '@/editor/geometry/vec';
-import { elementBounds, elementWorldPoints, makeLookup } from '@/editor/model/elements';
+import { documentIndex } from '@/editor/model/documentIndex';
+import { elementWorldPoints, type ElementLookup } from '@/editor/model/elements';
 import type { Element, HashiraDocument } from '@/editor/model/types';
 
 /**
@@ -21,7 +22,7 @@ export interface Neighbourhood {
     midpoints: Point[];
 }
 
-function segmentsOf(element: Element, lookup: ReturnType<typeof makeLookup>): Segment[] {
+function segmentsOf(element: Element, lookup: ElementLookup): Segment[] {
     switch (element.type) {
         case 'wall':
         case 'line': {
@@ -69,7 +70,7 @@ export function gatherNear(
     search: Bounds,
     exclude: ReadonlySet<string>,
 ): Neighbourhood {
-    const lookup = makeLookup(drawing.elements);
+    const index = documentIndex(drawing);
     const hidden = new Set(
         drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
     );
@@ -77,12 +78,10 @@ export function gatherNear(
     const segments: Segment[] = [];
     const endpoints: Point[] = [];
 
-    for (const element of drawing.elements) {
+    // The search box is a few centimetres across at a typical tolerance, so this asks the
+    // index for the handful of elements that reach it rather than walking the drawing.
+    for (const element of index.near(search)) {
         if (exclude.has(element.id) || hidden.has(element.layerId)) continue;
-
-        const bounds = elementBounds(element, lookup);
-
-        if (bounds === null || !boundsIntersect(bounds, search)) continue;
 
         // A circle has no vertices; its centre is the point worth catching.
         if (element.type === 'circle') {
@@ -90,9 +89,9 @@ export function gatherNear(
             continue;
         }
 
-        const elementSegments = segmentsOf(element, lookup);
+        const elementSegments = segmentsOf(element, index.lookup);
         segments.push(...elementSegments);
-        endpoints.push(...elementWorldPoints(element, lookup));
+        endpoints.push(...elementWorldPoints(element, index.lookup));
     }
 
     return {

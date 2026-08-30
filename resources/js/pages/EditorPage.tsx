@@ -10,28 +10,38 @@ import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
 import { ShareDialog } from '@/editor/react/ShareDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
+import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
 import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
 import { useHistory } from '@/editor/react/useHistory';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
+import { useEditorStore } from '@/editor/store/editorStore';
 import { useViewportStore } from '@/editor/store/viewportStore';
 import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
 import { useDocument } from '@/projects/useDocument';
 import { cn } from '@/lib/cn';
+import { formatChord } from '@/lib/keys';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+import { Button } from '@/ui/Button';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Logo } from '@/ui/Logo';
+import { SkipLink } from '@/ui/SkipLink';
 
 export function EditorPage() {
     const { projectId } = useParams<{ projectId: string }>();
-    const { document: payload, loading, error } = useDocument(projectId);
+    const { document: payload, loading, error, retry } = useDocument(projectId);
 
     const load = useDocumentStore((state) => state.load);
     const parseError = useDocumentStore((state) => state.error);
     const dropped = useDocumentStore((state) => state.dropped);
     const drawingId = useDocumentStore((state) => state.document.id);
     const size = useViewportStore((state) => state.size);
-    const [libraryOpen, setLibraryOpen] = useState(false);
+    const elementCount = useDocumentStore((state) => state.document.elements.length);
+    const libraryOpen = useEditorStore((state) => state.libraryOpen);
+
+    // Matches the `lg` breakpoint. Below it the editor is not merely hidden, it is not built.
+    const roomToDraw = useMediaQuery('(min-width: 64rem)');
 
     useEffect(() => {
         if (payload === null || projectId === undefined) {
@@ -39,6 +49,10 @@ export function EditorPage() {
         }
 
         load(payload.drawing);
+
+        // A selection left over from another project in this tab would name elements that no
+        // longer exist, and the panels would be describing nothing.
+        useEditorStore.getState().clearSelection();
 
         // `load` is synchronous, so the parsed document is already in the store and is the
         // right baseline: autosave must treat what just arrived as saved, not as an edit.
@@ -96,27 +110,46 @@ export function EditorPage() {
     }
 
     if (error !== null || payload === null || parseError !== null) {
+        // A drawing that arrived but would not parse is not going to parse on a second try;
+        // a request that never arrived might. Only one of the two gets a retry.
+        const worthRetrying = parseError === null;
+
         return (
             <div className="bg-canvas flex min-h-screen items-center justify-center px-6">
                 <div className="max-w-sm text-center">
                     <p role="alert" className="text-ink text-sm">
                         {error ?? parseError ?? 'Could not open this drawing.'}
                     </p>
-                    <Link
-                        to="/projects"
-                        className="text-ink-muted mt-4 inline-block rounded-sm text-sm underline"
-                    >
-                        Back to projects
-                    </Link>
+
+                    {worthRetrying && (
+                        <p className="text-ink-muted mt-1.5 text-sm">
+                            Nothing has been lost — the drawing is still on the server.
+                        </p>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-center gap-3">
+                        {worthRetrying && (
+                            <Button variant="secondary" size="sm" onClick={retry}>
+                                Try again
+                            </Button>
+                        )}
+
+                        <Link
+                            to="/projects"
+                            className="text-ink-muted rounded-sm text-sm underline"
+                        >
+                            Back to projects
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
     }
 
-    return (
-        <>
-            {/* The editor is a pointer-and-precision tool; a phone cannot give it a good home. */}
-            <div className="bg-canvas flex min-h-screen items-center justify-center px-6 lg:hidden">
+    // The editor is a pointer-and-precision tool; a phone cannot give it a good home.
+    if (!roomToDraw) {
+        return (
+            <div className="bg-canvas flex min-h-screen items-center justify-center px-6">
                 <div className="max-w-xs text-center">
                     <Logo className="text-ink-subtle mx-auto size-5" />
                     <p className="text-ink mt-4 text-sm">The editor needs a larger screen.</p>
@@ -132,21 +165,25 @@ export function EditorPage() {
                     </Link>
                 </div>
             </div>
+        );
+    }
 
-            <div className="bg-canvas hidden h-screen grid-rows-[3rem_1fr_1.75rem] lg:grid">
+    return (
+        <>
+            <div className="bg-canvas grid h-screen grid-rows-[3rem_1fr_1.75rem]">
+                <SkipLink to="sheet">Skip to the drawing</SkipLink>
+
                 <EditorHeader name={payload.name} projectId={projectId ?? ''} />
 
                 <div className="flex overflow-hidden">
-                    <Toolbar
-                        libraryOpen={libraryOpen}
-                        onToggleLibrary={() => setLibraryOpen((open) => !open)}
-                    />
+                    <Toolbar />
 
                     {libraryOpen && <LibraryPanel />}
 
-                    <div className="border-line min-w-0 flex-1 border-r">
+                    <main id="sheet" className="border-line relative min-w-0 flex-1 border-r">
                         <CanvasHost />
-                    </div>
+                        {elementCount === 0 && <EmptySheet />}
+                    </main>
 
                     <div className="w-60 shrink-0">
                         <SidePanel />
@@ -155,6 +192,8 @@ export function EditorPage() {
 
                 <StatusBar />
             </div>
+
+            <ShortcutsDialog />
 
             {dropped.length > 0 && <DroppedNotice count={dropped.length} />}
         </>
@@ -193,6 +232,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
             <div className="ml-auto flex items-center gap-0.5">
                 <HeaderButton
                     label={canUndo ? `Undo ${undoLabel ?? ''}`.trim() : 'Undo'}
+                    shortcut={formatChord(['Mod', 'Z'])}
                     disabled={!canUndo}
                     onClick={() => history.undo()}
                 >
@@ -201,6 +241,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
 
                 <HeaderButton
                     label={canRedo ? `Redo ${redoLabel ?? ''}`.trim() : 'Redo'}
+                    shortcut={formatChord(['Mod', 'Shift', 'Z'])}
                     disabled={!canRedo}
                     onClick={() => history.redo()}
                 >
@@ -209,7 +250,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
 
                 <span className="bg-line mx-1.5 h-4 w-px" aria-hidden />
 
-                <HeaderButton label="Zoom to fit  ·  Shift 1" onClick={zoomToFit}>
+                <HeaderButton label="Zoom to fit" shortcut="Shift 1" onClick={zoomToFit}>
                     <Maximize2 className="size-3.5" aria-hidden />
                 </HeaderButton>
 
@@ -239,11 +280,13 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
 
 function HeaderButton({
     label,
+    shortcut,
     disabled = false,
     onClick,
     children,
 }: {
     label: string;
+    shortcut?: string;
     disabled?: boolean;
     onClick: () => void;
     children: ReactNode;
@@ -251,8 +294,9 @@ function HeaderButton({
     return (
         <button
             type="button"
-            title={label}
+            title={shortcut === undefined ? label : `${label}  ·  ${shortcut}`}
             aria-label={label}
+            aria-keyshortcuts={shortcut}
             disabled={disabled}
             onClick={onClick}
             className={cn(
@@ -264,6 +308,34 @@ function HeaderButton({
         >
             {children}
         </button>
+    );
+}
+
+/**
+ * An empty sheet, said out loud.
+ *
+ * Not a marketing panel and not a tutorial: the two facts someone needs at that moment, which
+ * are that the drawing really is empty and which key starts a wall.
+ */
+function EmptySheet() {
+    return (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="max-w-xs text-center">
+                <p className="text-ink-muted text-sm">This sheet is empty.</p>
+                <p className="text-ink-subtle mt-1.5 text-[13px]">
+                    Press <Key>W</Key> and click twice to draw a wall, or pick a tool from the left.{' '}
+                    <Key>?</Key> lists every shortcut.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function Key({ children }: { children: ReactNode }) {
+    return (
+        <kbd className="border-line-strong bg-surface text-ink-muted mx-0.5 inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-sm border px-1 font-mono text-[11px]">
+            {children}
+        </kbd>
     );
 }
 

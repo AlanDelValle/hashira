@@ -5,10 +5,11 @@
 A free and open-source 2D design tool for floor plans, interiors and technical drawings —
 in the browser.
 
-> **Status: early development.** Phase 0 (architecture and specification) is complete.
-> The editor is being built in the open, phase by phase — see the [roadmap](docs/roadmap.md).
-> This README documents what the project is and how it is put together; it does not yet
-> describe a finished product.
+> **Status: the MVP works end to end.** You can create an account, draw a plan with walls,
+> doors, windows and furniture, set exact dimensions, snap, organise layers, undo, have it
+> saved, reopen it, export it and share a read-only link. Everything past that — dimension
+> chains, DXF, collaboration, 3D — is recorded in the [roadmap](docs/roadmap.md) and is
+> deliberately not here yet.
 
 ---
 
@@ -24,8 +25,19 @@ drawing an accurate 2D plan — done properly.
 
 ## Screenshots
 
-_Coming with Phase 2, when there is an editor worth photographing. Placeholder images are
-worse than none._
+![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing and furniture blocks, and the properties and layers panels](docs/images/editor.png)
+
+<p align="center"><em>The editor. Walls carry thickness; the door and window cut real
+openings in the wall that hosts them.</em></p>
+
+![The projects list](docs/images/dashboard.png)
+
+<p align="center"><em>Projects. One drawing each.</em></p>
+
+These are generated rather than captured by hand — `npm run screenshots` drives a headless
+Chrome against a local instance signed in as the demo account, so they cannot quietly fall
+out of date. It needs the app running and a seeded database; set `APP_URL` if it is not at
+`https://hashira.test`, and `CHROME_PATH` if Chrome is somewhere unusual.
 
 ## Stack
 
@@ -36,7 +48,7 @@ worse than none._
 | Rendering   | Canvas 2D for the viewport; independent serializers for SVG, PNG and PDF export |
 | Backend     | Laravel 13, PHP 8.4, REST, session authentication with CSRF                     |
 | Database    | PostgreSQL — relational metadata, JSONB for the drawing itself                  |
-| Tests       | Vitest + Testing Library, Pest, Playwright                                      |
+| Tests       | Vitest + Testing Library on the front, Pest on the back                         |
 | CI          | GitHub Actions                                                                  |
 
 Local development targets [Laravel Herd](https://herd.laravel.com), which already provides
@@ -117,10 +129,14 @@ Documentation index:
 
 ## Roadmap
 
-Phase 0 discovery is done. Phase 1 builds the foundation (auth, dashboard, CI); Phases 2–3
-build the editor itself; Phases 4–6 add history, persistence, export, sharing and polish.
-Collaboration, DXF, plugins and 3D are recorded as later phases so they stay out of the
-MVP. Details in [`docs/roadmap.md`](docs/roadmap.md).
+Phases 0 to 6 are done: discovery and specification, the foundation (auth, dashboard, CI),
+the editor core, the architecture tools, history and persistence, export and sharing, and
+polish. That is the MVP.
+
+What comes next is drafting depth (dimension chains, automatic room detection, wall joins),
+then interchange (DXF, richer export), then collaboration, and only after all of that the
+things people ask for first — 3D, BIM semantics, generative features. The reasoning for
+that order, and everything deliberately excluded, is in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Contributing
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 import { InputController } from '@/editor/input/controller';
 import { CanvasRenderer } from '@/editor/render/renderer';
@@ -9,6 +9,7 @@ import { CanvasRenderer } from '@/editor/render/renderer';
  * the drawing surface between those two moments happens without React.
  */
 export function CanvasHost({ readOnly = false }: { readOnly?: boolean } = {}) {
+    const describedBy = useId();
     const wrapperRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -47,12 +48,23 @@ export function CanvasHost({ readOnly = false }: { readOnly?: boolean } = {}) {
         <div ref={wrapperRef} className="relative h-full w-full overflow-hidden">
             <canvas
                 ref={canvasRef}
-                // Focusable so the canvas can take keyboard input directly; the outline is
-                // suppressed because the drawing shows focus through the selection itself.
+                /*
+                 * Focusable, because this is where the keyboard has to land for a shortcut to
+                 * reach a tool. A pointer click never shows the ring — the selection already
+                 * says what is happening — but arriving here by Tab does, because otherwise
+                 * the focus simply disappears for one stop.
+                 */
                 tabIndex={0}
-                aria-label="Drawing surface"
-                className="block touch-none outline-none"
+                aria-label={readOnly ? 'Drawing' : 'Drawing surface'}
+                aria-describedby={describedBy}
+                className="focus-visible:outline-accent block touch-none outline-none focus-visible:outline-2 focus-visible:-outline-offset-2"
             />
+
+            <p id={describedBy} className="sr-only">
+                {readOnly
+                    ? 'Drag to pan and scroll to zoom. Press Shift and 1 to fit the whole drawing.'
+                    : 'A pointer-driven drawing surface. Choose a tool from the rail on the left, then click on the sheet to draw. Press the question mark key for the full list of shortcuts.'}
+            </p>
         </div>
     );
 }

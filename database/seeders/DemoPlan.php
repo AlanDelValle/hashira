@@ -40,7 +40,9 @@ final class DemoPlan
             self::opening('door', $south['id'], offset: 1200, width: 900),
             self::opening('window', $north['id'], offset: self::WIDTH / 2, width: 1600),
 
-            self::roomLabel('Living', self::WIDTH / 2, 700),
+            // Placed in the one part of the floor the furniture leaves clear, the way a label
+            // is set out on a real plan rather than dropped in the middle of the sofa.
+            self::roomLabel('Living', 2700, 3200),
 
             // A few blocks from the library, so a fresh install opens on a furnished plan
             // rather than an empty shell.

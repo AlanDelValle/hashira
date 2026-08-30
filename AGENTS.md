@@ -16,6 +16,10 @@ php artisan migrate --seed
 npm run dev
 ```
 
+`npm run screenshots` regenerates the README images by driving a headless Chrome against the
+running app, signed in as the seeded demo account. Run it whenever the editor's chrome changes
+shape, rather than cropping a screenshot by hand.
+
 ## Non-negotiable rules
 
 These exist because breaking them is what turns an editor into an unmaintainable one.
@@ -34,11 +38,19 @@ These exist because breaking them is what turns an editor into an unmaintainable
    input.
 7. **The document format is versioned.** Changing its shape requires a `schemaVersion` bump,
    a migration and a fixture test — see [`docs/document-format.md`](docs/document-format.md).
+8. **Keyboard shortcuts live in `editor/input/shortcuts.ts`.** The controller dispatches from
+   that table, the toolbar labels its buttons from it and the `?` dialog renders it. A key
+   added anywhere else is a key nobody can find — which is exactly how the library button came
+   to advertise a `B` that did nothing.
+9. **Colour is decided by `resources/css/app.css` and policed by `ui/contrast.test.ts`.**
+   Components use tokens, never literals, and the audit holds every pair the interface paints
+   to WCAG AA. If a token has to be lightened, the pair it breaks has to be dealt with first.
 
 ## Checks before calling anything done
 
 ```bash
-composer pint
+composer lint
+composer analyse
 composer test
 npm run lint
 npm run typecheck

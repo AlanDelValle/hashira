@@ -13,6 +13,7 @@ import { api, type Envelope } from '@/lib/api';
 import type { SharedDocumentPayload } from '@/types/api';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Wordmark } from '@/ui/Logo';
+import { SkipLink } from '@/ui/SkipLink';
 
 /**
  * What a link recipient sees: the drawing, and a way to look around it.
@@ -30,6 +31,7 @@ export function SharedPlanPage() {
     const load = useDocumentStore((state) => state.load);
     const parseError = useDocumentStore((state) => state.error);
     const drawingId = useDocumentStore((state) => state.document.id);
+    const elementCount = useDocumentStore((state) => state.document.elements.length);
     const scale = useDocumentStore((state) => state.document.settings.scale);
     const size = useViewportStore((state) => state.size);
 
@@ -119,6 +121,8 @@ export function SharedPlanPage() {
 
     return (
         <div className="bg-canvas grid h-screen grid-rows-[3rem_1fr]">
+            <SkipLink to="sheet">Skip to the drawing</SkipLink>
+
             <header className="border-line bg-surface flex items-center gap-3 border-b px-4">
                 <Link to="/" className="rounded-sm" aria-label="Hashira home">
                     <Wordmark />
@@ -143,7 +147,15 @@ export function SharedPlanPage() {
                 </button>
             </header>
 
-            <CanvasHost readOnly />
+            <main id="sheet" className="relative h-full min-h-0">
+                <CanvasHost readOnly />
+
+                {elementCount === 0 && (
+                    <p className="text-ink-subtle pointer-events-none absolute inset-0 flex items-center justify-center text-sm">
+                        This drawing is empty.
+                    </p>
+                )}
+            </main>
         </div>
     );
 }

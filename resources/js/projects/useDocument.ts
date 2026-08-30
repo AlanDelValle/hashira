@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Envelope } from '@/lib/api';
 import type { DocumentPayload } from '@/types/api';
@@ -13,10 +13,18 @@ interface DocumentState {
     document: DocumentPayload | null;
     loading: boolean;
     error: string | null;
+    /** Ask for the drawing again after a failure. */
+    retry: () => void;
 }
 
 export function useDocument(projectId: string | undefined): DocumentState {
     const [settled, setSettled] = useState<Settled | null>(null);
+    const [attempt, setAttempt] = useState(0);
+
+    const retry = useCallback(() => {
+        setSettled(null);
+        setAttempt((current) => current + 1);
+    }, []);
 
     useEffect(() => {
         if (projectId === undefined) return;
@@ -44,7 +52,7 @@ export function useDocument(projectId: string | undefined): DocumentState {
         return () => {
             cancelled = true;
         };
-    }, [projectId]);
+    }, [projectId, attempt]);
 
     // Loading is derived rather than stored, so navigating to a different project cannot
     // show the previous drawing for a frame while the new request is in flight.
@@ -54,5 +62,6 @@ export function useDocument(projectId: string | undefined): DocumentState {
         document: current?.document ?? null,
         loading: current === null,
         error: current?.error ?? null,
+        retry,
     };
 }

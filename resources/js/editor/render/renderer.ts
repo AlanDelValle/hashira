@@ -1,5 +1,5 @@
-import { boundsIntersect } from '@/editor/geometry/bbox';
-import { elementBounds, makeLookup } from '@/editor/model/elements';
+import { documentIndex } from '@/editor/model/documentIndex';
+import type { ElementLookup } from '@/editor/model/elements';
 import type { Element, HashiraDocument } from '@/editor/model/types';
 import { formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
@@ -132,21 +132,33 @@ export class CanvasRenderer {
             paintGrid(ctx, viewport, visible, drawing.settings.grid, this.theme);
         }
 
-        // Elements being dragged are painted in their previewed state; the document itself is
-        // untouched until the drag commits.
-        const dragged = new Map(
-            (interaction.drag?.preview ?? []).map((element) => [element.id, element]),
-        );
+        /*
+         * What to paint: whatever the index says is on screen. The index belongs to this
+         * version of the document, so a pan or a zoom costs a cell walk rather than a pass
+         * over every element in the drawing.
+         *
+         * Elements being dragged are painted in their previewed state — the document itself
+         * is untouched until the drag commits — and they are painted wherever they now are,
+         * including when they have been dragged in from off screen.
+         */
+        const index = documentIndex(drawing);
+        const preview = interaction.drag?.preview ?? [];
 
-        const current = drawing.elements.map((element) => dragged.get(element.id) ?? element);
-        const lookup = makeLookup(current);
+        let onScreen: readonly Element[];
+        let lookup: ElementLookup;
 
-        // Off-screen elements cost nothing but a bounds check.
-        const onScreen = current.filter((element) => {
-            const bounds = elementBounds(element, lookup);
+        if (preview.length === 0) {
+            onScreen = index.near(visible);
+            lookup = index.lookup;
+        } else {
+            const dragged = new Map(preview.map((element) => [element.id, element]));
+            const near = new Set(index.near(visible).map((element) => element.id));
 
-            return bounds === null || boundsIntersect(bounds, visible);
-        });
+            lookup = (id) => dragged.get(id) ?? index.lookup(id);
+            onScreen = drawing.elements
+                .filter((element) => near.has(element.id) || dragged.has(element.id))
+                .map((element) => dragged.get(element.id) ?? element);
+        }
 
         paintScene(ctx, buildScene(onScreen, drawing.layers, { palette }), { px });
 

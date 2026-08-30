@@ -1,5 +1,6 @@
 import { addElements, deleteElements, replaceElements } from '@/editor/commands/command';
 import { point, type Point } from '@/editor/geometry/vec';
+import { documentIndex } from '@/editor/model/documentIndex';
 import {
     documentBounds,
     elementBounds,
@@ -28,6 +29,7 @@ import {
     createRectTool,
 } from '@/editor/tools/drawTools';
 import { createSelectTool } from '@/editor/tools/selectTool';
+import { LIBRARY_KEY, REFERENCE_KEY, toolForKey } from '@/editor/input/shortcuts';
 import { snapPoint } from '@/editor/snapping/engine';
 import type { Tool, ToolContext, ToolEvent } from '@/editor/tools/types';
 import { panByScreen, toWorld, zoomAt } from '@/editor/viewport/viewport';
@@ -50,18 +52,6 @@ const SNAP_TOLERANCE_PX = 10;
 const ZOOM_STEP = 1.12;
 
 const DUPLICATE_OFFSET_MM = 200;
-
-const TOOL_SHORTCUTS: Record<string, ToolId> = {
-    v: 'select',
-    w: 'wall',
-    d: 'door',
-    n: 'window',
-    o: 'room',
-    l: 'line',
-    r: 'rect',
-    c: 'circle',
-    p: 'polygon',
-};
 
 export interface InputOptions {
     /**
@@ -170,7 +160,7 @@ export class InputController {
 
         return {
             drawing,
-            lookup: makeLookup(drawing.elements),
+            lookup: documentIndex(drawing).lookup,
             viewport,
             tolerance,
             activeLayerId,
@@ -312,7 +302,7 @@ export class InputController {
     };
 
     private onKeyDown = (event: KeyboardEvent): void => {
-        if (isTypingTarget(event.target)) {
+        if (keyBelongsElsewhere(event.target)) {
             return;
         }
 
@@ -413,12 +403,36 @@ export class InputController {
             return;
         }
 
-        if (!mod && !event.altKey) {
-            const tool = TOOL_SHORTCUTS[event.key.toLowerCase()];
+        if (mod || event.altKey) {
+            return;
+        }
 
-            if (tool !== undefined) {
-                store.setTool(tool);
-            }
+        const tool = toolForKey(event.key);
+
+        if (tool !== undefined) {
+            store.setTool(tool);
+
+            return;
+        }
+
+        switch (event.key.toLowerCase()) {
+            case LIBRARY_KEY.toLowerCase():
+                store.toggleLibrary();
+
+                return;
+
+            case 'g':
+                store.toggleGrid();
+
+                return;
+
+            case 's':
+                store.toggleSnap();
+
+                return;
+
+            case REFERENCE_KEY:
+                store.setShortcutsOpen(true);
         }
     };
 
@@ -531,18 +545,28 @@ function selectableIds(drawing: HashiraDocument): string[] {
         .map((element) => element.id);
 }
 
-/** Keys typed into a field belong to the field, not to the editor. */
-function isTypingTarget(target: EventTarget | null): boolean {
+/**
+ * Keys that are not the editor's to take.
+ *
+ * A key typed into a field belongs to the field. A key pressed while a dialog or a menu is
+ * open belongs to that — otherwise naming a version "door" would swap the tool underneath it,
+ * and pressing Delete in a menu would delete the selection behind it.
+ */
+function keyBelongsElsewhere(target: EventTarget | null): boolean {
     if (!(target instanceof HTMLElement)) {
         return false;
     }
 
-    return (
+    if (
         target.isContentEditable ||
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
-    );
+    ) {
+        return true;
+    }
+
+    return target.closest('[role="dialog"], [role="menu"], [role="alertdialog"]') !== null;
 }
 
 function preventDefault(event: Event): void {

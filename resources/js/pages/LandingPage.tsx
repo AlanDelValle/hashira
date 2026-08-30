@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { Wordmark } from '@/ui/Logo';
+import { SkipLink } from '@/ui/SkipLink';
 
 import { PlanDrawing } from './landing/PlanDrawing';
 
@@ -14,11 +15,17 @@ export function LandingPage() {
 
     return (
         <div className="bg-canvas">
-            <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+            <SkipLink />
+
+            <header className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-6">
                 <Wordmark />
 
-                <nav className="flex items-center gap-6 text-[13px]">
-                    <a href={GITHUB_URL} className="text-ink-muted hover:text-ink rounded-sm">
+                <nav className="flex items-center gap-4 text-[13px] sm:gap-6">
+                    {/* Repeated further down the page, so the narrowest screens can lose it. */}
+                    <a
+                        href={GITHUB_URL}
+                        className="text-ink-muted hover:text-ink hidden rounded-sm min-[380px]:inline"
+                    >
                         GitHub
                     </a>
                     {user === null ? (
@@ -44,9 +51,9 @@ export function LandingPage() {
                 </nav>
             </header>
 
-            <main>
-                <section className="mx-auto max-w-5xl px-6 pt-16 pb-20 sm:pt-24">
-                    <h1 className="text-ink max-w-2xl text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl">
+            <main id="content">
+                <section className="mx-auto max-w-5xl px-5 pt-14 pb-16 sm:px-6 sm:pt-24 sm:pb-20">
+                    <h1 className="text-ink max-w-2xl text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl">
                         Design spaces. Precisely.
                     </h1>
 
@@ -83,7 +90,10 @@ export function LandingPage() {
                     </p>
                 </section>
 
-                <section aria-label="Example drawing" className="mx-auto max-w-5xl px-6 pb-24">
+                <section
+                    aria-label="Example drawing"
+                    className="mx-auto max-w-5xl px-5 pb-20 sm:px-6 sm:pb-24"
+                >
                     <div className="border-line bg-sheet shadow-panel overflow-hidden rounded-lg border">
                         {/* Height capped so the sheet never eats more than part of a fold;
                             the drawing centres itself in whatever width is left. */}
@@ -183,7 +193,7 @@ export function LandingPage() {
                 </Section>
 
                 <section className="border-line border-t">
-                    <div className="mx-auto max-w-5xl px-6 py-20 text-center">
+                    <div className="mx-auto max-w-5xl px-5 py-16 text-center sm:px-6 sm:py-20">
                         <h2 className="text-ink text-2xl font-semibold tracking-tight">
                             Draw your first plan
                         </h2>
@@ -202,7 +212,7 @@ export function LandingPage() {
             </main>
 
             <footer className="border-line border-t">
-                <div className="text-ink-subtle mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-ink-subtle mx-auto flex max-w-5xl flex-col gap-3 px-5 py-8 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
                     <Wordmark className="opacity-70" />
                     <p>
                         MIT licensed. Not affiliated with any other design tool. Built by{' '}
@@ -220,7 +230,7 @@ export function LandingPage() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="border-line border-t">
-            <div className="mx-auto max-w-5xl px-6 py-16">
+            <div className="mx-auto max-w-5xl px-5 py-12 sm:px-6 sm:py-16">
                 <h2 className="text-ink-subtle text-[11px] font-medium tracking-widest uppercase">
                     {title}
                 </h2>

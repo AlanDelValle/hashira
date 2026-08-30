@@ -1,7 +1,8 @@
-import { boundsContain, boundsIntersect, type Bounds } from '@/editor/geometry/bbox';
+import { boundsContain, boundsIntersect, expandBounds, type Bounds } from '@/editor/geometry/bbox';
 import type { Point } from '@/editor/geometry/vec';
 
-import { elementBounds, hitTestElement, makeLookup } from './elements';
+import { documentIndex } from './documentIndex';
+import { hitTestElement } from './elements';
 import type { Element, HashiraDocument } from './types';
 
 /**
@@ -20,32 +21,21 @@ function selectableLayers(drawing: HashiraDocument): Set<string> {
     );
 }
 
-/** Elements from topmost to bottom-most, which is the order a pick should consider them. */
-function topDown(drawing: HashiraDocument): Element[] {
-    const rank = new Map(drawing.layers.map((layer, index) => [layer.id, index]));
-    const fallback = drawing.layers.length;
-
-    return drawing.elements
-        .map((element, index) => ({ element, index }))
-        .sort((a, b) => {
-            const byLayer =
-                (rank.get(b.element.layerId) ?? fallback) -
-                (rank.get(a.element.layerId) ?? fallback);
-
-            return byLayer !== 0 ? byLayer : b.index - a.index;
-        })
-        .map((entry) => entry.element);
-}
-
-/** The topmost element under `p`, or null. `tolerance` is in world millimetres. */
+/**
+ * The topmost element under `p`, or null. `tolerance` is in world millimetres.
+ *
+ * Only the elements whose bounds reach the pointer are considered, so a hover costs the same
+ * on a plan with a thousand elements as on one with ten.
+ */
 export function pickAt(drawing: HashiraDocument, p: Point, tolerance: number): Element | null {
-    const lookup = makeLookup(drawing.elements);
+    const index = documentIndex(drawing);
     const selectable = selectableLayers(drawing);
+    const reach = expandBounds({ minX: p.x, minY: p.y, maxX: p.x, maxY: p.y }, tolerance);
 
-    for (const element of topDown(drawing)) {
-        if (!selectable.has(element.layerId)) continue;
+    const candidates = index.near(reach).filter((element) => selectable.has(element.layerId));
 
-        if (hitTestElement(element, lookup, p, tolerance)) {
+    for (const element of index.sortTopDown(candidates)) {
+        if (hitTestElement(element, index.lookup, p, tolerance)) {
             return element;
         }
     }
@@ -62,13 +52,13 @@ export function pickInBounds(
     bounds: Bounds,
     mode: MarqueeMode,
 ): Element[] {
-    const lookup = makeLookup(drawing.elements);
+    const index = documentIndex(drawing);
     const selectable = selectableLayers(drawing);
 
-    return drawing.elements.filter((element) => {
+    return index.near(bounds).filter((element) => {
         if (!selectable.has(element.layerId)) return false;
 
-        const elementArea = elementBounds(element, lookup);
+        const elementArea = index.bounds(element);
 
         if (elementArea === null) return false;
 

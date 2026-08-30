@@ -68,7 +68,14 @@ it along its wall, and rotating one does nothing because it already follows the 
 ## 4. Picking
 
 Hit-testing is on the **outline**, at a tolerance converted from a fixed screen distance into
-world millimetres, so picking feels identical at every zoom. Rooms also accept a hit anywhere
+world millimetres, so picking feels identical at every zoom.
+
+Nothing walks the whole drawing to answer "what is under the pointer". `model/documentIndex.ts`
+builds one index per version of the document — an id map, each element's bounds, and a uniform
+grid two metres to a cell — and picking, snapping and the renderer's culling all query it. A
+document is immutable, so an index belongs to exactly one version and cannot go stale; the one
+for a superseded version is collected with it. On a several-hundred-element plan this is the
+difference between a hover that costs a cell walk and one that costs the drawing. Rooms also accept a hit anywhere
 inside, because a room is a space rather than a boundary; rectangles and circles do not, so that
 a shape underneath stays reachable. A wall is picked anywhere across its thickness.
 
@@ -117,15 +124,25 @@ first vertex closes the ring, Enter or a double click finishes it open, Escape t
 | Middle drag, or Space + drag   | pan                                      |
 | `V` `W` `D` `N` `O`            | select, wall, door, window, room         |
 | `L` `R` `C` `P`                | line, rectangle, circle, polygon         |
+| `B`                            | the block library                        |
+| `G` / `S`                      | grid on or off / snap to grid on or off  |
 | `Delete` / `Backspace`         | delete the selection                     |
 | `Escape`                       | cancel the current action and deselect   |
 | Arrow keys                     | nudge by one grid step, or 1 mm with Alt |
 | `Ctrl/Cmd + Z` / `+ Shift + Z` | undo / redo                              |
+| `Ctrl/Cmd + S`                 | save now                                 |
 | `Ctrl/Cmd + A`                 | select everything selectable             |
 | `Ctrl/Cmd + D`                 | duplicate                                |
 | `Shift + 1` / `Shift + 2`      | zoom to fit / to selection               |
+| `?`                            | the keyboard reference                   |
 
-Keys typed into a form field belong to the field, not to the editor.
+That table is written here for reading; the one the application uses is `input/shortcuts.ts`.
+The controller dispatches from it, the toolbar labels its buttons from it and the `?` dialog is a rendering
+of it, so a tooltip cannot promise a key that nothing listens for. It used to: the library
+button advertised a `B` that had never been wired up.
+
+Keys typed into a form field belong to the field, and keys pressed while a dialog or a menu is
+open belong to that — otherwise naming a version "door" would swap the tool underneath it.
 
 ## 8. Snapping
 
@@ -242,7 +259,20 @@ and most sessions never export a PDF, so it is imported at the moment someone as
 PNG is the same scene on an off-screen canvas at a chosen size. Pen weights follow the zoom, so
 a larger export gets crisper lines rather than thicker ones.
 
-## 16. What is not here yet
+## 16. Reach
+
+The chrome is keyboard-operable throughout. The tool rail follows the ARIA toolbar pattern —
+one tab stop, arrow keys within it — the canvas is focusable and shows a focus ring when it is
+reached by keyboard rather than by pointer, and each page carries a skip link straight to its
+content. Every colour pair the interface paints is held to WCAG 2.1 AA by `ui/contrast.test.ts`,
+which reads the tokens out of the stylesheet rather than a copy of them: 4.5:1 for text, 3:1
+for the edges of controls. That test is what pushed `ink-subtle` and the control border darker
+than they were first drawn.
+
+Below the `lg` breakpoint the editor is not merely hidden — it is not mounted, so a phone does
+not start a render loop for a canvas nobody can draw on.
+
+## 17. What is not here yet
 
 Dimensions and measurement annotations, DXF, and anything collaborative. See
 [roadmap.md](roadmap.md).
