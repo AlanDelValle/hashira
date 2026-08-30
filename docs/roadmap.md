@@ -60,12 +60,12 @@ move on until it does.
 - [x] Layers panel: visibility, lock, ordering, and which layer is active
 - [x] Local element library — 37 parametric blocks across seven categories
 
-### Phase 4 — History and persistence `[ ]`
+### Phase 4 — History and persistence `[x]`
 
-- [ ] Undo / redo across every command, with coalescing for property edits
-- [ ] Autosave with debounce, save status, retry, and optimistic-concurrency conflict handling
-- [ ] Reopen a project and get the exact drawing back
-- [ ] Manual "create version" snapshots
+- [x] Undo / redo across every command, with coalescing for property edits
+- [x] Autosave with debounce, ceiling, save status, retry with backoff, and conflict handling
+- [x] Reopen a project and get the exact drawing back
+- [x] Manual "create version" snapshots, listed and restorable through an undoable command
 
 ### Phase 5 — Export and share `[ ]`
 
@@ -117,7 +117,7 @@ share a link. No mockups, no placeholder features.
 - Realtime presence and cursors (Laravel Reverb)
 - Live co-editing built on the existing command stream
 - Comments and mentions anchored to drawing coordinates
-- Version history browsing, comparison and restore
+- Version history browsing and comparison (restore landed in Phase 4)
 - Share-link roles: viewer, commenter, editor
 
 ### Phase 10 — Platform

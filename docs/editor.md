@@ -170,7 +170,38 @@ of it (×1, ×2, ×5, by decade) still at least nine pixels apart, so zooming ou
 out instead of turning them into a grey wash. Major lines every fifth minor one, and the drawing
 origin is marked so absolute coordinates have something to refer to.
 
-## 12. What is not here yet
+## 12. Saving
 
-Autosave, versions and export — Phases 4 and 5 in [roadmap.md](roadmap.md). Dimensions and
-measurement annotations are further out still.
+`persistence/autosave.ts` watches the document store and is shaped by four rules:
+
+- **A save never blocks input.** Requests are fire-and-forget; the editor does not wait on one
+  and does not freeze while one is outstanding.
+- **Edits arrive in bursts.** A 1.2 s debounce absorbs a burst. A 10 s ceiling means someone
+  drawing continuously still gets saved rather than only when they finally pause.
+- **One request at a time.** Edits made during a save go out in one further request afterwards,
+  not one request per edit.
+- **A conflict is not an error to retry.** `documents.revision` guards every write; a 409 means
+  the drawing was saved somewhere else, and retrying would overwrite that work. Autosave stops,
+  says so, and offers a reload. Further editing does not resume writing over it.
+
+A failed save retries with a growing delay, and further editing does _not_ reset that backoff —
+rescheduling on every stroke would hammer a struggling server and would replace the message
+saying the save failed with one saying everything is fine.
+
+`Ctrl/Cmd + S` flushes immediately, and leaving the page with unsaved work asks for
+confirmation.
+
+## 13. Versions
+
+Autosave keeps the latest work; a version is a point someone chose to come back to. Creating
+one flushes first, so the snapshot is of what is on screen rather than whatever the server
+happened to be holding.
+
+Restoring runs through `replaceDocument`, a command like any other — so going back to a version
+is itself undoable. A restore is a decision someone can regret, and the drawing they left
+should be one Ctrl+Z away rather than gone.
+
+## 14. What is not here yet
+
+Export — Phase 5 in [roadmap.md](roadmap.md). Dimensions and measurement annotations are
+further out still.

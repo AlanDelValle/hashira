@@ -8,6 +8,7 @@ import {
 } from '@/editor/model/elements';
 import { duplicateElements } from '@/editor/model/duplicate';
 import type { Element, HashiraDocument } from '@/editor/model/types';
+import { autosave } from '@/editor/persistence/autosave';
 import { requestRepaint } from '@/editor/render/frame';
 import { history, runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore, type ToolId } from '@/editor/store/editorStore';
@@ -322,6 +323,14 @@ export class InputController {
             }
 
             this.pruneSelection();
+
+            return;
+        }
+
+        if (mod && event.key.toLowerCase() === 's') {
+            // The browser's own save dialog is never what someone means here.
+            event.preventDefault();
+            autosave.flush();
 
             return;
         }

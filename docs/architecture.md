@@ -266,10 +266,18 @@ command executed → document dirty → debounce 1.2 s (10 s hard ceiling)
                  → status: Editing… / Saving… / Saved
 ```
 
-The editor stays fully interactive during a save; an in-flight request never blocks input.
-Failures surface in the status bar and are retried with backoff rather than dropped
-silently. `Ctrl/Cmd+S` forces an immediate flush, and versions can be created on demand
-(`document_versions`) so the structure for history exists before the UI for it does.
+The editor stays fully interactive during a save; an in-flight request never blocks input,
+and only one request is ever outstanding — edits made during a save go out in one further
+request afterwards rather than one per edit.
+
+Failures surface in the header and retry with a growing delay. A **conflict is different from
+a failure**: a 409 means `documents.revision` moved, so the drawing was saved somewhere else
+and retrying would overwrite that work. Autosave stops there and offers a reload rather than
+deciding on the user's behalf whose version wins.
+
+`Ctrl/Cmd+S` forces an immediate flush, and versions can be created on demand
+(`document_versions`). Restoring one goes through a command, so it is undoable like anything
+else.
 
 ---
 

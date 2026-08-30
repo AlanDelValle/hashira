@@ -160,3 +160,23 @@ export function replaceLayers(
         undo: (document) => ({ ...document, layers: [...before] }),
     };
 }
+
+/**
+ * Replace the whole drawing — restoring a saved version.
+ *
+ * Deliberately a command like any other, so going back to a version is undoable. Restoring is
+ * a decision someone can regret, and the drawing they left is one Ctrl+Z away rather than
+ * gone.
+ */
+export function replaceDocument(
+    before: HashiraDocument,
+    after: HashiraDocument,
+    label: string,
+): Command {
+    return {
+        label,
+        coalesceKey: null,
+        execute: () => after,
+        undo: () => before,
+    };
+}

@@ -1,10 +1,13 @@
-import { ChevronLeft, Maximize2, Redo2, Undo2 } from 'lucide-react';
+import { ChevronLeft, History, Maximize2, Redo2, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { documentBounds } from '@/editor/model/elements';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
+import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
+import { VersionsDialog } from '@/editor/react/VersionsDialog';
+import { autosave } from '@/editor/persistence/autosave';
 import { SidePanel } from '@/editor/react/SidePanel';
 import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
@@ -29,10 +32,34 @@ export function EditorPage() {
     const [libraryOpen, setLibraryOpen] = useState(false);
 
     useEffect(() => {
-        if (payload !== null) {
-            load(payload.drawing);
+        if (payload === null || projectId === undefined) {
+            return;
         }
-    }, [payload, load]);
+
+        load(payload.drawing);
+
+        // `load` is synchronous, so the parsed document is already in the store and is the
+        // right baseline: autosave must treat what just arrived as saved, not as an edit.
+        const state = useDocumentStore.getState();
+
+        if (state.error === null) {
+            autosave.start(projectId, payload.revision, state.document);
+        }
+
+        return () => autosave.stop();
+    }, [payload, projectId, load]);
+
+    useEffect(() => {
+        function warnIfUnsaved(event: BeforeUnloadEvent) {
+            if (autosave.isDirty()) {
+                event.preventDefault();
+            }
+        }
+
+        window.addEventListener('beforeunload', warnIfUnsaved);
+
+        return () => window.removeEventListener('beforeunload', warnIfUnsaved);
+    }, []);
 
     // Frame the drawing once, when it and the canvas both exist. Re-framing on every change
     // would fight the person using it.
@@ -100,7 +127,7 @@ export function EditorPage() {
             </div>
 
             <div className="bg-canvas hidden h-screen grid-rows-[3rem_1fr_1.75rem] lg:grid">
-                <EditorHeader name={payload.name} />
+                <EditorHeader name={payload.name} projectId={projectId ?? ''} />
 
                 <div className="flex overflow-hidden">
                     <Toolbar
@@ -127,8 +154,9 @@ export function EditorPage() {
     );
 }
 
-function EditorHeader({ name }: { name: string }) {
+function EditorHeader({ name, projectId }: { name: string; projectId: string }) {
     const { canUndo, canRedo, undoLabel, redoLabel } = useHistory();
+    const [versionsOpen, setVersionsOpen] = useState(false);
 
     function zoomToFit() {
         const bounds = documentBounds(useDocumentStore.getState().document);
@@ -152,6 +180,8 @@ function EditorHeader({ name }: { name: string }) {
 
             <h1 className="text-ink text-[13px] font-medium">{name}</h1>
 
+            <SaveStatusIndicator />
+
             <div className="ml-auto flex items-center gap-0.5">
                 <HeaderButton
                     label={canUndo ? `Undo ${undoLabel ?? ''}`.trim() : 'Undo'}
@@ -174,7 +204,17 @@ function EditorHeader({ name }: { name: string }) {
                 <HeaderButton label="Zoom to fit  ·  Shift 1" onClick={zoomToFit}>
                     <Maximize2 className="size-3.5" aria-hidden />
                 </HeaderButton>
+
+                <HeaderButton label="Versions" onClick={() => setVersionsOpen(true)}>
+                    <History className="size-3.5" aria-hidden />
+                </HeaderButton>
             </div>
+
+            <VersionsDialog
+                projectId={projectId}
+                open={versionsOpen}
+                onOpenChange={setVersionsOpen}
+            />
         </header>
     );
 }
