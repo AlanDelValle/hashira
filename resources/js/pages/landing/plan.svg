@@ -48,12 +48,12 @@
     <path d="M 4636.36 4063.64 L 4763.64 3936.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M 4636.36 63.64 L 4763.64 -63.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <text x="4640" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 4640 2000)">4.000 m</text>
-    <path d="M 4250 2600 L 4250 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 4060 2600 L 4340 2600" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 4060 1400 L 4340 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 4186.36 2663.64 L 4313.64 2536.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 4186.36 1463.64 L 4313.64 1336.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="4190" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 4190 2000)">1.200 m</text>
+    <path d="M 4400 2600 L 4400 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 2600 L 4490 2600" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 1400 L 4490 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4336.36 2663.64 L 4463.64 2536.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4336.36 1463.64 L 4463.64 1336.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="4340" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 4340 2000)">1.200 m</text>
     <path d="M -250 3850 L -250 2950" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M -60 3850 L -340 3850" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M -60 2950 L -340 2950" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>

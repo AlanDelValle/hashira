@@ -60,8 +60,13 @@ final class DemoPlan
              * The set-out: overall width above the plan and overall depth beside it, then the
              * two openings dimensioned against the walls they are cut into. The offsets are
              * signed, which is how each line is put on the outside of its wall rather than in
-             * the middle of the room — and they come in two ranks, the openings close in at
-             * 250 and an overall carried further out at 700, so the lines never cross.
+             * the middle of the room — and they come in two ranks so the lines never cross.
+             *
+             * The window's rank is set out at 400 rather than 250 like the door's. A value is
+             * written above its own dimension line, in the line's reading frame, which is the
+             * drafting convention and means "above" lands on opposite sides of a drawing for
+             * the two vertical dimensions: away from the building on the left, back towards it
+             * on the right. At 250 the window's value sat on the window it was measuring.
              */
             self::dimension(0, 0, self::WIDTH, 0, offset: -250),
             self::dimension(self::WIDTH, self::DEPTH, self::WIDTH, 0, offset: 700),
@@ -70,7 +75,7 @@ final class DemoPlan
                 $windowOffset + $windowWidth / 2,
                 self::WIDTH,
                 $windowOffset - $windowWidth / 2,
-                offset: 250,
+                offset: 400,
             ),
             self::dimension(
                 0,
