@@ -4,7 +4,7 @@ import type { PDFFont, PDFPage, RGB } from 'pdf-lib';
 import { toDegrees } from '@/editor/geometry/angle';
 import type { Bounds } from '@/editor/geometry/bbox';
 import type { Point } from '@/editor/geometry/vec';
-import type { SheetOrientation, SheetSize } from '@/editor/model/types';
+import type { SheetOrientation, SheetSize, TextAlign } from '@/editor/model/types';
 import type { SceneLayer, ScenePrimitive, Stroke } from '@/editor/scene/types';
 
 import { toPathData, type PathTransform } from './path';
@@ -92,6 +92,40 @@ export async function sceneToPdf(
     return new Blob([bytes as BlobPart], { type: 'application/pdf' });
 }
 
+/**
+ * Where a run of text has to start for its anchor to land on `at`.
+ *
+ * The canvas and the SVG both say "centre this on that point" and let the renderer work it
+ * out — `textAlign`, `text-anchor`. A PDF has no such notion: `drawText` puts the start of the
+ * baseline at the coordinates given and *then* rotates the run about that point, so the
+ * exporter has to do the centring itself.
+ *
+ * Which means the shift has to travel along the text's own baseline rather than along the
+ * page's x axis. Those are the same direction for horizontal text, which is why a plan full
+ * of level labels looked right for as long as every dimension on it was horizontal: turn one
+ * on its side and the value slid off its line, sideways by half its width and hanging past
+ * one end, in the PDF alone.
+ */
+export function textOrigin(
+    at: { x: number; y: number },
+    width: number,
+    align: TextAlign,
+    rotation: number,
+): { x: number; y: number } {
+    const shift = align === 'center' ? -width / 2 : align === 'right' ? -width : 0;
+
+    if (shift === 0) {
+        return at;
+    }
+
+    // The drawing's rotation is clockwise in a y-down world; the page is y-up, so the
+    // baseline runs along (cos, -sin) of the same angle.
+    return {
+        x: at.x + shift * Math.cos(rotation),
+        y: at.y - shift * Math.sin(rotation),
+    };
+}
+
 function drawPrimitive(
     kit: PdfKit,
     page: PDFPage,
@@ -105,13 +139,16 @@ function drawPrimitive(
         const at = transform.point(primitive.at);
         const size = transform.length(primitive.size);
         const width = font.widthOfTextAtSize(primitive.content, size);
-
-        const offset =
-            primitive.align === 'center' ? -width / 2 : primitive.align === 'right' ? -width : 0;
+        const origin = textOrigin(
+            { x: at.x, y: pageHeightPt - at.y },
+            width,
+            primitive.align,
+            primitive.rotation,
+        );
 
         page.drawText(primitive.content, {
-            x: at.x + offset,
-            y: pageHeightPt - at.y,
+            x: origin.x,
+            y: origin.y,
             size,
             font,
             color: toColor(kit, primitive.fill),

@@ -282,6 +282,14 @@ and most sessions never export a PDF, so it is imported at the moment someone as
 PNG is the same scene on an off-screen canvas at a chosen size. Pen weights follow the zoom, so
 a larger export gets crisper lines rather than thicker ones.
 
+One thing does not come free from sharing a scene: **alignment**. The canvas has `textAlign`
+and SVG has `text-anchor`, and both apply it in the text's own frame, after any rotation. A PDF
+has neither — `drawText` starts the baseline at the point it is given and rotates the run about
+that point — so the exporter centres the text itself, and the shift has to travel along the
+text's own baseline. Along the page's x axis it is the same direction only while the text is
+horizontal, which is why vertical dimensions were the only thing in the drawing that came out
+of the PDF sitting beside their line instead of on it.
+
 ## 16. Reach
 
 The chrome is keyboard-operable throughout. The tool rail follows the ARIA toolbar pattern —

@@ -18,7 +18,7 @@ import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
 
 import { toPathData } from './path';
-import { sceneToPdf } from './pdf';
+import { sceneToPdf, textOrigin } from './pdf';
 import { layoutSheet, nextStandardScale, scaleBarMetres } from './sheet';
 import { sceneToSvg } from './svg';
 
@@ -135,6 +135,61 @@ describe('sheet layout', () => {
         const rightGap = layout.frame.width - drawnWidth - leftGap;
 
         expect(leftGap).toBeCloseTo(rightGap);
+    });
+});
+
+/**
+ * Regression cover for a reported fault: vertical dimensions were centred on their line on
+ * screen, in the SVG and in the PNG, and slid off it in the PDF alone.
+ *
+ * The canvas and the SVG each have a notion of alignment and apply it in the text's own
+ * frame. A PDF has none — `drawText` starts the baseline at the point given and rotates the
+ * run about it — so the exporter centres the text itself, and was doing it along the page's
+ * x axis. That is the same direction as the baseline only while the text is horizontal.
+ */
+describe('placing text on a PDF page', () => {
+    const WIDTH = 100;
+
+    it('centres horizontal text by backing up along the page', () => {
+        expect(textOrigin({ x: 200, y: 500 }, WIDTH, 'center', 0)).toEqual({ x: 150, y: 500 });
+    });
+
+    it('centres a quarter-turned run along its own baseline, not sideways', () => {
+        const origin = textOrigin({ x: 200, y: 500 }, WIDTH, 'center', toRadians(90));
+
+        // The run travels down the page, so the start moves up it — and not one point across.
+        expect(origin.x).toBeCloseTo(200, 9);
+        expect(origin.y).toBeCloseTo(550, 9);
+    });
+
+    it('centres a run turned the other way just as evenly', () => {
+        const origin = textOrigin({ x: 200, y: 500 }, WIDTH, 'center', toRadians(-90));
+
+        expect(origin.x).toBeCloseTo(200, 9);
+        expect(origin.y).toBeCloseTo(450, 9);
+    });
+
+    it('keeps the anchor the same distance away whichever way the text is turned', () => {
+        // Whatever the angle, the anchor sits half a width along the baseline from the start:
+        // that is what being centred means, and it is what the old code lost when it turned.
+        for (const degrees of [0, 30, 45, 90, 135, 180, -45, -90]) {
+            const origin = textOrigin({ x: 0, y: 0 }, WIDTH, 'center', toRadians(degrees));
+
+            expect(Math.hypot(origin.x, origin.y)).toBeCloseTo(WIDTH / 2, 9);
+        }
+    });
+
+    it('puts the end of a right-aligned run on the anchor', () => {
+        const origin = textOrigin({ x: 0, y: 0 }, WIDTH, 'right', toRadians(90));
+
+        expect(origin.y).toBeCloseTo(WIDTH, 9);
+    });
+
+    it('leaves left-aligned text exactly where it was asked for', () => {
+        expect(textOrigin({ x: 12, y: 34 }, WIDTH, 'left', toRadians(90))).toEqual({
+            x: 12,
+            y: 34,
+        });
     });
 });
 
