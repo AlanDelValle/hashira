@@ -14,7 +14,7 @@ export function PlanDrawing({ className }: { className?: string }) {
         <img
             src={planUrl}
             className={className}
-            alt="A floor plan of a six by four metre studio apartment: walls drawn with real thickness, a door with its swing and a window cut into the walls that host them, a bed, a sofa, a round table and a wardrobe, and the overall width and depth dimensioned at 6.000 m and 4.000 m."
+            alt="A floor plan of a four by four metre bedroom: walls drawn with real thickness, a wardrobe down one wall, a double bed against another, a bookshelf, a window and a door that swings into the room — the room dimensioned 4.000 m each way, the window at 1.200 m and the door at 0.900 m."
         />
     );
 }

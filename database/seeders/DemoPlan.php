@@ -9,7 +9,11 @@ use Illuminate\Support\Str;
 
 /**
  * A small but real drawing, so that a fresh install has something to open rather than an
- * empty sheet: a 6.00 × 4.00 m room with a door and a window.
+ * empty sheet — and so that the landing page has something honest to show, since the drawing
+ * there is this plan put through the editor's own SVG exporter.
+ *
+ * A 4.00 × 4.00 m bedroom: a wardrobe down one wall, a bed against another, a window, a door
+ * that swings into the room, and the four dimensions a set-out drawing would carry.
  *
  * Everything is in millimetres, per docs/document-format.md. Wall centrelines run corner to
  * corner; the poché is drawn from the thickness.
@@ -18,44 +22,71 @@ final class DemoPlan
 {
     private const THICKNESS = 150;
 
-    private const WIDTH = 6000;
+    private const WIDTH = 4000;
 
     private const DEPTH = 4000;
+
+    /** Where the inside face of a wall sits, which is what furniture stands against. */
+    private const FACE = self::THICKNESS / 2;
 
     /** @return array<string, mixed> */
     public static function document(string $name): array
     {
         $document = DocumentSchema::blank($name);
 
-        $south = self::wall(0, self::DEPTH, self::WIDTH, self::DEPTH);
+        // Walls run clockwise from the north-west corner, so that "along the wall" means the
+        // same thing for every opening measured on one.
         $north = self::wall(0, 0, self::WIDTH, 0);
+        $east = self::wall(self::WIDTH, 0, self::WIDTH, self::DEPTH);
+        $south = self::wall(0, self::DEPTH, self::WIDTH, self::DEPTH);
+        $west = self::wall(0, self::DEPTH, 0, 0);
+
+        // Both openings, as distances along the wall they cut, from that wall's first corner.
+        $windowOffset = 2000;
+        $windowWidth = 1200;
+        $doorOffset = 600;
+        $doorWidth = 900;
 
         $document['elements'] = [
             $north,
-            self::wall(self::WIDTH, 0, self::WIDTH, self::DEPTH),
+            $east,
             $south,
-            self::wall(0, self::DEPTH, 0, 0),
+            $west,
 
-            // A 900 mm door 1.20 m along the south wall, and a 1.60 m window centred north.
-            self::opening('door', $south['id'], offset: 1200, width: 900),
-            self::opening('window', $north['id'], offset: self::WIDTH / 2, width: 1600),
+            self::opening('window', $east['id'], offset: $windowOffset, width: $windowWidth),
+            self::opening('door', $west['id'], offset: $doorOffset, width: $doorWidth),
 
-            // Placed in the one part of the floor the furniture leaves clear, the way a label
-            // is set out on a real plan rather than dropped in the middle of the sofa.
-            // Overall width below the plan and overall depth down its left-hand side, which
-            // is where a set-out drawing carries them. The offsets are signed: negative puts
-            // the depth's line outside the west wall rather than inside the room.
-            self::dimension(0, self::DEPTH, self::WIDTH, self::DEPTH, offset: 900),
-            self::dimension(0, self::DEPTH, 0, 0, offset: -900),
+            /*
+             * The set-out: overall width above the plan and overall depth beside it, then the
+             * two openings dimensioned against the walls they are cut into. The offsets are
+             * signed, which is how each line is put on the outside of its wall rather than in
+             * the middle of the room — and they come in two ranks, the openings close in at
+             * 250 and an overall carried further out at 700, so the lines never cross.
+             */
+            self::dimension(0, 0, self::WIDTH, 0, offset: -250),
+            self::dimension(self::WIDTH, self::DEPTH, self::WIDTH, 0, offset: 700),
+            self::dimension(
+                self::WIDTH,
+                $windowOffset + $windowWidth / 2,
+                self::WIDTH,
+                $windowOffset - $windowWidth / 2,
+                offset: 250,
+            ),
+            self::dimension(
+                0,
+                self::DEPTH - $doorOffset + $doorWidth / 2,
+                0,
+                self::DEPTH - $doorOffset - $doorWidth / 2,
+                offset: -250,
+            ),
 
-            self::roomLabel('Living', 2700, 3200),
+            self::roomLabel('Bedroom', 2100, 2350),
 
-            // A few blocks from the library, so a fresh install opens on a furnished plan
-            // rather than an empty shell.
-            self::block('bed-double', 1400, 2000, 1000, 1200),
-            self::block('sofa-2', 1600, 900, 3900, 1000),
-            self::block('table-round', 1200, 1200, 4400, 2900),
-            self::block('wardrobe', 1200, 600, 1000, 3400),
+            // Blocks from the library, each standing against the face of the wall behind it
+            // rather than floating near it.
+            self::block('bed-double', 1400, 2000, 2300, self::FACE + 1000),
+            self::block('wardrobe', 2500, 600, self::FACE + 300, self::FACE + 1250, rotation: M_PI / 2),
+            self::block('bookshelf', 900, 300, 2300, self::DEPTH - self::FACE - 150),
         ];
 
         return $document;
@@ -99,14 +130,15 @@ final class DemoPlan
         string $assetId,
         int $width,
         int $height,
-        int $x,
-        int $y,
+        int|float $x,
+        int|float $y,
+        float $rotation = 0.0,
     ): array {
         return self::element(
             'asset',
             DocumentSchema::LAYER_FURNITURE,
             ['assetId' => $assetId, 'width' => $width, 'height' => $height, 'mirrored' => false],
-            ['x' => $x, 'y' => $y, 'rotation' => 0],
+            ['x' => $x, 'y' => $y, 'rotation' => $rotation],
         );
     }
 
@@ -117,10 +149,15 @@ final class DemoPlan
      *
      * @return array<string, mixed>
      */
-    private static function dimension(int $ax, int $ay, int $bx, int $by, int $offset): array
-    {
-        $centreX = intdiv($ax + $bx, 2);
-        $centreY = intdiv($ay + $by, 2);
+    private static function dimension(
+        int|float $ax,
+        int|float $ay,
+        int|float $bx,
+        int|float $by,
+        int $offset,
+    ): array {
+        $centreX = ($ax + $bx) / 2;
+        $centreY = ($ay + $by) / 2;
 
         return self::element(
             'dimension',

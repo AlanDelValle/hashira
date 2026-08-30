@@ -1,56 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
-     width="169.073mm" height="129.073mm"
-     viewBox="-1690 -763.64 8453.64 6453.64">
-  <title>Studio Apartment</title>
-  <rect x="-1690" y="-763.64" width="8453.64" height="6453.64" fill="#ffffff"/>
+     width="130.6mm" height="116.073mm"
+     viewBox="-1040 -1040 6530 5803.64">
+  <title>Bedroom</title>
+  <rect x="-1040" y="-1040" width="6530" height="5803.64" fill="#ffffff"/>
   <g id="layer_architecture" data-layer="Architecture">
-    <path d="M 0 0 L 2200 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 3800 0 L 6000 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 6000 0 L 6000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 0 4000 L 750 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 1650 4000 L 6000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 0 4000 L 0 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 0 L 4000 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4000 0 L 4000 1400" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4000 2600 L 4000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 4000 L 4000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 4000 L 0 3850" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 2950 L 0 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
   </g>
   <g id="layer_openings" data-layer="Openings">
-    <path d="M 750 3925 L 750 4075" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 1650 3925 L 1650 4075" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 750 4000 L 750 4900" fill="none" stroke="#1F2328" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 750 4900 A 900 900 0 0 0 1650 4000" fill="none" stroke="#5f636b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 2200 -75 L 2200 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 3800 -75 L 3800 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 2200 -75 L 3800 -75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 2200 75 L 3800 75" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 2200 0 L 3800 0" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4075 1400 L 3925 1400" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4075 2600 L 3925 2600" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4075 1400 L 4075 2600" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 3925 1400 L 3925 2600" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 4000 1400 L 4000 2600" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M -75 3850 L 75 3850" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M -75 2950 L 75 2950" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M 0 3850 L 900 3850" fill="none" stroke="#1F2328" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 900 3850 A 900 900 0 0 0 0 2950" fill="none" stroke="#5f636b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <g id="layer_furniture" data-layer="Furniture">
-    <path d="M 300 200 L 1700 200 L 1700 2200 L 300 2200 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 370 260 L 958 260 L 958 520 L 370 520 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 1042 260 L 1630 260 L 1630 520 L 1042 520 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 300 700 L 1700 700" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 3100 550 L 4700 550 L 4700 1450 L 3100 1450 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 3228 802 L 4572 802 L 4572 1396 L 3228 1396 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 3900 802 L 3900 1396" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <ellipse cx="4400" cy="2900" rx="600" ry="600" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 400 3100 L 1600 3100 L 1600 3700 L 400 3700 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 400 3592 L 1600 3592" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 1000 3100 L 1000 3592" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1600 75 L 3000 75 L 3000 2075 L 1600 2075 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1670 135 L 2258 135 L 2258 395 L 1670 395 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 2342 135 L 2930 135 L 2930 395 L 2342 395 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1600 575 L 3000 575" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 675 75 L 675 2575 L 75 2575 L 75 75 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 183 75 L 183 2575" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 675 1325 L 183 1325" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1850 3625 L 2750 3625 L 2750 3925 L 1850 3925 Z" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 2150 3625 L 2150 3925" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 2450 3625 L 2450 3925" fill="none" stroke="#5F636B" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <g id="layer_dimensions" data-layer="Dimensions">
-    <path d="M 0 4900 L 6000 4900" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 0 4060 L 0 4990" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 6000 4060 L 6000 4990" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -63.64 4836.36 L 63.64 4963.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 5936.36 4836.36 L 6063.64 4963.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="3000" y="4840" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4">6.000 m</text>
-    <path d="M -900 4000 L -900 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -60 4000 L -990 4000" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -60 0 L -990 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -963.64 4063.64 L -836.36 3936.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -963.64 63.64 L -836.36 -63.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="-960" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 -960 2000)">4.000 m</text>
+    <path d="M 0 -250 L 4000 -250" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 0 -60 L 0 -340" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4000 -60 L 4000 -340" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -63.64 -313.64 L 63.64 -186.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 3936.36 -313.64 L 4063.64 -186.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="2000" y="-310" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4">4.000 m</text>
+    <path d="M 4700 4000 L 4700 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 4000 L 4790 4000" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 0 L 4790 0" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4636.36 4063.64 L 4763.64 3936.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4636.36 63.64 L 4763.64 -63.64" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="4640" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 4640 2000)">4.000 m</text>
+    <path d="M 4250 2600 L 4250 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 2600 L 4340 2600" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4060 1400 L 4340 1400" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4186.36 2663.64 L 4313.64 2536.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 4186.36 1463.64 L 4313.64 1336.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="4190" y="2000" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 4190 2000)">1.200 m</text>
+    <path d="M -250 3850 L -250 2950" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -60 3850 L -340 3850" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -60 2950 L -340 2950" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -313.64 3913.64 L -186.36 3786.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -313.64 3013.64 L -186.36 2886.36" fill="none" stroke="#2C58C4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="-310" y="3400" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#2C58C4" transform="rotate(-90 -310 3400)">0.900 m</text>
   </g>
   <g id="layer_annotations" data-layer="Annotations">
-    <text x="2700" y="3200" font-size="250" font-family="sans-serif" text-anchor="middle" fill="#5F636B">Living</text>
+    <text x="2100" y="2350" font-size="250" font-family="sans-serif" text-anchor="middle" fill="#5F636B">Bedroom</text>
   </g>
 </svg>

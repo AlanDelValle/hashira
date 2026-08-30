@@ -40,18 +40,18 @@ final class DatabaseSeeder extends Seeder
         $renovation->timestamps = false;
         $renovation->update(['created_at' => now()->subDay(), 'updated_at' => now()->subDay()]);
 
-        $studio = $createProject->handle(
+        $bedroom = $createProject->handle(
             owner: $demo,
-            name: 'Studio Apartment',
+            name: 'Bedroom',
             description: 'A sample plan to open, edit and export.',
         );
 
-        $document = $studio->document;
+        $document = $bedroom->document;
 
         if ($document !== null) {
             $document->update([
                 'schema_version' => DocumentSchema::CURRENT_VERSION,
-                'data' => DemoPlan::document($studio->name),
+                'data' => DemoPlan::document($bedroom->name),
             ]);
         }
     }

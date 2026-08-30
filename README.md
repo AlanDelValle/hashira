@@ -25,7 +25,7 @@ drawing an accurate 2D plan — done properly.
 
 ## Screenshots
 
-![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing and furniture blocks, and the properties and layers panels](docs/images/editor.png)
+![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing, furniture blocks and dimensions, and the properties and layers panels](docs/images/editor.png)
 
 <p align="center"><em>The editor. Walls carry thickness; the door and window cut real
 openings in the wall that hosts them.</em></p>
