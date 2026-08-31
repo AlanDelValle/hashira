@@ -83,6 +83,14 @@ async function main() {
         await page.send('Runtime.enable');
         await page.send('Emulation.setDeviceMetricsOverride', { mobile: false, ...VIEWPORT });
 
+        // Signed out first, because that is how the landing page is met.
+        await capture(
+            page,
+            `${BASE_URL}/`,
+            'landing',
+            '(() => { const plan = document.querySelector("main img"); return document.querySelector("h1") !== null && plan !== null && plan.complete && plan.naturalWidth > 0; })()',
+        );
+
         await signIn(page);
 
         await capture(
@@ -103,7 +111,10 @@ async function main() {
         await captureFirstDrawing(page, projects);
         await exportPlanSvg(page);
 
-        console.log(`Wrote ${OUT_DIR}/editor.png, ${OUT_DIR}/dashboard.png and ${LANDING_SVG}.`);
+        console.log(
+            `Wrote ${OUT_DIR}/landing.png, ${OUT_DIR}/editor.png, ${OUT_DIR}/dashboard.png` +
+                ` and ${LANDING_SVG}.`,
+        );
     } finally {
         page?.close();
         chrome.kill();

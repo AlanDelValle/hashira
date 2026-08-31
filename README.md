@@ -27,19 +27,25 @@ drawing an accurate 2D plan — done properly.
 
 ![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing, furniture blocks and dimensions, and the properties and layers panels](docs/images/editor.png)
 
-<p align="center"><em>The editor. Walls carry thickness; the door and window cut real
-openings in the wall that hosts them.</em></p>
+<p align="center"><em>The editor. Walls carry thickness, the door and window cut real
+openings in the wall that hosts them, and the dimensions are read off the geometry rather
+than typed.</em></p>
 
 ![The projects list](docs/images/dashboard.png)
 
 <p align="center"><em>Projects. One drawing each.</em></p>
 
-These are generated rather than captured by hand — `npm run artwork` drives a headless Chrome
-against a local instance signed in as the demo account, so they cannot quietly fall out of
-date. The same command re-exports the drawing on the landing page, which is not an
-illustration of the editor but a file the editor produced. It needs the app running and a
-seeded database; set `APP_URL` if it is not at `https://hashira.test`, and `CHROME_PATH` if
-Chrome is somewhere unusual.
+![The landing page](docs/images/landing.png)
+
+<p align="center"><em>The landing page. The plan on it is not an illustration of the editor —
+it is the sample plan, put through the editor's own SVG exporter.</em></p>
+
+All three are generated rather than captured by hand: `npm run artwork` drives a headless
+Chrome against a local instance — signed out for the landing page, signed in as the demo
+account for the rest — and re-exports the landing page's drawing while it is there, so none
+of it can quietly fall out of date. It needs the app running and a seeded database; set
+`APP_URL` if it is not at `https://hashira.test`, and `CHROME_PATH` if Chrome is somewhere
+unusual.
 
 ## Stack
 
