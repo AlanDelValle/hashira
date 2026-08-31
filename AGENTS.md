@@ -39,6 +39,9 @@ These exist because breaking them is what turns an editor into an unmaintainable
    input.
 7. **The document format is versioned.** Changing its shape requires a `schemaVersion` bump,
    a migration and a fixture test — see [`docs/document-format.md`](docs/document-format.md).
+   A new element type counts: it looks additive and is not, because a reader that predates the
+   type drops it and then saves the drawing back without it. That is how the `dimension` type
+   arrived at schema 2.
 8. **Keyboard shortcuts live in `editor/input/shortcuts.ts`.** The controller dispatches from
    that table, the toolbar labels its buttons from it and the `?` dialog renders it. A key
    added anywhere else is a key nobody can find — which is exactly how the library button came
@@ -52,6 +55,11 @@ These exist because breaking them is what turns an editor into an unmaintainable
     could not draw; nobody caught it, because the picture was not made by the thing it was
     advertising.
 
+    What they show is the seeded sample plan in `database/seeders/DemoPlan.php`, so editing the
+    seed edits the website: reseed, then run the command. The one thing not generated is the
+    mark itself — `public/` holds it as icons and `ui/Logo.tsx` redraws it as a path fitted to
+    them, so changing one means refitting the other.
+
 ## Checks before calling anything done
 
 ```bash
@@ -59,10 +67,14 @@ composer lint
 composer analyse
 composer test
 npm run lint
+npm run format:check
 npm run typecheck
 npm run test
 npm run build
 ```
+
+That is the same list CI runs, in the same order. `format:check` is easy to leave out locally
+and is the one that fails a green-looking branch.
 
 ## Scope discipline
 
