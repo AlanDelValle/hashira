@@ -203,6 +203,26 @@ describe('the snap engine', () => {
     });
 
     /*
+     * With the grid off there is nothing for a guide to be nearer than, so it applies across
+     * its whole tolerance — and the coordinate it does not lock stays exactly where the
+     * pointer put it.
+     */
+    it('lets a guide hold the line on its own when the grid is off', () => {
+        const block = createRect(point(2000, 3625), point(3000, 3925), LAYER);
+        const result = snapPoint(
+            point(5000, 3683),
+            options([block], {
+                tolerance: 66,
+                gridSnapEnabled: false,
+                visible: { minX: 0, minY: 0, maxX: 10000, maxY: 10000 },
+            }),
+        );
+
+        expect(result.kind).toBe('horizontal');
+        expect(result.point).toEqual({ x: 5000, y: 3625 });
+    });
+
+    /*
      * A point the tool placed is different: holding a wall horizontal from the corner it
      * starts at is the strongest intent there is, and losing it to a grid row a few
      * millimetres nearer would leave the wall not horizontal.
