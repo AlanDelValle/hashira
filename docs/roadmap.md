@@ -120,13 +120,18 @@ Both were reported from the editor by someone looking for a tool that was not th
 
 ## After the MVP
 
-### Phase 7 — Drafting depth
+### Phase 7 — Drafting depth `[~]`
 
-- Advanced dimensioning: chains, angular, radial, leaders (linear dimensions landed in the MVP)
-- Rooms with automatic boundary detection from walls
-- Wall joins and cleanups at corners and T-junctions
-- A real asset system: categories, search, user-uploaded blocks
-- PDF import as an underlay to trace over
+- [x] Advanced dimensioning: chains, angular, radial, leaders (linear dimensions landed in the
+      MVP). Schema 3: a dimension became a run of points rather than a pair of them, and
+      `angle`, `radius` and `leader` joined it — each storing what it measures and never the
+      number it came to
+- [x] Rooms with automatic boundary detection from walls: the walls are cut into a planar
+      graph, the face under the pointer is walked out of it, and each edge moves in by half
+      the thickness of its own wall
+- [x] Wall joins and cleanups at corners and T-junctions
+- [ ] A real asset system: categories, search, user-uploaded blocks
+- [ ] PDF import as an underlay to trace over
 
 ### Phase 8 — Interchange
 

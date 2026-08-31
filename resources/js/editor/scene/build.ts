@@ -11,17 +11,22 @@ import {
     type Point,
 } from '@/editor/geometry/vec';
 import {
+    angleFrame,
+    angleStrokes,
     dimensionFrame,
     dimensionStrokes,
     doorSwing,
     elementWorldPoints,
     hostedFrame,
+    leaderFrame,
     makeLookup,
+    radiusFrame,
     type ElementLookup,
 } from '@/editor/model/elements';
-import { formatLength } from '@/editor/model/units';
+import { formatAngle, formatLength } from '@/editor/model/units';
 import { wallBandCorners, wallJoins, type WallJoins } from '@/editor/model/walls';
 import type {
+    AngleElement,
     AssetElement,
     DimensionElement,
     DisplayUnit,
@@ -29,6 +34,8 @@ import type {
     Element,
     HostedElement,
     Layer,
+    LeaderElement,
+    RadiusElement,
     WallElement,
     WindowElement,
 } from '@/editor/model/types';
@@ -258,6 +265,15 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
 
         case 'dimension':
             return dimensionPrimitives(element, context);
+
+        case 'angle':
+            return anglePrimitives(element, context);
+
+        case 'radius':
+            return radiusPrimitives(element, context);
+
+        case 'leader':
+            return leaderPrimitives(element, context);
     }
 }
 
@@ -285,13 +301,127 @@ function dimensionPrimitives(element: DimensionElement, context: BuildContext): 
             closed: false,
             stroke,
         })),
+        // One value per measurement: a chain says what each part of it is, which is the whole
+        // point of drawing it as a chain rather than as one measurement of the lot.
+        ...frame.segments.map((segment): ScenePrimitive => ({
+            kind: 'text',
+            at: segment.textAt,
+            content: formatLength(segment.length, context.unit),
+            size: element.geometry.fontSize,
+            align: 'center',
+            rotation: segment.textRotation,
+            fill: context.colour,
+        })),
+    ];
+}
+
+/**
+ * An angle: a leg out along each direction, an arc between them, and the value written just
+ * outside it — level, because an angle is read as a number rather than along anything.
+ */
+function anglePrimitives(element: AngleElement, context: BuildContext): ScenePrimitive[] {
+    const frame = angleFrame(element);
+
+    if (frame === null) {
+        return [];
+    }
+
+    const stroke = pen(context.colour, PEN.fine);
+
+    return [
+        ...angleStrokes(frame).map(([from, to]): ScenePrimitive => ({
+            kind: 'polyline',
+            points: [from, to],
+            closed: false,
+            stroke,
+        })),
+        {
+            kind: 'arc',
+            centre: frame.vertex,
+            radius: frame.radius,
+            from: frame.start,
+            to: frame.start + frame.sweep,
+            anticlockwise: frame.sweep < 0,
+            stroke,
+        },
         {
             kind: 'text',
             at: frame.textAt,
-            content: formatLength(frame.length, context.unit),
+            content: formatAngle(frame.angle),
+            size: element.geometry.fontSize,
+            align: 'center',
+            rotation: 0,
+            fill: context.colour,
+        },
+    ];
+}
+
+/**
+ * A radius or a diameter: a line struck from the centre out to the circle — right across it
+ * for a diameter — with the value written along it.
+ *
+ * The value carries its mark: `R` for a radius and `⌀` for a diameter, because the two are
+ * the same line with different meanings and a number alone would not say which.
+ */
+function radiusPrimitives(element: RadiusElement, context: BuildContext): ScenePrimitive[] {
+    const frame = radiusFrame(element, context.lookup);
+
+    if (frame === null) {
+        return [];
+    }
+
+    return [
+        {
+            kind: 'polyline',
+            points: [frame.opposite, frame.at],
+            closed: false,
+            stroke: pen(context.colour, PEN.fine),
+        },
+        {
+            kind: 'text',
+            at: frame.textAt,
+            content: `${frame.diameter ? '⌀' : 'R'} ${formatLength(frame.measured, context.unit)}`,
             size: element.geometry.fontSize,
             align: 'center',
             rotation: frame.textRotation,
+            fill: context.colour,
+        },
+    ];
+}
+
+/**
+ * A note, and the line that says what it is about: an arrowhead at the thing, a bent line
+ * back from it, and a shelf the words sit on.
+ */
+function leaderPrimitives(element: LeaderElement, context: BuildContext): ScenePrimitive[] {
+    const frame = leaderFrame(element);
+
+    if (frame === null) {
+        return [];
+    }
+
+    const stroke = pen(context.colour, PEN.fine);
+
+    return [
+        {
+            kind: 'polyline',
+            points: [...frame.points, frame.shelfTo],
+            closed: false,
+            stroke,
+        },
+        {
+            kind: 'area',
+            rings: [[frame.tip, ...frame.barbs]],
+            fill: context.colour,
+            stroke: null,
+        },
+        {
+            kind: 'text',
+            at: frame.textAt,
+            content: element.geometry.content,
+            size: element.geometry.fontSize,
+            align: frame.align,
+            rotation: 0,
             fill: context.colour,
         },
     ];

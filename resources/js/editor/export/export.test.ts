@@ -228,7 +228,7 @@ describe('SVG export', () => {
         // appearing on screen, in the PNG and in the PDF as well.
         const measured = sceneToSvg(
             buildScene(
-                [createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions')],
+                [createDimension([point(0, 0), point(4000, 0)], 800, 'layer_dimensions')],
                 defaultLayers(),
                 { palette: PALETTE, unit: 'm' },
             ),
@@ -241,7 +241,7 @@ describe('SVG export', () => {
     it('says a measurement in the drawing’s own unit', () => {
         const inMillimetres = sceneToSvg(
             buildScene(
-                [createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions')],
+                [createDimension([point(0, 0), point(4000, 0)], 800, 'layer_dimensions')],
                 defaultLayers(),
                 { palette: PALETTE, unit: 'mm' },
             ),
@@ -326,7 +326,7 @@ describe('PDF export', () => {
                 createCircle(point(1000, 1000), 400, LAYER),
                 createRect(point(2000, 800), point(3000, 1600), LAYER),
                 createAsset(ASSET_LIBRARY[0]!, point(4000, 1200)),
-                createDimension(point(0, 0), point(4000, 0), 800, 'layer_dimensions'),
+                createDimension([point(0, 0), point(4000, 0)], 800, 'layer_dimensions'),
             ],
             defaultLayers(),
             { palette: PALETTE },

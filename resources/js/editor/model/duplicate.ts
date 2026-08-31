@@ -7,9 +7,9 @@ import type { Element } from './types';
 /**
  * Copy elements, giving each a fresh identity.
  *
- * Openings are remapped: duplicating a wall together with its door produces a door hosted on
- * the *new* wall, while duplicating a door on its own leaves it on the wall it already cut.
- * Getting this wrong is how a copy silently rewires the original.
+ * Hosted elements are remapped: duplicating a wall together with its door produces a door
+ * hosted on the *new* wall, while duplicating a door on its own leaves it on the wall it
+ * already cut. Getting this wrong is how a copy silently rewires the original.
  */
 export function duplicateElements(
     elements: readonly Element[],
@@ -30,6 +30,14 @@ export function duplicateElements(
         }
 
         if (element.type === 'window') {
+            const hostId = remap.get(element.geometry.hostId) ?? element.geometry.hostId;
+
+            return { ...element, id, geometry: { ...element.geometry, hostId } };
+        }
+
+        // A radius is hosted too: copy a circle with its radius and the copy measures the
+        // copy, not the original.
+        if (element.type === 'radius') {
             const hostId = remap.get(element.geometry.hostId) ?? element.geometry.hostId;
 
             return { ...element, id, geometry: { ...element.geometry, hostId } };

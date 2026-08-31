@@ -31,6 +31,9 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
     { id: 'polygon', label: 'Polygon', key: 'P' },
     { id: 'text', label: 'Text', key: 'T' },
     { id: 'dimension', label: 'Dimension', key: 'M' },
+    { id: 'angle', label: 'Angle', key: 'A' },
+    { id: 'radius', label: 'Radius', key: 'U' },
+    { id: 'leader', label: 'Leader', key: 'E' },
 ];
 
 /** The key that opens the block library. Not a tool: the tool arms when a block is chosen. */

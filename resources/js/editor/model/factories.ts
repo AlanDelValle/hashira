@@ -1,12 +1,15 @@
 import { boundsCentre, boundsFromPoints } from '@/editor/geometry/bbox';
-import { midpoint, subtract, type Point } from '@/editor/geometry/vec';
+import { distance, midpoint, subtract, type Point } from '@/editor/geometry/vec';
 import type { AssetDefinition } from '@/editor/assets/library';
 
 import { newId } from './id';
 import type {
+    AngleElement,
     AssetElement,
     CircleElement,
     DimensionElement,
+    LeaderElement,
+    RadiusElement,
     DoorElement,
     LineElement,
     PolygonElement,
@@ -229,20 +232,109 @@ export const DEFAULT_DIMENSION_SIZE = 200;
  * dimension line sits on is a decision, not a property of the geometry.
  */
 export function createDimension(
-    a: Point,
-    b: Point,
+    points: readonly Point[],
     offset: number,
     layerId: string,
     fontSize = DEFAULT_DIMENSION_SIZE,
 ): DimensionElement {
-    const centre = midpoint(a, b);
+    const bounds = boundsFromPoints(points);
+    const centre = bounds === null ? (points[0] ?? { x: 0, y: 0 }) : boundsCentre(bounds);
 
     return {
         id: newId(),
         type: 'dimension',
         layerId,
         transform: { x: centre.x, y: centre.y, rotation: 0 },
-        geometry: { a: subtract(a, centre), b: subtract(b, centre), offset, fontSize },
+        geometry: {
+            points: points.map((p) => subtract(p, centre)),
+            offset,
+            fontSize,
+        },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * How far out from a corner an angle's arc is struck by default: comfortably inside the
+ * shorter of the two legs, so the arc reads as belonging to that corner and not as a circle
+ * drawn through the drawing.
+ */
+const ANGLE_ARC_FRACTION = 0.6;
+
+/**
+ * An angle at a corner, measured between the two legs that leave it.
+ *
+ * The legs are stored as points rather than as directions so that the measurement is of two
+ * places in the drawing: it is the same decision as a dimension storing what it measures
+ * instead of the number it came to.
+ */
+export function createAngle(
+    vertex: Point,
+    from: Point,
+    to: Point,
+    layerId: string,
+    fontSize = DEFAULT_DIMENSION_SIZE,
+    radius?: number,
+): AngleElement {
+    const legs = Math.min(distance(vertex, from), distance(vertex, to));
+
+    return {
+        id: newId(),
+        type: 'angle',
+        layerId,
+        transform: { x: vertex.x, y: vertex.y, rotation: 0 },
+        geometry: {
+            vertex: { x: 0, y: 0 },
+            from: subtract(from, vertex),
+            to: subtract(to, vertex),
+            radius: Math.max(radius ?? legs * ANGLE_ARC_FRACTION, 1),
+            fontSize,
+        },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * A radius or diameter on a circle. Hosted like an opening: it stores which circle rather
+ * than where the circle happens to be, so the measurement follows it.
+ */
+export function createRadius(
+    hostId: string,
+    angle: number,
+    layerId: string,
+    diameter = false,
+    fontSize = DEFAULT_DIMENSION_SIZE,
+): RadiusElement {
+    return {
+        id: newId(),
+        type: 'radius',
+        layerId,
+        transform: { x: 0, y: 0, rotation: 0 },
+        geometry: { hostId, angle, diameter, fontSize },
+        metadata: metadata(),
+    };
+}
+
+/** A note, and the line from the thing it is about to where the words are written. */
+export function createLeader(
+    points: readonly Point[],
+    content: string,
+    layerId: string,
+    fontSize = DEFAULT_TEXT_SIZE,
+): LeaderElement {
+    const bounds = boundsFromPoints(points);
+    const centre = bounds === null ? (points[0] ?? { x: 0, y: 0 }) : boundsCentre(bounds);
+
+    return {
+        id: newId(),
+        type: 'leader',
+        layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: {
+            points: points.map((p) => subtract(p, centre)),
+            content,
+            fontSize,
+        },
         metadata: metadata(),
     };
 }

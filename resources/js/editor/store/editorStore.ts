@@ -4,10 +4,18 @@ import type { Point } from '@/editor/geometry/vec';
 import { DEFAULT_DIMENSION_SIZE, DEFAULT_TEXT_SIZE } from '@/editor/model/factories';
 import { newId } from '@/editor/model/id';
 
-/** A label being typed. The id gives each draft its own identity, and its own empty field. */
+/**
+ * Words being typed onto the sheet. The id gives each draft its own identity, and its own
+ * empty field.
+ *
+ * `leader` is the line already drawn to whatever the words are about, when there is one: a
+ * note and a label are the same act of writing, and differ only in whether anything points
+ * at what is being written about.
+ */
 export interface TextDraft {
     id: string;
     at: Point;
+    leader?: Point[];
 }
 
 export type ToolId =
@@ -22,6 +30,9 @@ export type ToolId =
     | 'polygon'
     | 'text'
     | 'dimension'
+    | 'angle'
+    | 'radius'
+    | 'leader'
     | 'asset';
 
 /**
@@ -44,7 +55,7 @@ interface EditorStore {
     /** Cap height applied to the next measurement's value, in millimetres at 1:1. */
     dimensionSize: number;
     /**
-     * Where a label is being typed, if one is.
+     * Where a label or a note is being typed, if one is.
      *
      * This is the one thing in flight that has to reach React: a label is typed into a real
      * input, because a canvas cannot offer a caret, selection or an input method. Everything
@@ -64,6 +75,7 @@ interface EditorStore {
     setTextSize: (size: number) => void;
     setDimensionSize: (size: number) => void;
     beginText: (at: Point) => void;
+    beginNote: (points: Point[]) => void;
     cancelText: () => void;
     setPendingAsset: (assetId: string | null) => void;
     toggleLibrary: () => void;
@@ -95,7 +107,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
             // Choosing any other tool puts the library block down and abandons a half-typed
             // label — neither has anywhere to live once the tool that owns it is gone.
             pendingAssetId: tool === 'asset' ? state.pendingAssetId : null,
-            textDraft: tool === 'text' ? state.textDraft : null,
+            textDraft: tool === 'text' || tool === 'leader' ? state.textDraft : null,
         })),
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
@@ -122,6 +134,15 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setDimensionSize: (dimensionSize) => set({ dimensionSize }),
 
     beginText: (at) => set({ textDraft: { id: newId(), at } }),
+
+    beginNote: (points) =>
+        set({
+            textDraft: {
+                id: newId(),
+                at: points[points.length - 1] ?? { x: 0, y: 0 },
+                leader: points,
+            },
+        }),
     cancelText: () => set((state) => (state.textDraft === null ? state : { textDraft: null })),
     /*
      * Choosing a block arms the tool; clearing it disarms the tool as well. Leaving the block

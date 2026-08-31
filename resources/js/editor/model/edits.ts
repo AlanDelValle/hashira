@@ -1,3 +1,4 @@
+import { boundsCentre, boundsFromPoints } from '@/editor/geometry/bbox';
 import {
     angleBetween,
     add,
@@ -199,13 +200,29 @@ export function setDoorFlipped(element: Element, flipped: boolean): Element {
 }
 
 export function setTextContent(element: Element, content: string): Element {
+    if (element.type === 'leader') {
+        const trimmed = content.trim();
+
+        return trimmed === ''
+            ? element
+            : { ...element, geometry: { ...element.geometry, content: trimmed } };
+    }
+
     return element.type === 'text'
         ? { ...element, geometry: { ...element.geometry, content } }
         : element;
 }
 
 export function setTextSize(element: Element, fontSize: number): Element {
-    return element.type === 'text' && fontSize > 0
+    if (fontSize <= 0) {
+        return element;
+    }
+
+    if (element.type === 'leader') {
+        return { ...element, geometry: { ...element.geometry, fontSize } };
+    }
+
+    return element.type === 'text'
         ? { ...element, geometry: { ...element.geometry, fontSize } }
         : element;
 }
@@ -218,6 +235,26 @@ export function setTextSize(element: Element, fontSize: number): Element {
  * two points it spans; letting anyone type over it would produce a drawing that states one
  * length and shows another, which is the one thing a measured drawing must never do.
  */
+/**
+ * Re-point a measurement, keeping its local origin at the centre of what it now measures — so
+ * carrying a chain on to one more point does not leave the mark rotating about where it used
+ * to end.
+ */
+export function setDimensionPoints(element: Element, points: readonly Point[]): Element {
+    if (element.type !== 'dimension' || points.length < 2) {
+        return element;
+    }
+
+    const bounds = boundsFromPoints(points);
+    const centre = bounds === null ? (points[0] ?? { x: 0, y: 0 }) : boundsCentre(bounds);
+
+    return {
+        ...element,
+        transform: { ...element.transform, x: centre.x, y: centre.y },
+        geometry: { ...element.geometry, points: points.map((p) => subtract(p, centre)) },
+    };
+}
+
 export function setDimensionOffset(element: Element, offset: number): Element {
     return element.type === 'dimension'
         ? { ...element, geometry: { ...element.geometry, offset } }
@@ -225,7 +262,41 @@ export function setDimensionOffset(element: Element, offset: number): Element {
 }
 
 export function setDimensionSize(element: Element, fontSize: number): Element {
-    return element.type === 'dimension' && fontSize > 0
+    if (fontSize <= 0) {
+        return element;
+    }
+
+    // Rebuilt per type rather than once over the union: spreading a shared geometry would
+    // leave `geometry` a mixture of both shapes, which is neither element's own.
+    if (element.type === 'dimension') {
+        return { ...element, geometry: { ...element.geometry, fontSize } };
+    }
+
+    return element.type === 'angle'
         ? { ...element, geometry: { ...element.geometry, fontSize } }
+        : element;
+}
+
+/** How far out from the corner an angle's arc is struck. */
+export function setAngleRadius(element: Element, radius: number): Element {
+    return element.type === 'angle' && radius > 0
+        ? { ...element, geometry: { ...element.geometry, radius } }
+        : element;
+}
+
+/** Which way a radius points out of its circle. */
+export function setRadiusAngle(element: Element, angle: number): Element {
+    return element.type === 'radius'
+        ? { ...element, geometry: { ...element.geometry, angle } }
+        : element;
+}
+
+/**
+ * Whether a radius measures the radius or the diameter. It is the same line drawn twice as
+ * long, and the value it writes says which of the two it means.
+ */
+export function setRadiusDiameter(element: Element, diameter: boolean): Element {
+    return element.type === 'radius'
+        ? { ...element, geometry: { ...element.geometry, diameter } }
         : element;
 }

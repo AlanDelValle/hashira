@@ -47,10 +47,13 @@ function segmentsOf(element: Element, lookup: ElementLookup): Segment[] {
         case 'text':
             return [];
 
-        // The points a dimension measures are worth landing on; the extension lines and ticks
-        // it draws around them are not — snapping to a measurement's own decoration would put
-        // new geometry where the annotation happens to sit rather than where the plan is.
+        // The points a measurement is taken between are worth landing on; the lines it draws
+        // around them are not — snapping to an annotation's own decoration would put new
+        // geometry where the annotation happens to sit rather than where the plan is.
         case 'dimension':
+        case 'angle':
+        case 'radius':
+        case 'leader':
             return [];
     }
 }

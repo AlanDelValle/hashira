@@ -140,6 +140,21 @@ wants to measure between — and the third is read off the pointer as a signed o
 line can be pulled out to either side. What it measures is never one of the decisions: the
 value is read off the two points every time it is drawn, and there is no way to type over it.
 
+The measurement stays live after that third click, and a further click carries it on to
+another point: one dimension line, a value for each step along it, and the parts adding up to
+the whole because they are parts of one mark rather than a row of separate ones. Enter,
+Escape or a double click ends the run.
+
+Three more marks follow the same rule, that a measurement stores what it measures and never
+the number it came to. **Angle** takes the corner and a point along each of its two legs, and
+measures the lesser of the two angles that corner offers. **Radius** takes one click on a
+circle: where the click landed decides which way the leader points, the value is the circle's
+own radius, and a switch in the properties panel makes it a diameter instead. Away from a
+circle it does nothing at all, because a radius with nothing to be the radius of is not
+something the format can express. **Leader** is the one that writes rather than measures: a
+click on what the note is about, further clicks to bend the line, then Enter — and the words
+are typed into the same floating field a label uses, for the same reason.
+
 The text field is focused one frame after it appears, which looks like a workaround and is not: the
 click that opens it is a click on the canvas, and the browser moves focus to the canvas as the
 _default action_ of that same mousedown — after the handler that opened the field has run.
@@ -157,7 +172,8 @@ before a character can be typed.
 | `V` `W` `D` `N` `O`            | select, wall, door, window, room         |
 | `L` `R` `C` `P`                | line, rectangle, circle, polygon         |
 | `M`                            | dimension                                |
-| `T`                            | text                                     |
+| `A` `U`                        | angle, radius                            |
+| `T` `E`                        | text, leader                             |
 | `B`                            | the block library                        |
 | `G` / `S`                      | grid on or off / snap to grid on or off  |
 | `Delete` / `Backspace`         | delete the selection                     |

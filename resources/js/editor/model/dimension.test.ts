@@ -20,7 +20,16 @@ const NO_LOOKUP = makeLookup([]);
 
 /** A 6 m measurement running left to right, its line 800 mm below what it measures. */
 function horizontal(offset = 800): DimensionElement {
-    return createDimension(point(0, 0), point(6000, 0), offset, LAYER);
+    return createDimension([point(0, 0), point(6000, 0)], offset, LAYER);
+}
+
+/** The same 6 m, measured in three steps rather than in one. */
+function chained(offset = 800): DimensionElement {
+    return createDimension(
+        [point(0, 0), point(1000, 0), point(2500, 0), point(6000, 0)],
+        offset,
+        LAYER,
+    );
 }
 
 describe('what a dimension measures', () => {
@@ -34,16 +43,47 @@ describe('what a dimension measures', () => {
     });
 
     it('follows the points when the element is moved, without being told', () => {
+        const original = horizontal();
         const moved: DimensionElement = {
-            ...horizontal(),
-            geometry: { ...horizontal().geometry, b: point(4000, 0) },
+            ...original,
+            geometry: {
+                ...original.geometry,
+                points: [point(-3000, 0), point(4000, 0)],
+            },
         };
 
         expect(dimensionFrame(moved)?.length).toBe(distance(point(-3000, 0), point(4000, 0)));
     });
 
     it('has no frame at all when there is nothing between the points', () => {
-        expect(dimensionFrame(createDimension(point(0, 0), point(0, 0), 500, LAYER))).toBeNull();
+        expect(dimensionFrame(createDimension([point(0, 0), point(0, 0)], 500, LAYER))).toBeNull();
+    });
+
+    it('measures each step of a chain, and they add up to the whole', () => {
+        const frame = dimensionFrame(chained());
+        const parts = frame?.segments.map((segment) => segment.length) ?? [];
+
+        expect(parts).toEqual([1000, 1500, 3500]);
+        expect(parts.reduce((total, part) => total + part, 0)).toBe(frame?.length);
+    });
+
+    /*
+     * Points picked off a drawing are never perfectly in line, so a chain measures along its
+     * own run: each point is projected onto the line from the first to the last. A chain whose
+     * parts do not add up to its whole is a chain nobody can check.
+     */
+    it('measures a chain along its run, not from point to point', () => {
+        const wandering = createDimension(
+            [point(0, 0), point(1000, 40), point(3000, 0)],
+            500,
+            LAYER,
+        );
+
+        const frame = dimensionFrame(wandering);
+        const parts = frame?.segments.map((segment) => segment.length) ?? [];
+
+        expect(parts[0]).toBeCloseTo(1000, 6);
+        expect(parts.reduce((total, part) => total + part, 0)).toBeCloseTo(frame?.length ?? 0, 6);
     });
 });
 
@@ -64,6 +104,11 @@ describe('where a dimension is drawn', () => {
         expect(dimensionStrokes(dimensionFrame(horizontal())!)).toHaveLength(5);
     });
 
+    it('gives a chain one line, and a tick and an extension line at every point', () => {
+        // Four points: one dimension line, four extension lines, four ticks.
+        expect(dimensionStrokes(dimensionFrame(chained())!)).toHaveLength(9);
+    });
+
     it('leaves the extension lines out when the line sits on the measurement itself', () => {
         // Nothing to extend from, so only the dimension line and its two ticks.
         expect(dimensionStrokes(dimensionFrame(horizontal(0))!)).toHaveLength(3);
@@ -72,16 +117,16 @@ describe('where a dimension is drawn', () => {
     it('never writes the value upside down', () => {
         // Right to left is the same measurement seen from the other end; the value still has
         // to read left to right for whoever is holding the sheet.
-        const backwards = createDimension(point(6000, 0), point(0, 0), 800, LAYER);
-        const rotation = dimensionFrame(backwards)?.textRotation ?? 0;
+        const backwards = createDimension([point(6000, 0), point(0, 0)], 800, LAYER);
+        const rotation = dimensionFrame(backwards)?.segments[0]?.textRotation ?? 0;
 
         expect(Math.abs(rotation)).toBeLessThanOrEqual(Math.PI / 2 + 1e-9);
     });
 
     it('writes the value along the measurement when it runs at an angle', () => {
-        const diagonal = createDimension(point(0, 0), point(1000, 1000), 300, LAYER);
+        const diagonal = createDimension([point(0, 0), point(1000, 1000)], 300, LAYER);
 
-        expect(dimensionFrame(diagonal)?.textRotation).toBeCloseTo(toRadians(45), 6);
+        expect(dimensionFrame(diagonal)?.segments[0]?.textRotation).toBeCloseTo(toRadians(45), 6);
     });
 });
 

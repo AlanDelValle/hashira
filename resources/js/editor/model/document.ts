@@ -119,9 +119,38 @@ const elementSchema = z.discriminatedUnion('type', [
         ...baseFields,
         type: z.literal('dimension'),
         geometry: z.object({
-            a: pointSchema,
-            b: pointSchema,
+            points: z.array(pointSchema).min(2),
             offset: finiteNumber,
+            fontSize: finiteNumber.positive(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
+        type: z.literal('angle'),
+        geometry: z.object({
+            vertex: pointSchema,
+            from: pointSchema,
+            to: pointSchema,
+            radius: finiteNumber.positive(),
+            fontSize: finiteNumber.positive(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
+        type: z.literal('radius'),
+        geometry: z.object({
+            hostId: z.string().min(1),
+            angle: finiteNumber,
+            diameter: z.boolean(),
+            fontSize: finiteNumber.positive(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
+        type: z.literal('leader'),
+        geometry: z.object({
+            points: z.array(pointSchema).min(2),
+            content: z.string().min(1),
             fontSize: finiteNumber.positive(),
         }),
     }),
@@ -280,7 +309,11 @@ function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
  *
  * 1 → 2 added the `dimension` element. Nothing already written changes shape, so the step only
  * restamps the version — but it is a real step rather than a silent pass, because the drawing
- * is genuinely being handed forward and the next one will have work to do.
+ * is genuinely being handed forward and the next one has work to do.
+ *
+ * 2 → 3 turned a dimension's two measured points into a run of them, so that a chain of
+ * measurements is one mark on the sheet rather than a row of separate ones. Every dimension
+ * ever written has exactly two, which is a chain of one.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -289,7 +322,32 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
         document = { ...document, schemaVersion: 2 };
     }
 
+    if (document.schemaVersion === 2) {
+        const elements = Array.isArray(document.elements) ? document.elements : [];
+
+        document = {
+            ...document,
+            schemaVersion: 3,
+            elements: elements.map((element) => chainedDimension(element)),
+        };
+    }
+
     return document;
+}
+
+/** A schema-2 dimension, as a run of the two points it was written with. */
+function chainedDimension(element: unknown): unknown {
+    if (!isRecord(element) || element.type !== 'dimension' || !isRecord(element.geometry)) {
+        return element;
+    }
+
+    const { a, b, ...rest } = element.geometry;
+
+    if (!isRecord(a) || !isRecord(b)) {
+        return element;
+    }
+
+    return { ...element, geometry: { ...rest, points: [a, b] } };
 }
 
 export function parseDocument(raw: unknown): ParseResult {
@@ -346,10 +404,20 @@ export function parseDocument(raw: unknown): ParseResult {
         );
     }
 
-    // Hosted openings are resolved after the fact: a door may legitimately appear before its
+    // Hosted elements are resolved after the fact: a door may legitimately appear before its
     // wall in the array, so the host has to be looked for against the finished set.
     const elementIds = new Set(elements.map((element) => element.id));
     const kept = elements.filter((element, index) => {
+        if (element.type === 'radius') {
+            if (elementIds.has(element.geometry.hostId)) {
+                return true;
+            }
+
+            dropped.push({ index, reason: 'the circle this measurement belongs to is missing' });
+
+            return false;
+        }
+
         if (element.type !== 'door' && element.type !== 'window') {
             return true;
         }

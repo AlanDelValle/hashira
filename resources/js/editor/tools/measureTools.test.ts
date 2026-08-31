@@ -8,7 +8,7 @@ import type { DimensionElement } from '@/editor/model/types';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
-import { commitDimension } from './dimensionTool';
+import { commitDimension } from './measureTools';
 
 function dimensions(): DimensionElement[] {
     return useDocumentStore

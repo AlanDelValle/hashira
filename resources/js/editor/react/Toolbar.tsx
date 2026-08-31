@@ -1,7 +1,9 @@
 import {
+    Angle,
     AppWindow,
     Circle,
     Columns2,
+    Diameter,
     DoorOpen,
     Minus,
     MousePointer2,
@@ -10,6 +12,7 @@ import {
     Ruler,
     Square,
     SquareDashed,
+    TextQuote,
     Type,
 } from 'lucide-react';
 import { useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react';
@@ -30,6 +33,9 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     polygon: Pentagon,
     text: Type,
     dimension: Ruler,
+    angle: Angle,
+    radius: Diameter,
+    leader: TextQuote,
     asset: Sofa,
 };
 
@@ -38,7 +44,8 @@ const GROUPS: ToolId[][] = [
     ['select'],
     ['wall', 'door', 'window', 'room'],
     ['line', 'rect', 'circle', 'polygon'],
-    ['dimension', 'text'],
+    ['dimension', 'angle', 'radius'],
+    ['text', 'leader'],
 ];
 
 /**

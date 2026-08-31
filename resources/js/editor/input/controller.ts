@@ -28,9 +28,13 @@ import {
     createPolygonTool,
     createRectTool,
 } from '@/editor/tools/drawTools';
-import { createDimensionTool } from '@/editor/tools/dimensionTool';
+import {
+    createAngleTool,
+    createDimensionTool,
+    createRadiusTool,
+} from '@/editor/tools/measureTools';
 import { createSelectTool } from '@/editor/tools/selectTool';
-import { createTextTool } from '@/editor/tools/textTool';
+import { createLeaderTool, createTextTool } from '@/editor/tools/textTool';
 import { LIBRARY_KEY, REFERENCE_KEY, toolForKey } from '@/editor/input/shortcuts';
 import { snapPoint } from '@/editor/snapping/engine';
 import type { Tool, ToolContext, ToolEvent } from '@/editor/tools/types';
@@ -87,6 +91,9 @@ export class InputController {
             polygon: createPolygonTool(),
             text: createTextTool(),
             dimension: createDimensionTool(),
+            angle: createAngleTool(),
+            radius: createRadiusTool(),
+            leader: createLeaderTool(),
             asset: createAssetTool(),
         };
     }

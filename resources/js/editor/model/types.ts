@@ -11,8 +11,11 @@ import type { Point } from '@/editor/geometry/vec';
  * 2 added the `dimension` element. A reader that predates it would drop every dimension in a
  * drawing and then save the drawing back without them, so an older Hashira refuses the file
  * outright rather than quietly throwing away the measurements.
+ *
+ * 3 is the rest of the measured drawing: a dimension became a chain of points rather than a
+ * pair of them, and `angle`, `radius` and `leader` joined it.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -138,15 +141,54 @@ export type TextAlign = 'left' | 'center' | 'right';
 /**
  * A measurement written on the drawing.
  *
- * `a` and `b` are the two points being measured; `offset` is how far the dimension line sits
- * from them, perpendicular to the measurement, and signed so it can go to either side. The
- * value itself is never stored — it is read off the geometry every time it is drawn, which is
- * what stops a drawing from carrying a number that no longer matches what it shows.
+ * `points` are the points being measured, two or more of them: each consecutive pair is a
+ * measurement of its own and they all share one dimension line, which is what a chain of
+ * dimensions is. `offset` is how far that line sits from the points, perpendicular to the run
+ * and signed so it can go to either side. The value itself is never stored — it is read off
+ * the geometry every time it is drawn, which is what stops a drawing from carrying a number
+ * that no longer matches what it shows.
  */
 export interface DimensionElement extends BaseElement {
     type: 'dimension';
     /** `fontSize` is millimetres at 1:1, like text: the value scales with the drawing. */
-    geometry: { a: Point; b: Point; offset: number; fontSize: number };
+    geometry: { points: Point[]; offset: number; fontSize: number };
+}
+
+/**
+ * An angle measured at a corner.
+ *
+ * `vertex` is the corner and `from` and `to` are a point on each of its two legs — points
+ * rather than angles, so that the measurement is of two directions in the drawing and moves
+ * when they do. `radius` is how far out from the corner the arc is struck. The lesser of the
+ * two angles is the one measured; the reflex angle is not what anybody means by a corner.
+ */
+export interface AngleElement extends BaseElement {
+    type: 'angle';
+    geometry: { vertex: Point; from: Point; to: Point; radius: number; fontSize: number };
+}
+
+/**
+ * The radius or the diameter of a circle, hosted on the circle it measures.
+ *
+ * Like an opening on a wall, this has no independent position: it stores which circle and
+ * which way round the leader points, so resizing or moving the circle takes the measurement
+ * with it and the value cannot come to disagree with the thing it is measuring.
+ */
+export interface RadiusElement extends BaseElement {
+    type: 'radius';
+    geometry: { hostId: string; angle: number; diameter: boolean; fontSize: number };
+}
+
+/**
+ * A note with a line pointing at what it is about.
+ *
+ * `points` begins at the thing being annotated and ends where the words are written, with as
+ * many bends in between as were drawn. Unlike a measurement, the words are the content: there
+ * is nothing in the geometry to derive them from.
+ */
+export interface LeaderElement extends BaseElement {
+    type: 'leader';
+    geometry: { points: Point[]; content: string; fontSize: number };
 }
 
 export interface TextElement extends BaseElement {
@@ -175,7 +217,10 @@ export type Element =
     | WindowElement
     | AssetElement
     | TextElement
-    | DimensionElement;
+    | DimensionElement
+    | AngleElement
+    | RadiusElement
+    | LeaderElement;
 
 export type ElementType = Element['type'];
 

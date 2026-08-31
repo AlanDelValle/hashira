@@ -3,13 +3,16 @@ import { useCallback } from 'react';
 import { replaceElements } from '@/editor/commands/command';
 import { polygonArea } from '@/editor/geometry/polygon';
 import {
+    angleFrame,
     dimensionFrame,
     elementLength,
     elementWorldPoints,
     makeLookup,
+    radiusFrame,
 } from '@/editor/model/elements';
 import {
     segmentAngle,
+    setAngleRadius,
     setDimensionOffset,
     setDimensionSize,
     setAssetMirrored,
@@ -21,6 +24,8 @@ import {
     setOpeningOffset,
     setOpeningWidth,
     setPosition,
+    setRadiusAngle,
+    setRadiusDiameter,
     setRectSize,
     setRotation,
     setSegmentAngle,
@@ -54,6 +59,9 @@ const TYPE_NAMES: Record<Element['type'], string> = {
     asset: 'Block',
     text: 'Text',
     dimension: 'Dimension',
+    angle: 'Angle',
+    radius: 'Radius',
+    leader: 'Leader',
 };
 
 /**
@@ -133,7 +141,7 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
         <div className="space-y-2 px-3">
             <ReadonlyRow label="Type" value={TYPE_NAMES[element.type]} />
 
-            {element.type !== 'door' && element.type !== 'window' && (
+            {element.type !== 'door' && element.type !== 'window' && element.type !== 'radius' && (
                 <>
                     <MeasureField
                         label="X"
@@ -376,6 +384,54 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                 </>
             )}
 
+            {element.type === 'angle' && (
+                <>
+                    {/* Read-only for the same reason a length is: the two legs are the angle. */}
+                    <ReadonlyRow
+                        label="Measures"
+                        value={formatAngle(angleFrame(element)?.angle ?? 0)}
+                    />
+                    <MeasureField
+                        label="Arc"
+                        value={element.geometry.radius}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) => set(setAngleRadius(element, value), 'Arc', 'radius')}
+                    />
+                    <MeasureField
+                        label="Size"
+                        value={element.geometry.fontSize}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(setDimensionSize(element, value), 'Angle size', 'size')
+                        }
+                    />
+                </>
+            )}
+
+            {element.type === 'radius' && <RadiusRows element={element} unit={unit} set={set} />}
+
+            {element.type === 'leader' && (
+                <>
+                    <TextRow
+                        label="Note"
+                        value={element.geometry.content}
+                        onCommit={(value) => set(setTextContent(element, value), 'Note', 'content')}
+                    />
+                    <MeasureField
+                        label="Size"
+                        value={element.geometry.fontSize}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) => set(setTextSize(element, value), 'Note size', 'size')}
+                    />
+                </>
+            )}
+
             {element.type === 'room' && <RoomArea element={element} unit={unit} />}
 
             {element.type !== 'door' && element.type !== 'window' && (
@@ -400,6 +456,44 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
 }
 
 /** Area is measured from the geometry, so it is shown rather than offered for editing. */
+/**
+ * What a radius measures, and whether it is measuring the radius or the diameter.
+ *
+ * The circle is where the value comes from, so this reads it out of the document rather than
+ * out of the element: the measurement itself stores only which circle and which way round.
+ */
+function RadiusRows({
+    element,
+    unit,
+    set,
+}: {
+    element: Element & { type: 'radius' };
+    unit: DisplayUnit;
+    set: (next: Element, label: string, field: string) => void;
+}) {
+    const drawing = useDocumentStore.getState().document;
+    const frame = radiusFrame(element, makeLookup(drawing.elements));
+
+    return (
+        <>
+            <ReadonlyRow label="Measures" value={formatLength(frame?.measured ?? 0, unit)} />
+            <ToggleRow
+                label="Diameter"
+                checked={element.geometry.diameter}
+                onChange={(value) => set(setRadiusDiameter(element, value), 'Diameter', 'diameter')}
+            />
+            <MeasureField
+                label="Direction"
+                value={element.geometry.angle}
+                format={(value) => formatAngle(value, 1).replace('°', '')}
+                parse={parseAngle}
+                suffix="°"
+                onCommit={(value) => set(setRadiusAngle(element, value), 'Direction', 'angle')}
+            />
+        </>
+    );
+}
+
 function RoomArea({ element, unit }: { element: Element & { type: 'room' }; unit: DisplayUnit }) {
     const drawing = useDocumentStore.getState().document;
     const points = elementWorldPoints(element, makeLookup(drawing.elements));

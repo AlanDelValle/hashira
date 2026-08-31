@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Point } from '@/editor/geometry/vec';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { useViewportStore } from '@/editor/store/viewportStore';
-import { commitText } from '@/editor/tools/textTool';
+import { commitLeader, commitText } from '@/editor/tools/textTool';
 import { toScreen } from '@/editor/viewport/viewport';
 
 /**
@@ -26,10 +26,10 @@ export function TextDraft() {
 
     // Keyed on the draft, so each new one arrives with an empty field rather than the last
     // label's wording left in it.
-    return <Field key={draft.id} at={draft.at} />;
+    return <Field key={draft.id} at={draft.at} leader={draft.leader} />;
 }
 
-function Field({ at }: { at: Point }) {
+function Field({ at, leader }: { at: Point; leader?: Point[] }) {
     const size = useEditorStore((state) => state.textSize);
     const cancel = useEditorStore((state) => state.cancelText);
     const viewport = useViewportStore((state) => state.viewport);
@@ -63,7 +63,12 @@ function Field({ at }: { at: Point }) {
     const fontSize = Math.max(11, size * viewport.zoom);
 
     function commit() {
-        commitText(content, at);
+        if (leader === undefined) {
+            commitText(content, at);
+        } else {
+            commitLeader(content, leader);
+        }
+
         cancel();
     }
 
@@ -71,8 +76,8 @@ function Field({ at }: { at: Point }) {
         <input
             ref={field}
             value={content}
-            aria-label="Label text"
-            placeholder="Label"
+            aria-label={leader === undefined ? 'Label text' : 'Note text'}
+            placeholder={leader === undefined ? 'Label' : 'Note'}
             onChange={(event) => setContent(event.target.value)}
             onBlur={commit}
             onKeyDown={(event) => {

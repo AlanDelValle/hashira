@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseDocument } from './document';
+import { dimensionFrame } from './elements';
 import { SCHEMA_VERSION } from './types';
 
 /**
@@ -135,6 +136,79 @@ describe('opening a version 1 drawing', () => {
             'layer_openings',
             'layer_annotations',
         ]);
+    });
+});
+
+/** A version 2 drawing: the same wall, with the measurement that version 2 could write. */
+const VERSION_2 = {
+    ...VERSION_1,
+    schemaVersion: 2,
+    name: 'Before chains',
+    elements: [
+        ...VERSION_1.elements,
+        {
+            id: 'el_dimension',
+            type: 'dimension',
+            layerId: 'layer_dimensions',
+            transform: { x: 3000, y: 0, rotation: 0 },
+            geometry: {
+                a: { x: -3000, y: 0 },
+                b: { x: 3000, y: 0 },
+                offset: 800,
+                fontSize: 200,
+            },
+            metadata: { createdAt: '2026-02-01T00:00:00.000Z' },
+        },
+    ],
+};
+
+describe('opening a version 2 drawing', () => {
+    it('opens, keeping the measurement it was written with', () => {
+        const parsed = parseDocument(VERSION_2);
+
+        expect(parsed.ok).toBe(true);
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.elements.map((element) => element.id)).toContain(
+            'el_dimension',
+        );
+    });
+
+    /*
+     * Version 3 measures a run of points rather than a pair of them. Every dimension ever
+     * written has exactly two, which is a chain of one — so the step is a rewrite of the
+     * shape and not of the measurement.
+     */
+    it('reads its two measured points as the run they always were', () => {
+        const parsed = parseDocument(VERSION_2);
+        const dimension = parsed.ok
+            ? parsed.document.elements.find((element) => element.id === 'el_dimension')
+            : undefined;
+
+        expect(dimension?.type === 'dimension' && dimension.geometry).toEqual({
+            points: [
+                { x: -3000, y: 0 },
+                { x: 3000, y: 0 },
+            ],
+            offset: 800,
+            fontSize: 200,
+        });
+    });
+
+    it('still measures the same six metres it did before', () => {
+        const parsed = parseDocument(VERSION_2);
+        const dimension = parsed.ok
+            ? parsed.document.elements.find((element) => element.id === 'el_dimension')
+            : undefined;
+
+        expect(dimension?.type === 'dimension' ? dimensionFrame(dimension)?.length : null).toBe(
+            6000,
+        );
+    });
+
+    it('comes back stamped with the current schema, ready to be saved again', () => {
+        const parsed = parseDocument(VERSION_2);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
     });
 });
 

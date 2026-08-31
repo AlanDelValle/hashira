@@ -1,6 +1,8 @@
 import { addElements } from '@/editor/commands/command';
-import type { Point } from '@/editor/geometry/vec';
-import { createText } from '@/editor/model/factories';
+import { distance, type Point } from '@/editor/geometry/vec';
+import { createLeader, createText } from '@/editor/model/factories';
+import { requestRepaint } from '@/editor/render/frame';
+import { interaction } from '@/editor/store/interaction';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
@@ -37,6 +39,112 @@ export function createTextTool(): Tool {
             useEditorStore.getState().cancelText();
         },
     };
+}
+
+/**
+ * A note, and the line that says what it is about.
+ *
+ * The first click is on the thing being annotated; further clicks bend the line on its way to
+ * where the words will go; Enter, a double click, or a second click in the same place ends the
+ * line and opens the field. The words themselves are typed into the same real input a label
+ * uses, for the same reason — a canvas has no caret, no selection and no input method.
+ */
+export function createLeaderTool(): Tool {
+    let points: Point[] = [];
+
+    function clearDraft(): void {
+        points = [];
+        interaction.preview = null;
+        interaction.draftPoints = [];
+        requestRepaint();
+    }
+
+    function finish(): void {
+        // A leader needs somewhere to point from and somewhere to write; one click is neither.
+        if (points.length >= 2) {
+            useEditorStore.getState().beginNote(points);
+        }
+
+        clearDraft();
+    }
+
+    return {
+        id: 'leader',
+        cursor: 'crosshair',
+
+        anchors: () => points,
+
+        onPointerMove(event) {
+            if (points.length === 0) {
+                return;
+            }
+
+            interaction.draftPoints = [...points, event.world];
+            requestRepaint();
+        },
+
+        onPointerDown(event) {
+            const last = points[points.length - 1];
+
+            // Clicking where the line already ends is how you say it has gone far enough.
+            if (last !== undefined && distance(last, event.world) === 0) {
+                finish();
+
+                return;
+            }
+
+            points = [...points, event.world];
+            interaction.draftPoints = points;
+            requestRepaint();
+        },
+
+        onDoubleClick() {
+            finish();
+        },
+
+        onKeyDown(key) {
+            if (key === 'Enter' && points.length >= 2) {
+                finish();
+
+                return true;
+            }
+
+            return false;
+        },
+
+        cancel() {
+            clearDraft();
+            useEditorStore.getState().cancelText();
+        },
+    };
+}
+
+/**
+ * Commits a typed note. Blank is not a note, for the same reason blank is not a label — and
+ * a leader with nothing written at the end of it is a line pointing at something for no
+ * stated reason.
+ */
+export function commitLeader(content: string, points: readonly Point[]): boolean {
+    const trimmed = content.trim();
+
+    if (trimmed === '' || points.length < 2) {
+        return false;
+    }
+
+    const { activeLayerId, textSize, select } = useEditorStore.getState();
+    const drawing = useDocumentStore.getState().document;
+
+    const element = createLeader(
+        points,
+        trimmed,
+        annotationLayer(drawing, activeLayerId),
+        textSize,
+    );
+
+    runCommand(addElements([element], 'Leader'));
+    select([element.id]);
+
+    return true;
 }
 
 /** Labels belong on the annotations layer when it exists, not on whatever is active. */
