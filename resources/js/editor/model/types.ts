@@ -14,8 +14,10 @@ import type { Point } from '@/editor/geometry/vec';
  *
  * 3 is the rest of the measured drawing: a dimension became a chain of points rather than a
  * pair of them, and `angle`, `radius` and `leader` joined it.
+ *
+ * 4 added the `underlay`: a page of somebody else's drawing to trace over.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -206,6 +208,20 @@ export interface AssetElement extends BaseElement {
     geometry: { assetId: string; width: number; height: number; mirrored: boolean };
 }
 
+/**
+ * A page to trace over: a rasterised page of an imported PDF, placed at a size.
+ *
+ * Like a block, the document stores which picture rather than the picture itself — the page
+ * is megabytes and a drawing is kilobytes. Unlike everything else in a drawing, it is not
+ * *of* the drawing: it is never exported, because what it holds is usually somebody else's
+ * survey and a plan that quietly contains it is a plan nobody can publish.
+ */
+export interface UnderlayElement extends BaseElement {
+    type: 'underlay';
+    /** `opacity` is 0–1: an underlay is drawn back so the drawing on top of it reads. */
+    geometry: { underlayId: string; width: number; height: number; opacity: number };
+}
+
 export type Element =
     | WallElement
     | LineElement
@@ -220,7 +236,8 @@ export type Element =
     | DimensionElement
     | AngleElement
     | RadiusElement
-    | LeaderElement;
+    | LeaderElement
+    | UnderlayElement;
 
 export type ElementType = Element['type'];
 

@@ -147,6 +147,31 @@ export function setCircleRadius(element: Element, radius: number): Element {
     return element.type === 'circle' && radius > 0 ? { ...element, geometry: { radius } } : element;
 }
 
+/**
+ * How far back a page being traced is drawn.
+ *
+ * Clamped rather than refused: a slider that stops at the ends is a slider, and 0 is a page
+ * you have hidden without hiding, which is a thing people do while checking their own lines.
+ */
+export function setUnderlayOpacity(element: Element, opacity: number): Element {
+    return element.type === 'underlay'
+        ? {
+              ...element,
+              geometry: {
+                  ...element.geometry,
+                  opacity: Math.min(Math.max(opacity, 0), 1),
+              },
+          }
+        : element;
+}
+
+/** Resize a page to trace over, keeping its centre where it is. */
+export function setUnderlaySize(element: Element, width: number, height: number): Element {
+    return element.type === 'underlay' && width > 0 && height > 0
+        ? { ...element, geometry: { ...element.geometry, width, height } }
+        : element;
+}
+
 export function setAssetSize(element: Element, width: number, height: number): Element {
     return element.type === 'asset' && width > 0 && height > 0
         ? { ...element, geometry: { ...element.geometry, width, height } }

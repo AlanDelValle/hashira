@@ -274,6 +274,17 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
 
         case 'leader':
             return leaderPrimitives(element, context);
+
+        /*
+         * An underlay is deliberately not in the scene.
+         *
+         * The scene is what every output consumes, and a page traced over is not part of the
+         * drawing: it is usually somebody else's survey, and a plan that quietly carries it
+         * into a PDF is a plan nobody can publish. The canvas paints it beneath everything as
+         * a working aid — see render/underlay.ts — and no exporter ever sees it.
+         */
+        case 'underlay':
+            return [];
     }
 }
 

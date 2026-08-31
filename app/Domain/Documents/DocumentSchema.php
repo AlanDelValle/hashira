@@ -24,11 +24,12 @@ final class DocumentSchema
      * Bump this only alongside a migration and a fixture test.
      *
      * 2 added the `dimension` element; 3 turned it into a chain of points and added the
-     * `angle`, `radius` and `leader` marks beside it. The server validates the envelope
-     * rather than the interior, so the number is all that changes here — but it has to
-     * change, or the server would refuse every document the current client writes.
+     * `angle`, `radius` and `leader` marks beside it; 4 added the `underlay`. The server
+     * validates the envelope rather than the interior, so the number is all that changes
+     * here — but it has to change, or the server would refuse every document the current
+     * client writes.
      */
-    public const CURRENT_VERSION = 3;
+    public const CURRENT_VERSION = 4;
 
     /** A generous ceiling for a 2D plan; enough for thousands of elements. */
     public const MAX_BYTES = 8 * 1024 * 1024;

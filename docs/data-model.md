@@ -57,6 +57,18 @@ share_links
   timestamps
   unique (token)
 
+underlays
+  id                ulid pk
+  project_id        ulid fk → projects, cascade delete
+  name              varchar(160)             -- the file it came out of
+  page              smallint                 -- which page of it
+  width             integer                  -- the page's own size, in millimetres
+  height            integer
+  path              varchar(255)             -- on the private disk, never public
+  bytes             integer
+  timestamps
+  index (project_id)
+
 blocks
   id                ulid pk
   user_id           bigint fk → users, cascade delete
@@ -80,6 +92,9 @@ Notes on the shape:
   against a stale revision gets `409 Conflict` rather than clobbering another tab.
 - **Share tokens are 32 bytes from a CSPRNG**, never derived from an id. Revocation is a
   timestamp, not a delete, so a leaked link can be audited after the fact.
+- **An underlay belongs to a project, not to a person.** A survey is imported to draw one
+  particular building on top of. Deleting the project deletes the pictures as well as the
+  rows: a foreign key cascade has never deleted a file.
 - **A block belongs to a person, not to a project.** A drawing refers to it by id and never
   copies its geometry, which is what keeps drawings small — and is why the document endpoints
   serve the blocks a drawing refers to along with it. There is no update: correcting a block
@@ -112,6 +127,21 @@ PATCH  /api/projects/{project}          { name?, description? }
 DELETE /api/projects/{project}
 POST   /api/projects/{project}/duplicate
 ```
+
+### Underlays
+
+```
+GET    /api/projects/{project}/underlays                    the project's imported pages
+POST   /api/projects/{project}/underlays                    multipart: the rasterised page
+GET    /api/projects/{project}/underlays/{underlay}/image   the picture, behind the policy
+DELETE /api/projects/{project}/underlays/{underlay}
+```
+
+The page arrives already rasterised, because the browser has a PDF renderer and putting one
+on the server would mean Ghostscript or Imagick on every machine that runs this. The picture
+is served by a controller rather than from a public path: an underlay is usually somebody
+else's survey, and sharing a drawing hands out the drawing, not the document it was traced
+from.
 
 ### Blocks
 

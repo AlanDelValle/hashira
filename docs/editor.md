@@ -11,7 +11,7 @@ resources/js/editor/
 ├── viewport/    world ↔ screen
 ├── commands/    Command, HistoryStack
 ├── store/       document, editor, viewport, and transient interaction state
-├── render/      canvas renderer, grid, painters, overlay
+├── render/      canvas renderer, grid, painters, overlay, underlays
 ├── snapping/    the snap engine and what it collects candidates from
 ├── scene/       the document as primitives — the one description every output consumes
 ├── export/      SVG, PNG and PDF, plus sheet layout
@@ -131,7 +131,7 @@ faces of the walls rather than their centrelines — so a corner between a 250 m
 and a 100 mm partition is where those two faces actually meet. Where nothing encloses the
 pointer there is nothing to accept, and clicks fall back to placing a ring by hand: a
 courtyard, a zone, a room whose fourth wall has not been drawn yet. How the walls are turned
-into spaces is in §17.
+into spaces is in §18.
 
 The dimension tool takes three clicks, because a dimension is three decisions: what to
 measure from, what to measure to, and which side of it the value is written on. The first two
@@ -325,7 +325,7 @@ filled rather than stroked and gets smaller as you zoom out, the way the wall do
 It was a fat stroke until walls learned to meet each other. A stroke has two ends and they are
 square, which is fine until two walls turn a corner and the outside of it is a notch neither
 of them reaches into. Mitring says where each face of each band really stops, and that shape
-is a quadrilateral, not a line — see §17.
+is a quadrilateral, not a line — see §18.
 
 Hidden layers are absent from the scene, so hiding a layer hides it in an export too. A wall's
 openings come only from openings on visible layers, which is why hiding _Openings_ gives solid
@@ -365,7 +365,35 @@ than they were first drawn.
 Below the `lg` breakpoint the editor is not merely hidden — it is not mounted, so a phone does
 not start a render loop for a canvas nobody can draw on.
 
-## 17. Where walls meet
+## 17. Tracing over a PDF
+
+A survey arrives as a PDF far more often than as anything a drafting tool can open, and the
+useful thing to do with it is to draw on top of it. Importing one lists its pages with their
+real sizes, rasterises the page that was chosen and nothing else, and places it at that size
+on a layer of its own — so it can be hidden or locked without touching the drawing above it.
+
+The rasterising happens in the browser, with pdf.js, imported at the moment somebody asks for
+it the way pdf-lib is on the way out. On the server it would mean Ghostscript or Imagick
+installed on every machine that runs this, and it would mean uploading a whole survey before
+knowing whether page four was the one wanted.
+
+An underlay is the one thing on the sheet that is not part of the drawing, and everything else
+about it follows from that:
+
+- **It is not in the scene.** `render/underlay.ts` paints it straight onto the canvas beneath
+  the grid; no exporter ever sees it. What it holds is usually somebody else's drawing, and a
+  plan that quietly carries it into a PDF is a plan nobody can publish.
+- **It is not part of what a share link hands out.** The link gives away the drawing; the
+  pages it was traced from stay behind the project's own policy.
+- **Nothing snaps to it.** It is a picture, not geometry: snapping to the edge of the paper
+  would land new work on the page rather than on the building drawn on it.
+
+The picture is fetched once and kept, because a drawing repaints at pointer rate and an image
+that reloaded per frame would be a request per frame. One that has not arrived yet is a dashed
+outline; one nothing is known about — which is what a share link sees — is nothing at all,
+since an outline would advertise a document that is not being given.
+
+## 18. Where walls meet
 
 A wall is a band as wide as it is thick. Two of them turning a corner, drawn as two bands with
 square ends, overlap on the inside of the corner and leave a square notch on the outside that
@@ -416,7 +444,6 @@ Every wall on a layer is filled as **one** shape rather than one per wall. Two f
 share an edge each cover about half the pixels along it, and the pale hairline that leaves at
 every mitre is the notch coming back wearing a different hat.
 
-## 18. What is not here yet
+## 19. What is not here yet
 
-Dimensions beyond the linear one, DXF, and anything collaborative. See
-[roadmap.md](roadmap.md).
+DXF, and anything collaborative. See [roadmap.md](roadmap.md).

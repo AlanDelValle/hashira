@@ -6,6 +6,7 @@ namespace App\Domain\Projects\Models;
 
 use App\Domain\Documents\Models\Document;
 use App\Domain\Sharing\Models\ShareLink;
+use App\Domain\Underlays\Models\Underlay;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
 use Database\Factories\ProjectFactory;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * A project is what a user names, opens and shares. It owns the drawing rather than being
@@ -51,6 +53,20 @@ class Project extends Model
         ];
     }
 
+    /**
+     * Deleting a project takes its underlays' pictures with it.
+     *
+     * The rows go by themselves — the foreign key cascades — but the files they point at are
+     * on disk, and a database cascade has never deleted a file. Somebody else's survey left
+     * lying in storage after the project that used it is gone is exactly the thing not to do.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $project): void {
+            Storage::deleteDirectory("underlays/{$project->id}");
+        });
+    }
+
     /** @return BelongsTo<User, $this> */
     public function owner(): BelongsTo
     {
@@ -72,6 +88,17 @@ class Project extends Model
     public function document(): HasOne
     {
         return $this->hasOne(Document::class)->oldestOfMany();
+    }
+
+    /**
+     * Pages to trace over. They belong to the project rather than to the person: a survey is
+     * imported to draw one particular building on top of.
+     *
+     * @return HasMany<Underlay, $this>
+     */
+    public function underlays(): HasMany
+    {
+        return $this->hasMany(Underlay::class);
     }
 
     /** @return HasMany<ShareLink, $this> */

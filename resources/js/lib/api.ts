@@ -67,7 +67,11 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
         'X-Requested-With': 'XMLHttpRequest',
     };
 
-    if (body !== undefined) {
+    // A form is sent as a form: the browser writes the multipart boundary itself, and setting
+    // a content type here would replace it with one that has no boundary in it.
+    const isForm = body instanceof FormData;
+
+    if (body !== undefined && !isForm) {
         headers['Content-Type'] = 'application/json';
     }
 
@@ -83,7 +87,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
         method,
         headers,
         credentials: 'same-origin',
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
 
     if (response.status === 204) {
@@ -129,6 +133,7 @@ function errorsFrom(payload: unknown): ValidationErrors {
 export const api = {
     get: <T>(path: string) => request<T>('GET', path),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+    upload: <T>(path: string, form: FormData) => request<T>('POST', path, form),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body ?? {}),
     delete: <T>(path: string) => request<T>('DELETE', path),

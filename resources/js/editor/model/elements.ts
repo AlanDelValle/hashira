@@ -166,7 +166,8 @@ export function elementWorldPoints(element: Element, lookup: ElementLookup): Poi
             ];
 
         case 'rect':
-        case 'asset': {
+        case 'asset':
+        case 'underlay': {
             const halfWidth = element.geometry.width / 2;
             const halfHeight = element.geometry.height / 2;
 
@@ -725,9 +726,11 @@ export function hitTestElement(
         case 'rect':
             return distanceToPolyline(elementWorldPoints(element, lookup), p, true) <= tolerance;
 
-        case 'asset': {
+        case 'asset':
+        case 'underlay': {
             // A block is an object, not construction geometry: clicking a sofa should select
-            // the sofa, so its whole footprint is a target and not only its outline.
+            // the sofa, so its whole footprint is a target and not only its outline. A page
+            // to trace over is the same — and usually on a locked layer anyway.
             const points = elementWorldPoints(element, lookup);
 
             return pointInPolygon(points, p) || distanceToPolyline(points, p, true) <= tolerance;
@@ -921,6 +924,7 @@ export function elementSize(element: Element): { width: number; height: number }
     switch (element.type) {
         case 'rect':
         case 'asset':
+        case 'underlay':
             return { width: element.geometry.width, height: element.geometry.height };
         case 'circle':
             return { width: element.geometry.radius * 2, height: element.geometry.radius * 2 };

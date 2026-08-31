@@ -16,6 +16,7 @@ import type {
     RectElement,
     RoomElement,
     TextElement,
+    UnderlayElement,
     WallElement,
     WindowElement,
 } from './types';
@@ -311,6 +312,33 @@ export function createRadius(
         layerId,
         transform: { x: 0, y: 0, rotation: 0 },
         geometry: { hostId, angle, diameter, fontSize },
+        metadata: metadata(),
+    };
+}
+
+/**
+ * How far back an imported page is drawn. Faint enough that a line drawn over it is clearly
+ * the drawing, dark enough to trace.
+ */
+export const DEFAULT_UNDERLAY_OPACITY = 0.45;
+
+/** The layer a page to trace over lands on, so it can be hidden and locked on its own. */
+export const UNDERLAY_LAYER = 'layer_underlay';
+
+/** A page to trace over, placed at its own size with its centre on `centre`. */
+export function createUnderlay(
+    underlayId: string,
+    centre: Point,
+    width: number,
+    height: number,
+    layerId = UNDERLAY_LAYER,
+): UnderlayElement {
+    return {
+        id: newId(),
+        type: 'underlay',
+        layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: { underlayId, width, height, opacity: DEFAULT_UNDERLAY_OPACITY },
         metadata: metadata(),
     };
 }

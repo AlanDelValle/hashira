@@ -212,6 +212,56 @@ describe('opening a version 2 drawing', () => {
     });
 });
 
+/** A version 3 drawing: measured, but from before there was anything to trace over. */
+const VERSION_3 = {
+    ...VERSION_2,
+    schemaVersion: 3,
+    name: 'Before underlays',
+    elements: [
+        ...VERSION_1.elements,
+        {
+            id: 'el_chain',
+            type: 'dimension',
+            layerId: 'layer_dimensions',
+            transform: { x: 3000, y: 0, rotation: 0 },
+            geometry: {
+                points: [
+                    { x: -3000, y: 0 },
+                    { x: 0, y: 0 },
+                    { x: 3000, y: 0 },
+                ],
+                offset: 800,
+                fontSize: 200,
+            },
+            metadata: { createdAt: '2026-03-01T00:00:00.000Z' },
+        },
+    ],
+};
+
+describe('opening a version 3 drawing', () => {
+    it('opens, keeping the chain it was written with', () => {
+        const parsed = parseDocument(VERSION_3);
+        const chain = parsed.ok
+            ? parsed.document.elements.find((element) => element.id === 'el_chain')
+            : undefined;
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(chain?.type === 'dimension' && chain.geometry.points).toHaveLength(3);
+    });
+
+    /*
+     * 4 only added the underlay. A reader that predates the type would drop every underlay in
+     * a drawing and save it back without them, which is why it is a version at all rather
+     * than a field nobody mentioned.
+     */
+    it('comes back stamped with the current schema, unchanged in every other way', () => {
+        const parsed = parseDocument(VERSION_3);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_3.elements.length);
+    });
+});
+
 describe('a drawing from a newer Hashira', () => {
     it('is refused outright rather than opened with pieces missing', () => {
         const parsed = parseDocument({ ...VERSION_1, schemaVersion: SCHEMA_VERSION + 1 });

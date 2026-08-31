@@ -1,4 +1,4 @@
-# Document format — schema version 3
+# Document format — schema version 4
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -131,6 +131,7 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 | `angle`     | `{ vertex, from, to, radius, fontSize }`    | the value is derived — §4.4   |
 | `radius`    | `{ hostId, angle, diameter, fontSize }`     | hosted on a circle — §4.4     |
 | `leader`    | `{ points, content, fontSize }`             | a note, and a line to it      |
+| `underlay`  | `{ underlayId, width, height, opacity }`    | a page to trace over — §4.8   |
 
 `Point` is `{ "x": number, "y": number }`.
 
@@ -186,6 +187,25 @@ A `leader` is the one annotation whose words are the content rather than somethi
 as were drawn, and `content` is the note. A leader with nothing written on it is refused —
 a line pointing at something for no stated reason is not an annotation.
 
+### 4.8 Underlays
+
+An `underlay` is a page of an imported PDF, rasterised and placed at a size, to trace over.
+It stores `underlayId` — which page, uploaded separately — along with the size it is drawn at
+and the `opacity` it is drawn back to. Like a block, the picture itself is never in the
+document: a drawing is kilobytes and a rasterised A1 is megabytes, and putting one inside the
+other would make every autosave carry the survey again.
+
+It is the one thing in a drawing that is not _of_ the drawing, and two rules follow from that:
+
+- **It is never exported.** The scene every output consumes has no underlay in it. What an
+  underlay holds is usually somebody else's survey, and a plan that quietly carries it into a
+  PDF is a plan nobody can publish.
+- **It is not part of what a share link hands out.** A link gives away the drawing. The pages
+  it was traced from stay with the project, behind the same policy as everything else.
+
+A reader that cannot resolve the id draws nothing at all rather than a placeholder, for the
+same reason: an outline where a page would be advertises a document that is not being given.
+
 ### 4.5 Hosted openings
 
 Doors and windows are not free-floating rectangles. They store:
@@ -232,7 +252,7 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {
@@ -319,11 +339,12 @@ runtime contract and the compile-time contract cannot drift apart.
 
 ### 6.1 History
 
-| Version | Change                                                                                                                                                                                       |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1       | The original format.                                                                                                                                                                         |
-| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                         |
-| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one. |
+| Version | Change                                                                                                                                                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1       | The original format.                                                                                                                                                                                                            |
+| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                                                            |
+| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one.                                    |
+| 4       | Added the `underlay`: a page to trace over. Nothing already written changes shape, so the step restamps the version — but a reader that predates the type would drop every underlay in a drawing and save it back without them. |
 
 ---
 

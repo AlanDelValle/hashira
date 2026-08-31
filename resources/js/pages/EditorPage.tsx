@@ -1,4 +1,4 @@
-import { ChevronLeft, History, Maximize2, Redo2, Share2, Undo2 } from 'lucide-react';
+import { ChevronLeft, FileInput, History, Maximize2, Redo2, Share2, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -8,8 +8,10 @@ import { LibraryPanel } from '@/editor/react/LibraryPanel';
 import { ExportMenu } from '@/editor/react/ExportMenu';
 import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
 import { ShareDialog } from '@/editor/react/ShareDialog';
+import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
+import { listUnderlays } from '@/editor/persistence/underlays';
 import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
 import { TextDraft } from '@/editor/react/TextDraft';
@@ -54,6 +56,12 @@ export function EditorPage() {
         // so the definitions have to be resolvable by the time the first frame is painted.
         registerBlocks(payload.blocks);
         load(payload.drawing);
+
+        // Where the pages traced over in this project live. Nothing waits on it: a drawing
+        // opens now, and the paper underneath it appears when it arrives.
+        void listUnderlays(projectId).catch(() => {
+            /* An underlay that will not load is drawn as its own dashed outline. */
+        });
 
         // A selection left over from another project in this tab would name elements that no
         // longer exist, and the panels would be describing nothing.
@@ -210,6 +218,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
     const { canUndo, canRedo, undoLabel, redoLabel } = useHistory();
     const [versionsOpen, setVersionsOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
+    const [underlayOpen, setUnderlayOpen] = useState(false);
 
     function zoomToFit() {
         const bounds = documentBounds(useDocumentStore.getState().document);
@@ -264,6 +273,10 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
                     <History className="size-3.5" aria-hidden />
                 </HeaderButton>
 
+                <HeaderButton label="Trace over a PDF" onClick={() => setUnderlayOpen(true)}>
+                    <FileInput className="size-3.5" aria-hidden />
+                </HeaderButton>
+
                 <span className="bg-line mx-1.5 h-4 w-px" aria-hidden />
 
                 <ExportMenu />
@@ -280,6 +293,12 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
             />
 
             <ShareDialog projectId={projectId} open={shareOpen} onOpenChange={setShareOpen} />
+
+            <UnderlayDialog
+                projectId={projectId}
+                open={underlayOpen}
+                onOpenChange={setUnderlayOpen}
+            />
         </header>
     );
 }

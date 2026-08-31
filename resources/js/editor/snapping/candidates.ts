@@ -55,6 +55,11 @@ function segmentsOf(element: Element, lookup: ElementLookup): Segment[] {
         case 'radius':
         case 'leader':
             return [];
+
+        // A page being traced is a picture, not geometry. Snapping to its edges would land
+        // new work on the paper rather than on the building drawn on it.
+        case 'underlay':
+            return [];
     }
 }
 

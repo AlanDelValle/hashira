@@ -3,18 +3,22 @@ import { describe, expect, it } from 'vitest';
 import { toRadians } from '@/editor/geometry/angle';
 import { point } from '@/editor/geometry/vec';
 
-import { emptyDocument, parseDocument } from './document';
+import { buildScene } from '@/editor/scene/build';
+
+import { defaultLayers, emptyDocument, parseDocument } from './document';
 import {
     angleFrame,
     elementBounds,
+    elementSize,
+    elementWorldPoints,
     hitTestElement,
     leaderFrame,
     makeLookup,
     radiusFrame,
 } from './elements';
-import { createAngle, createCircle, createLeader, createRadius } from './factories';
-import { setRadiusDiameter } from './edits';
-import type { CircleElement } from './types';
+import { createAngle, createCircle, createLeader, createRadius, createUnderlay } from './factories';
+import { setRadiusDiameter, setUnderlayOpacity } from './edits';
+import type { CircleElement, UnderlayElement } from './types';
 
 const LAYER = 'layer_dimensions';
 const NO_LOOKUP = makeLookup([]);
@@ -172,5 +176,66 @@ describe('the marks in a saved drawing', () => {
 
         expect(parsed.ok && parsed.dropped).toEqual([]);
         expect(parsed.ok && parsed.document.elements).toEqual(elements);
+    });
+});
+
+describe('a page to trace over', () => {
+    const page = createUnderlay('page-1', point(0, 0), 841, 594);
+
+    it('is placed at the page’s own size, centred where it was put', () => {
+        expect(elementSize(page)).toEqual({ width: 841, height: 594 });
+        expect(elementWorldPoints(page, NO_LOOKUP)).toHaveLength(4);
+    });
+
+    it('is drawn back far enough that a line over it reads as the drawing', () => {
+        expect(page.geometry.opacity).toBeLessThan(0.6);
+        expect(page.geometry.opacity).toBeGreaterThan(0.2);
+    });
+
+    it('is picked anywhere on the paper, not only at its edge', () => {
+        expect(hitTestElement(page, NO_LOOKUP, point(0, 0), 20)).toBe(true);
+        expect(hitTestElement(page, NO_LOOKUP, point(2000, 0), 20)).toBe(false);
+    });
+
+    it('keeps its opacity between nothing and all of it', () => {
+        expect((setUnderlayOpacity(page, 4) as UnderlayElement).geometry.opacity).toBe(1);
+        expect((setUnderlayOpacity(page, -1) as UnderlayElement).geometry.opacity).toBe(0);
+    });
+
+    /*
+     * The scene is what every output consumes, and a page traced over is not part of the
+     * drawing: it is usually somebody else's survey, and a plan that quietly carries it into
+     * a PDF is a plan nobody can publish.
+     */
+    it('is not in the scene at all, so no export can contain it', () => {
+        const scene = buildScene([page], defaultLayers(), {
+            palette: { ink: '#000', subtle: '#666', roomFill: '#eee' },
+        });
+
+        expect(scene).toEqual([]);
+    });
+
+    it('is something the document format accepts back unchanged', () => {
+        // On the layer the import makes for it: a drawing that has never traced anything does
+        // not carry an empty underlay layer around for the possibility.
+        const blank = emptyDocument();
+        const parsed = parseDocument({
+            ...blank,
+            layers: [
+                {
+                    id: 'layer_underlay',
+                    name: 'Underlay',
+                    color: '#5F636B',
+                    visible: true,
+                    locked: false,
+                    order: -1,
+                },
+                ...blank.layers,
+            ],
+            elements: [page],
+        });
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.elements[0]).toEqual(page);
     });
 });

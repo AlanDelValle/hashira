@@ -32,6 +32,8 @@ import {
     setSegmentLength,
     setTextContent,
     setTextSize,
+    setUnderlayOpacity,
+    setUnderlaySize,
     setWallThickness,
 } from '@/editor/model/edits';
 import type { DisplayUnit, Element } from '@/editor/model/types';
@@ -62,6 +64,7 @@ const TYPE_NAMES: Record<Element['type'], string> = {
     angle: 'Angle',
     radius: 'Radius',
     leader: 'Leader',
+    underlay: 'Underlay',
 };
 
 /**
@@ -428,6 +431,53 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                         parse={toLength}
                         suffix={unit}
                         onCommit={(value) => set(setTextSize(element, value), 'Note size', 'size')}
+                    />
+                </>
+            )}
+
+            {element.type === 'underlay' && (
+                <>
+                    <MeasureField
+                        label="Width"
+                        value={element.geometry.width}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(
+                                setUnderlaySize(element, value, element.geometry.height),
+                                'Underlay size',
+                                'size',
+                            )
+                        }
+                    />
+                    <MeasureField
+                        label="Height"
+                        value={element.geometry.height}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(
+                                setUnderlaySize(element, element.geometry.width, value),
+                                'Underlay size',
+                                'size',
+                            )
+                        }
+                    />
+                    <MeasureField
+                        label="Opacity"
+                        value={element.geometry.opacity}
+                        format={(value) => String(Math.round(value * 100))}
+                        parse={(value) => {
+                            const percent = Number(value.replace('%', '').trim());
+
+                            return Number.isFinite(percent) ? percent / 100 : null;
+                        }}
+                        suffix="%"
+                        onCommit={(value) =>
+                            set(setUnderlayOpacity(element, value), 'Underlay opacity', 'opacity')
+                        }
                     />
                 </>
             )}

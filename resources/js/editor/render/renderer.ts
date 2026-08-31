@@ -22,6 +22,7 @@ import {
     type OverlayContext,
 } from './overlay';
 import { writeReadout } from './readout';
+import { paintUnderlays } from './underlay';
 import { readTheme, type CanvasTheme } from './theme';
 
 /**
@@ -128,6 +129,10 @@ export class CanvasRenderer {
         const px = 1 / viewport.zoom;
         const palette = this.palette();
 
+        // Underneath everything, including the grid: a page being traced is the paper the
+        // drawing sits on, and it is deliberately not part of the scene the exporters read.
+        paintUnderlays(ctx, onVisibleLayers(drawing), px, this.theme.inkSubtle);
+
         if (gridVisible && drawing.settings.grid.visible) {
             paintGrid(ctx, viewport, visible, drawing.settings.grid, this.theme);
         }
@@ -233,4 +238,13 @@ export class CanvasRenderer {
 
         writeReadout('zoom', `${Math.round(zoom * 1000) / 10}%`);
     }
+}
+
+/** The elements on layers that are currently shown. Hiding a layer hides its underlays too. */
+function onVisibleLayers(drawing: HashiraDocument): Element[] {
+    const hidden = new Set(
+        drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
+    );
+
+    return drawing.elements.filter((element) => !hidden.has(element.layerId));
 }

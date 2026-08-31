@@ -120,7 +120,7 @@ Both were reported from the editor by someone looking for a tool that was not th
 
 ## After the MVP
 
-### Phase 7 — Drafting depth `[~]`
+### Phase 7 — Drafting depth `[x]`
 
 - [x] Advanced dimensioning: chains, angular, radial, leaders (linear dimensions landed in the
       MVP). Schema 3: a dimension became a run of points rather than a pair of them, and
@@ -133,7 +133,9 @@ Both were reported from the editor by someone looking for a tool that was not th
 - [x] A real asset system: categories, search, and blocks somebody made — from a selection or
       from an SVG file, stored against the account and served alongside the drawings that use
       them
-- [ ] PDF import as an underlay to trace over
+- [x] PDF import as an underlay to trace over: the page is rasterised in the browser,
+      uploaded, and placed at its own size on a layer of its own — and is never exported and
+      never handed out with a share link, because it is somebody else's drawing
 
 ### Phase 8 — Interchange
 

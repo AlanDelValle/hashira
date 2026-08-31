@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\SharedDocumentController;
 use App\Http\Controllers\Api\ShareLinkController;
+use App\Http\Controllers\Api\UnderlayController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -60,6 +61,15 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.document.show');
     Route::put('projects/{project}/document', [DocumentController::class, 'update'])
         ->name('projects.document.update');
+
+    Route::get('projects/{project}/underlays', [UnderlayController::class, 'index'])
+        ->name('projects.underlays.index');
+    Route::post('projects/{project}/underlays', [UnderlayController::class, 'store'])
+        ->name('projects.underlays.store');
+    Route::get('projects/{project}/underlays/{underlay}/image', [UnderlayController::class, 'image'])
+        ->name('projects.underlays.image');
+    Route::delete('projects/{project}/underlays/{underlay}', [UnderlayController::class, 'destroy'])
+        ->name('projects.underlays.destroy');
 
     Route::get('projects/{project}/versions', [DocumentVersionController::class, 'index'])
         ->name('projects.versions.index');

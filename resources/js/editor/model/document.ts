@@ -156,6 +156,16 @@ const elementSchema = z.discriminatedUnion('type', [
     }),
     z.object({
         ...baseFields,
+        type: z.literal('underlay'),
+        geometry: z.object({
+            underlayId: z.string().min(1),
+            width: finiteNumber.positive(),
+            height: finiteNumber.positive(),
+            opacity: finiteNumber.min(0).max(1),
+        }),
+    }),
+    z.object({
+        ...baseFields,
         type: z.literal('text'),
         geometry: z.object({
             content: z.string(),
@@ -314,6 +324,10 @@ function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
  * 2 → 3 turned a dimension's two measured points into a run of them, so that a chain of
  * measurements is one mark on the sheet rather than a row of separate ones. Every dimension
  * ever written has exactly two, which is a chain of one.
+ *
+ * 3 → 4 added the `underlay`. Nothing already written changes shape, so the step restamps the
+ * version — but a reader that predates the type would drop every underlay in a drawing and
+ * save it back without them, which is why it is a version at all.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -330,6 +344,10 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
             schemaVersion: 3,
             elements: elements.map((element) => chainedDimension(element)),
         };
+    }
+
+    if (document.schemaVersion === 3) {
+        document = { ...document, schemaVersion: 4 };
     }
 
     return document;
