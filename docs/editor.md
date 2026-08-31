@@ -15,7 +15,7 @@ resources/js/editor/
 ├── snapping/    the snap engine and what it collects candidates from
 ├── scene/       the document as primitives — the one description every output consumes
 ├── export/      SVG, PNG and PDF, plus sheet layout
-├── assets/      the block library
+├── assets/      the block library, and making blocks from a selection or an SVG
 ├── tools/       select, wall, door, window, room, line, rectangle, circle, polygon, block
 ├── input/       DOM events → tools, plus pan, zoom and shortcuts
 └── react/       the only React in the editor: canvas host, toolbar, panels, status bar
@@ -231,6 +231,35 @@ A block is drawn once in a normalised 0–1 box and scaled to the size the eleme
 document stores an id and a size — never geometry — so plans stay small, one definition serves
 every size, and the library panel's thumbnails are rendered from the same definitions the
 canvas uses and cannot drift out of date.
+
+Blocks come from two places and are the same thing either way. Thirty-seven ship with the
+editor, written in `assets/library.ts`; the rest are made by whoever is drawing, stored on the
+server against their account, and registered with the library as they arrive. `findAsset` looks
+in both, so the painter, the exporters and the thumbnails resolve an id without knowing which
+shelf it came off.
+
+A block is made from a selection or from an SVG file. **From a selection** is a change of
+coordinates and nothing more: the selection's own box becomes the 0–1 box. Only geometry comes
+across — a measurement measures the drawing it was taken from, and scaled into a box and
+stamped somewhere else it would be a number about nothing — and a block inside the selection is
+flattened rather than referred to, because a block that pointed at another one would break the
+day the other was deleted. **From an SVG** reads shapes and paths and throws away everything
+about appearance: fills, strokes, text, images and the rest. A block is drawn with the drawing's
+own pen weight on the layer it is placed on, which is why a plan full of blocks reads as one
+drawing rather than as a scrapbook. Curves are flattened into polylines at a resolution finer
+than the plotter, rather than growing a curve primitive four renderers would have to learn.
+
+Sixty-odd blocks is more than a panel that wide can show, so the library searches by name and
+filters by category, and the ones you made are the first shelf and the only ones you can throw
+away. There is deliberately no way to edit a saved block: correcting one means drawing it
+again, so a plan finished months ago cannot change under someone because a block was tidied up
+on another project.
+
+A drawing stores block ids, so a reader has to be able to resolve them — and a share link is
+read by someone who has no library at all. The document endpoints therefore serve the
+definitions a drawing refers to alongside it, filtered to the owner's own blocks. An id that
+still does not resolve is not dropped: its footprint is drawn as a dashed rectangle, because a
+block somebody placed still occupies that space.
 
 ## 11. Grid
 

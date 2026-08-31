@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AuthenticatedUserController;
+use App\Http\Controllers\Api\BlockController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\ProjectController;
@@ -47,6 +48,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('user', AuthenticatedUserController::class)->name('user');
 
     Route::apiResource('projects', ProjectController::class);
+
+    Route::get('blocks', [BlockController::class, 'index'])->name('blocks.index');
+    Route::post('blocks', [BlockController::class, 'store'])->name('blocks.store');
+    Route::delete('blocks/{block}', [BlockController::class, 'destroy'])->name('blocks.destroy');
 
     Route::post('projects/{project}/duplicate', ProjectDuplicationController::class)
         ->name('projects.duplicate');

@@ -21,6 +21,7 @@ import { useEditorStore } from '@/editor/store/editorStore';
 import { useViewportStore } from '@/editor/store/viewportStore';
 import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
 import { useDocument } from '@/projects/useDocument';
+import { registerBlocks } from '@/projects/useBlocks';
 import { cn } from '@/lib/cn';
 import { formatChord } from '@/lib/keys';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -49,6 +50,9 @@ export function EditorPage() {
             return;
         }
 
+        // The blocks before the drawing: a plan stores an id and a size for each block on it,
+        // so the definitions have to be resolvable by the time the first frame is painted.
+        registerBlocks(payload.blocks);
         load(payload.drawing);
 
         // A selection left over from another project in this tab would name elements that no

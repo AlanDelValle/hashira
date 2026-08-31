@@ -30,6 +30,8 @@ export interface AssetDefinition {
     /** The layer a freshly placed block belongs on. */
     layerId: string;
     draw: AssetPrimitive[];
+    /** True for a block somebody made, as opposed to one that ships with the editor. */
+    own?: boolean;
 }
 
 const r = (x: number, y: number, w: number, h: number): AssetPrimitive => ({
@@ -472,8 +474,30 @@ export const ASSET_LIBRARY: AssetDefinition[] = [
 
 const BY_ID = new Map(ASSET_LIBRARY.map((asset) => [asset.id, asset]));
 
+/**
+ * Blocks somebody made, which arrive from the server rather than from this file.
+ *
+ * They are held apart from the built-in library because they come and go with a session and
+ * with a drawing: opening a plan registers the blocks that plan uses, so a drawing shared by
+ * someone else paints their sofa without the viewer having to own it. Everything downstream —
+ * the painter, the exporters, the thumbnails — takes an `AssetDefinition` and neither knows
+ * nor cares which of the two it came from.
+ */
+const OWN: Map<string, AssetDefinition> = new Map();
+
+/** Add to what the editor can resolve. Registering the same id twice keeps the newer one. */
+export function registerAssets(definitions: readonly AssetDefinition[]): void {
+    for (const definition of definitions) {
+        OWN.set(definition.id, { ...definition, own: true });
+    }
+}
+
+export function forgetAsset(id: string): void {
+    OWN.delete(id);
+}
+
 export function findAsset(id: string): AssetDefinition | undefined {
-    return BY_ID.get(id);
+    return BY_ID.get(id) ?? OWN.get(id);
 }
 
 export const ASSET_CATEGORIES: { id: AssetCategory; name: string }[] = [

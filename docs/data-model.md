@@ -56,6 +56,17 @@ share_links
   created_by        bigint fk → users, null on delete
   timestamps
   unique (token)
+
+blocks
+  id                ulid pk
+  user_id           bigint fk → users, cascade delete
+  name              varchar(80)
+  category          varchar(32)              -- one of the library's seven
+  width             integer                  -- millimetres, the size it is placed at
+  height            integer
+  draw              jsonb                    -- primitives in a normalised 0–1 box
+  timestamps
+  index (user_id)
 ```
 
 Notes on the shape:
@@ -69,6 +80,10 @@ Notes on the shape:
   against a stale revision gets `409 Conflict` rather than clobbering another tab.
 - **Share tokens are 32 bytes from a CSPRNG**, never derived from an id. Revocation is a
   timestamp, not a delete, so a leaked link can be audited after the fact.
+- **A block belongs to a person, not to a project.** A drawing refers to it by id and never
+  copies its geometry, which is what keeps drawings small — and is why the document endpoints
+  serve the blocks a drawing refers to along with it. There is no update: correcting a block
+  means drawing it again, so a plan finished months ago cannot change under someone.
 
 ## 2. API
 
@@ -98,10 +113,22 @@ DELETE /api/projects/{project}
 POST   /api/projects/{project}/duplicate
 ```
 
+### Blocks
+
+```
+GET    /api/blocks                      the caller's own blocks, by name
+POST   /api/blocks                      { name, category, width, height, draw }
+DELETE /api/blocks/{block}
+```
+
+`draw` is checked primitive by primitive rather than only at the envelope, unlike a document:
+a block is drawn on other people's sheets, because a share link serves the blocks a drawing
+uses along with the drawing.
+
 ### Document
 
 ```
-GET    /api/projects/{project}/document       → { id, revision, schemaVersion, drawing }
+GET    /api/projects/{project}/document       → { id, revision, schemaVersion, drawing, blocks }
 PUT    /api/projects/{project}/document       { revision, data } → 200 | 409 Conflict
 ```
 
@@ -133,7 +160,7 @@ DELETE /api/projects/{project}/share          revokes
 
 ```
 GET    /share/{token}                         the read-only viewer page
-GET    /api/share/{token}                     { name, schemaVersion, drawing } and nothing else
+GET    /api/share/{token}                     { name, schemaVersion, drawing, blocks } — no more
 ```
 
 The public endpoint is deliberately a different controller with its own resource. It never
@@ -144,8 +171,8 @@ not `403` — for revoked or expired tokens, so a probe cannot distinguish "wron
 ### Conventions
 
 - **Form Requests** for validation, **API Resources** for every response shape.
-- **Policies** for `view`, `update`, `delete`, `share` on `Project`; documents and versions
-  authorize through their project.
+- **Policies** for `view`, `update`, `delete`, `share` on `Project` and `delete` on `Block`;
+  documents and versions authorize through their project.
 - Errors are Laravel's standard problem shapes: `422` validation with field paths, `403`
   authorization, `404` for anything the caller may not know exists, `409` for stale saves.
 - Rate limits: authentication endpoints per email plus IP; the public share endpoint per IP.

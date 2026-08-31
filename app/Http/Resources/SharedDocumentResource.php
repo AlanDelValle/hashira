@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Blocks\ReferencedBlocks;
 use App\Domain\Documents\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -26,6 +27,11 @@ final class SharedDocumentResource extends JsonResource
             'name' => $this->name,
             'schemaVersion' => $this->schema_version,
             'drawing' => $this->data,
+            // A visitor holding a link has no library of their own, so the blocks the drawing
+            // uses travel with it — the definitions only, with nothing about who made them.
+            'blocks' => BlockResource::collection(
+                ReferencedBlocks::of($this->data, (int) $this->project->user_id),
+            ),
             'updatedAt' => $this->updated_at->toIso8601String(),
         ];
     }

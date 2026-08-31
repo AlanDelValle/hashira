@@ -6,6 +6,7 @@ import { documentBounds } from '@/editor/model/elements';
 import { formatScale } from '@/editor/model/units';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { useDocumentStore } from '@/editor/store/documentStore';
+import { registerBlocks } from '@/projects/useBlocks';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { useViewportStore } from '@/editor/store/viewportStore';
 import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
@@ -47,6 +48,9 @@ export function SharedPlanPage() {
             .then((response) => {
                 if (cancelled) return;
 
+                // A visitor has no library of their own, so the drawing arrives with the
+                // blocks it uses and they are registered before it is parsed.
+                registerBlocks(response.data.blocks);
                 load(response.data.drawing);
                 setName(response.data.name);
             })

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Blocks\ReferencedBlocks;
 use App\Domain\Documents\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -27,6 +28,11 @@ final class DocumentResource extends JsonResource
             'schemaVersion' => $this->schema_version,
             'revision' => $this->revision,
             'drawing' => $this->data,
+            // The blocks this drawing refers to, since it stores their ids and not their
+            // geometry. See App\Domain\Blocks\ReferencedBlocks.
+            'blocks' => BlockResource::collection(
+                ReferencedBlocks::of($this->data, (int) $this->project->user_id),
+            ),
             'updatedAt' => $this->updated_at->toIso8601String(),
         ];
     }

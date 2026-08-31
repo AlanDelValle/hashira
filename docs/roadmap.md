@@ -130,7 +130,9 @@ Both were reported from the editor by someone looking for a tool that was not th
       graph, the face under the pointer is walked out of it, and each edge moves in by half
       the thickness of its own wall
 - [x] Wall joins and cleanups at corners and T-junctions
-- [ ] A real asset system: categories, search, user-uploaded blocks
+- [x] A real asset system: categories, search, and blocks somebody made — from a selection or
+      from an SVG file, stored against the account and served alongside the drawings that use
+      them
 - [ ] PDF import as an underlay to trace over
 
 ### Phase 8 — Interchange
