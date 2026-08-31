@@ -19,6 +19,9 @@ import type { CanvasTheme } from './theme';
  * at pointer rate without anything else in the application noticing.
  */
 
+/** A colour that paints nothing, for an area whose fill the drawing underneath already has. */
+const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+
 /** Distance from the selection box to the rotation handle, in screen pixels. */
 const ROTATE_HANDLE_OFFSET_PX = 26;
 const ROTATE_HANDLE_RADIUS_PX = 4.5;
@@ -54,8 +57,25 @@ export function selectionBounds(
     return result;
 }
 
+interface AccentOptions {
+    alpha?: number;
+    /**
+     * Whether a room's wash is painted.
+     *
+     * A highlight goes on top of the finished drawing, so filling a room again would bury the
+     * furniture standing in it — what is selected there is the space, and its outline says so
+     * without hiding anything. A room being *drawn* is not in the drawing yet and does want
+     * its wash: that is what makes it read as a space rather than as four lines.
+     */
+    wash?: boolean;
+}
+
 /** Draw elements in the accent colour, through the same builder the document uses. */
-function paintAccented(context: OverlayContext, elements: readonly Element[], alpha = 1): void {
+function paintAccented(
+    context: OverlayContext,
+    elements: readonly Element[],
+    { alpha = 1, wash = false }: AccentOptions = {},
+): void {
     if (elements.length === 0) {
         return;
     }
@@ -66,7 +86,7 @@ function paintAccented(context: OverlayContext, elements: readonly Element[], al
     paintScene(
         context.ctx,
         buildScene(elements, context.layers, {
-            palette: context.palette,
+            palette: wash ? context.palette : { ...context.palette, roomFill: TRANSPARENT },
             unit: context.unit,
             context: context.neighbours,
             overrideColor: context.theme.accent,
@@ -81,7 +101,7 @@ function paintAccented(context: OverlayContext, elements: readonly Element[], al
 }
 
 export function paintHover(context: OverlayContext, element: Element): void {
-    paintAccented(context, [element], 0.5);
+    paintAccented(context, [element], { alpha: 0.5 });
 }
 
 export function paintSelection(context: OverlayContext, elements: readonly Element[]): void {
@@ -168,7 +188,10 @@ export function paintPreview(
     element: Element,
     vertices: readonly Point[],
 ): void {
-    paintAccented(context, [element]);
+    // A room is the one preview that is an area rather than an outline, and an opaque one
+    // covers the furniture standing in the space it is offering to fill. Drawn through, it
+    // says what will be created without hiding what is already there.
+    paintAccented(context, [element], { alpha: element.type === 'room' ? 0.55 : 1, wash: true });
 
     const { ctx, px } = context;
 

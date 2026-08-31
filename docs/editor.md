@@ -6,7 +6,8 @@ How the drawing surface is put together. The reasoning behind the big choices is
 ```
 resources/js/editor/
 ├── geometry/    pure maths — vectors, segments, polygons, bounds, angles
-├── model/       the document: types, parsing, element geometry, picking, factories, wall joins
+├── model/       the document: types, parsing, element geometry, picking, factories,
+│               wall joins, rooms
 ├── viewport/    world ↔ screen
 ├── commands/    Command, HistoryStack
 ├── store/       document, editor, viewport, and transient interaction state
@@ -121,6 +122,16 @@ method cannot write half the names it will be asked to write. The field is sized
 from the same viewport transform the renderer uses, so what is being typed sits where the
 finished label will sit, at the size it will be. Enter or a click elsewhere commits it, Escape
 throws it away, and blank is not a label.
+
+The room tool does not draw a room; it finds one. The walls around a space already say where
+it is, and asking someone to trace a boundary that is sitting right there in the drawing is
+asking them to copy it by hand and get it slightly wrong. Moving the pointer previews the
+space it is standing in, a click accepts it, and the ring that lands runs along the inside
+faces of the walls rather than their centrelines — so a corner between a 250 mm external wall
+and a 100 mm partition is where those two faces actually meet. Where nothing encloses the
+pointer there is nothing to accept, and clicks fall back to placing a ring by hand: a
+courtyard, a zone, a room whose fourth wall has not been drawn yet. How the walls are turned
+into spaces is in §17.
 
 The dimension tool takes three clicks, because a dimension is three decisions: what to
 measure from, what to measure to, and which side of it the value is written on. The first two
@@ -337,11 +348,30 @@ None of this touches the document. A join is a fact about how walls are drawn, d
 where they are, so moving one wall re-mitres its neighbours without editing them — and undo
 has nothing extra to undo.
 
+### Finding a room
+
+The same walls answer a second question: what space is the pointer standing in. `model/rooms.ts`
+cuts every centreline at every crossing into a planar graph, walks the face containing the
+point out of it, and moves each edge of that face in by half the thickness of the wall it came
+from. Consecutive edges meet at the crossing of those two inset lines, so a room bounded by a
+250 mm wall and a 100 mm partition has its corner where those two faces meet rather than at
+either centreline.
+
+Dead ends are dropped first, over and over until none is left: a wall with a free end encloses
+nothing, and leaving it in gives the walk a spur to go up and come back down — a zero-width
+spike across the middle of a room. A stub sticking into a space is not part of that space's
+boundary, which is exactly what removing it says.
+
+The graph is worked out once per version of the document and cached against it, the way
+`documentIndex` is, because the room under the pointer is asked for on every pointer move
+while the room tool is armed and cutting every wall against every other one is not something
+to do sixty times a second.
+
 Every wall on a layer is filled as **one** shape rather than one per wall. Two fills that
 share an edge each cover about half the pixels along it, and the pale hairline that leaves at
 every mitre is the notch coming back wearing a different hat.
 
 ## 18. What is not here yet
 
-Rooms found from the walls around them, dimensions beyond the linear one, DXF, and anything
-collaborative. See [roadmap.md](roadmap.md).
+Dimensions beyond the linear one, DXF, and anything collaborative. See
+[roadmap.md](roadmap.md).

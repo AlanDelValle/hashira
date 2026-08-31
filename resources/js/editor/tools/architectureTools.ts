@@ -11,6 +11,7 @@ import {
 } from '@/editor/model/factories';
 import { wallSegment } from '@/editor/model/elements';
 import { pickAt } from '@/editor/model/picking';
+import { roomAround } from '@/editor/model/rooms';
 import type { Element, WallElement } from '@/editor/model/types';
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand } from '@/editor/store/documentStore';
@@ -208,14 +209,24 @@ export function createWindowTool(): Tool {
     );
 }
 
-/** A room is a closed ring collected click by click, the same way a polygon is. */
+/**
+ * A room is found before it is drawn.
+ *
+ * Walls already say where a space is, so pointing at one and asking the drawing to trace it
+ * beats asking someone to copy a boundary that is sitting right there. What the pointer is
+ * standing in is previewed as you move, and a click accepts it. Where nothing encloses the
+ * pointer there is nothing to accept, and the clicks fall back to placing a ring by hand — a
+ * courtyard, a zone, a room whose fourth wall has not been drawn yet.
+ */
 export function createRoomTool(): Tool {
     let vertices: Point[] = [];
+    let found: Point[] | null = null;
 
-    function commit(context: ToolContext): void {
-        const room = vertices.length >= 3 ? createRoom(vertices, context.activeLayerId) : null;
+    function commit(context: ToolContext, points: readonly Point[]): void {
+        const room = points.length >= 3 ? createRoom([...points], context.activeLayerId) : null;
 
         vertices = [];
+        found = null;
         clearDraft();
 
         if (room === null) {
@@ -236,6 +247,12 @@ export function createRoomTool(): Tool {
         anchors: () => vertices,
 
         onPointerDown(event, context) {
+            if (vertices.length === 0 && found !== null) {
+                commit(context, found);
+
+                return;
+            }
+
             const first = vertices[0];
 
             if (
@@ -243,7 +260,7 @@ export function createRoomTool(): Tool {
                 vertices.length >= 3 &&
                 distance(event.world, first) <= context.tolerance
             ) {
-                commit(context);
+                commit(context, vertices);
 
                 return;
             }
@@ -255,6 +272,15 @@ export function createRoomTool(): Tool {
 
         onPointerMove(event, context) {
             if (vertices.length === 0) {
+                // The raw position, not the snapped one: which space the pointer is standing
+                // in is a question about where it is, and a snap could pull it through a wall
+                // into the room next door.
+                found = roomAround(context.drawing, event.rawWorld);
+                interaction.preview =
+                    found === null ? null : createRoom(found, context.activeLayerId);
+
+                requestRepaint();
+
                 return;
             }
 
@@ -266,12 +292,12 @@ export function createRoomTool(): Tool {
         },
 
         onDoubleClick(_event, context) {
-            commit(context);
+            commit(context, vertices);
         },
 
         onKeyDown(key, context) {
             if (key === 'Enter') {
-                commit(context);
+                commit(context, vertices);
 
                 return true;
             }
@@ -281,6 +307,7 @@ export function createRoomTool(): Tool {
 
         cancel() {
             vertices = [];
+            found = null;
             clearDraft();
         },
     };
