@@ -264,6 +264,17 @@ export function paintSnapIndicator(context: OverlayContext, snap: SnapResult): v
             break;
 
         case 'grid':
+            // Quieter than the rest, and a different job: the others say what caught the
+            // pointer, this one only says where the next click will land. It is drawn while a
+            // tool is placing points, because that is when the answer matters and when a
+            // marker under the cursor is not simply always on.
+            ctx.globalAlpha = 0.55;
+            ctx.moveTo(x - size, y);
+            ctx.lineTo(x + size, y);
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x, y + size);
+            break;
+
         case null:
             ctx.restore();
 

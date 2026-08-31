@@ -143,6 +143,43 @@ describe('the snap engine', () => {
         expect(result.point).toEqual({ x: 1234, y: 0 });
     });
 
+    /*
+     * Reported from the editor: choosing the wall tool and clicking gave no way to line the
+     * first point up with anything, because guides ran only from points the tool had already
+     * placed — and for a first point there are none. Drawing a wall parallel to one across
+     * the room is exactly what an alignment is for.
+     */
+    it('lines up with a corner across the room, not only with what is under the pointer', () => {
+        const across = createWall(point(6000, 200), point(6000, 3000), LAYER, 150);
+        const result = snapPoint(
+            point(5980, 30),
+            options([across], {
+                tolerance: 60,
+                gridSnapEnabled: false,
+                visible: { minX: 0, minY: 0, maxX: 10000, maxY: 10000 },
+            }),
+        );
+
+        expect(result.kind).toBe('vertical');
+        expect(result.point.x).toBe(6000);
+        expect(result.reference).toEqual({ x: 6000, y: 200 });
+    });
+
+    it('does not reach for a guide to something off screen', () => {
+        const across = createWall(point(6000, 200), point(6000, 3000), LAYER, 150);
+        const result = snapPoint(
+            point(5980, 30),
+            options([across], {
+                tolerance: 60,
+                gridSnapEnabled: false,
+                // The wall is below the bottom of what is on screen.
+                visible: { minX: 0, minY: -1000, maxX: 10000, maxY: 100 },
+            }),
+        );
+
+        expect(result.kind).toBeNull();
+    });
+
     it('falls back to the grid when nothing else is near', () => {
         const result = snapPoint(point(1234, 5678), options([]));
 

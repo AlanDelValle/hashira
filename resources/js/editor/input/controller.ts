@@ -38,7 +38,7 @@ import { createLeaderTool, createTextTool } from '@/editor/tools/textTool';
 import { LIBRARY_KEY, REFERENCE_KEY, toolForKey } from '@/editor/input/shortcuts';
 import { snapPoint } from '@/editor/snapping/engine';
 import type { Tool, ToolContext, ToolEvent } from '@/editor/tools/types';
-import { panByScreen, toWorld, zoomAt } from '@/editor/viewport/viewport';
+import { panByScreen, toWorld, visibleBounds, zoomAt } from '@/editor/viewport/viewport';
 import { unionBounds, type Bounds } from '@/editor/geometry/bbox';
 
 /**
@@ -165,7 +165,7 @@ export class InputController {
 
     private context(): ToolContext {
         const drawing = useDocumentStore.getState().document;
-        const { viewport } = useViewportStore.getState();
+        const { viewport, size } = useViewportStore.getState();
         const { activeLayerId, snapToGrid: gridSnapEnabled } = useEditorStore.getState();
         const tolerance = PICK_TOLERANCE_PX / viewport.zoom;
 
@@ -184,11 +184,17 @@ export class InputController {
                     tolerance: SNAP_TOLERANCE_PX / viewport.zoom,
                     exclude: this.tool.snapExclusions?.() ?? undefined,
                     anchors: this.tool.anchors?.() ?? undefined,
+                    // Alignment guides run to what is on screen: lining up with a corner
+                    // across the room is the point of them, and that corner is nowhere near
+                    // the pointer.
+                    visible: visibleBounds(viewport, size),
                 });
 
-                // The grid catches every move, so recording it would leave an indicator
-                // permanently lit and saying nothing. Only meaningful snaps are shown.
-                interaction.snap = result.kind === null || result.kind === 'grid' ? null : result;
+                // Recorded whatever caught it, grid included. What is worth *drawing* is not
+                // the same question — the grid catches every move, and a marker that is always
+                // on says nothing — so the renderer decides, and shows the grid only while a
+                // tool is placing points.
+                interaction.snap = result.kind === null ? null : result;
 
                 return result;
             },
@@ -241,7 +247,12 @@ export class InputController {
         const toolEvent = this.toolEvent(event, context);
 
         interaction.pointerScreen = toolEvent.screen;
-        interaction.pointerWorld = toolEvent.rawWorld;
+
+        // Where a click would land, not where the pointer happens to be. With snapping on
+        // those are different numbers, and a readout that shows the second one is a readout
+        // that disagrees with everything the editor is about to do. Turning snap off — the
+        // toggle is in the same status bar — brings the raw position back.
+        interaction.pointerWorld = toolEvent.world;
 
         if (this.panningFrom !== null) {
             const { viewport, setViewport } = useViewportStore.getState();

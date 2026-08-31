@@ -79,6 +79,48 @@ function ringSegments(points: readonly Point[], closed: boolean): Segment[] {
     return segments;
 }
 
+/**
+ * Points worth lining up with, along the row and the column the pointer is standing in.
+ *
+ * This is a different question from "what is near the pointer", and it has to be, because an
+ * alignment is about something that is *not* near: drawing a wall parallel to one across the
+ * room means lining up with a corner several metres away. The bands are clipped to what is on
+ * screen — a guide to something nobody can see is not a guide — so the search stays a walk
+ * along one row and one column of the index rather than over the drawing.
+ */
+export function gatherAligned(
+    drawing: HashiraDocument,
+    bands: readonly Bounds[],
+    exclude: ReadonlySet<string>,
+): Point[] {
+    const index = documentIndex(drawing);
+    const hidden = new Set(
+        drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
+    );
+
+    const points: Point[] = [];
+    const seen = new Set<string>();
+
+    for (const band of bands) {
+        for (const element of index.near(band)) {
+            if (exclude.has(element.id) || hidden.has(element.layerId) || seen.has(element.id)) {
+                continue;
+            }
+
+            seen.add(element.id);
+
+            if (element.type === 'circle') {
+                points.push({ x: element.transform.x, y: element.transform.y });
+                continue;
+            }
+
+            points.push(...elementWorldPoints(element, index.lookup));
+        }
+    }
+
+    return points;
+}
+
 export function gatherNear(
     drawing: HashiraDocument,
     search: Bounds,

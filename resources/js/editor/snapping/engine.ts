@@ -3,7 +3,7 @@ import { intersectSegments } from '@/editor/geometry/segment';
 import { distance, type Point } from '@/editor/geometry/vec';
 import type { HashiraDocument, SnapSettings } from '@/editor/model/types';
 
-import { gatherNear } from './candidates';
+import { gatherAligned, gatherNear } from './candidates';
 
 /**
  * One place decides where the pointer actually lands.
@@ -40,6 +40,15 @@ export interface SnapOptions {
     exclude?: ReadonlySet<string>;
     /** Points the active tool has already placed, which alignment guides run from. */
     anchors?: readonly Point[];
+    /**
+     * The world area on screen.
+     *
+     * Alignment guides reach out to it: lining a wall up with a corner across the room is the
+     * whole point of them, and that corner is nowhere near the pointer. Without it, guides
+     * run only from the points the tool has already placed — which is nothing at all for the
+     * first point of anything.
+     */
+    visible?: Bounds;
 }
 
 const NO_EXCLUSIONS: ReadonlySet<string> = new Set();
@@ -96,7 +105,12 @@ export function snapPoint(raw: Point, options: SnapOptions): SnapResult {
     const grid = options.gridSnapEnabled && options.gridSize > 0 ? options.gridSize : 0;
 
     if (settings.axis) {
-        candidates.push(...alignments(raw, options, near.endpoints, tolerance, grid));
+        const references = [
+            ...(options.anchors ?? []),
+            ...alignmentReferences(raw, options, near, tolerance, exclude),
+        ];
+
+        candidates.push(...alignments(raw, references, tolerance, grid));
     }
 
     if (grid > 0) {
@@ -164,12 +178,10 @@ function toGrid(value: number, grid: number): number {
  */
 function alignments(
     raw: Point,
-    options: SnapOptions,
-    endpoints: readonly Point[],
+    references: readonly Point[],
     tolerance: number,
     grid: number,
 ): Candidate[] {
-    const references = [...(options.anchors ?? []), ...endpoints];
     const candidates: Candidate[] = [];
 
     for (const reference of references) {
@@ -196,6 +208,43 @@ function alignments(
     }
 
     return candidates;
+}
+
+/**
+ * What the pointer can line up with: everything on screen sharing its row or its column.
+ *
+ * Only when the caller says what is on screen. Without that there is nothing to bound the
+ * search by, so it falls back to the handful of points already gathered around the pointer —
+ * which is the same answer for anything close enough to matter.
+ */
+function alignmentReferences(
+    raw: Point,
+    options: SnapOptions,
+    near: { endpoints: Point[] },
+    tolerance: number,
+    exclude: ReadonlySet<string>,
+): Point[] {
+    const visible = options.visible;
+
+    if (visible === undefined) {
+        return near.endpoints;
+    }
+
+    const column: Bounds = {
+        minX: raw.x - tolerance,
+        maxX: raw.x + tolerance,
+        minY: visible.minY,
+        maxY: visible.maxY,
+    };
+
+    const row: Bounds = {
+        minX: visible.minX,
+        maxX: visible.maxX,
+        minY: raw.y - tolerance,
+        maxY: raw.y + tolerance,
+    };
+
+    return gatherAligned(options.drawing, [column, row], exclude);
 }
 
 function best(candidates: readonly Candidate[]): SnapResult | null {

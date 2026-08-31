@@ -111,7 +111,7 @@ export class CanvasRenderer {
 
         const { viewport, size } = useViewportStore.getState();
         const { document: drawing } = useDocumentStore.getState();
-        const { selection, gridVisible } = useEditorStore.getState();
+        const { selection, gridVisible, tool } = useEditorStore.getState();
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = this.theme.sheet;
@@ -237,7 +237,10 @@ export class CanvasRenderer {
             paintPreview(overlay, interaction.preview, interaction.draftPoints);
         }
 
-        if (interaction.snap !== null) {
+        // The grid catches every pointer move, so its marker is drawn only while a tool is
+        // placing points: that is when "your click lands here, not under your cursor" is
+        // something the person needs, and the rest of the time it would just be always on.
+        if (interaction.snap !== null && (interaction.snap.kind !== 'grid' || tool !== 'select')) {
             paintSnapIndicator(overlay, interaction.snap);
         }
 

@@ -202,7 +202,11 @@ so the overlay can say _why_ — an endpoint marker and an alignment guide are d
 of information.
 
 Candidates are gathered from a small neighbourhood around the pointer, so a plan with thousands
-of elements still compares a handful. Priority runs:
+of elements still compares a handful. Alignments are the exception, and have to be: lining a
+wall up with a corner across the room is the whole point of them, and that corner is nowhere
+near the pointer. Those are gathered along the row and the column the pointer stands in,
+clipped to what is on screen — a guide to something nobody can see is not a guide, and the
+clip keeps it a walk along one row and one column of the index. Priority runs:
 
 `endpoint → midpoint → intersection → alignment → grid`
 
@@ -218,6 +222,15 @@ while the same wall dragged diagonally landed on the grid in both directions, wa
 the grid not working. Tolerance is given in screen pixels and converted through the zoom, so
 snapping feels identical at any magnification. A shape being dragged is excluded from its own
 candidates — otherwise it would pin itself where it started.
+
+Two things say where the point went. Each kind of snap has its own mark, because "you landed
+on a corner" and "you are lined up with something over there" are different pieces of
+information; the grid gets one too, quieter than the rest and only while a tool is placing
+points, since that is when _your click lands here, not under your cursor_ is worth saying and
+the rest of the time it would simply always be on. The coordinate readout says the same thing
+in numbers: it follows the snapped point rather than the pointer, because a readout that
+disagrees with where the editor is about to put something is a readout nobody can use. Turning
+snap off — the toggle is in the same status bar — brings the raw position back.
 
 ## 9. Editing by value
 
