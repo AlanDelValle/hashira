@@ -172,6 +172,7 @@ export class CanvasRenderer {
             palette,
             layers: drawing.layers,
             lookup,
+            neighbours: onScreen,
             unit: drawing.settings.unit,
             px,
         };

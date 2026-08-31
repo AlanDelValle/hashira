@@ -55,7 +55,7 @@ describe('path data', () => {
             from: 0,
             to: Math.PI / 2,
             anticlockwise: false,
-            stroke: { color: '#000', width: { kind: 'pen', mm: 0.25 } },
+            stroke: { color: '#000', width: 0.25 },
         });
 
         // A quarter turn clockwise: sweep 1, large-arc 0.
@@ -68,7 +68,7 @@ describe('path data', () => {
             from: 0,
             to: toRadians(270),
             anticlockwise: false,
-            stroke: { color: '#000', width: { kind: 'pen', mm: 0.25 } },
+            stroke: { color: '#000', width: 0.25 },
         });
 
         expect(most).toContain('A 100 100 0 1 1');
@@ -256,18 +256,18 @@ describe('SVG export', () => {
         expect(svg).toContain('data-layer="Openings"');
     });
 
-    it('scales a pen weight into the file’s units but leaves a real thickness alone', () => {
-        // The wall band is a real 150 mm; a 0.25 mm pen at 1:50 is 12.5 world millimetres.
-        expect(svg).toContain('stroke-width="150"');
+    it('scales a pen weight into the file’s units', () => {
+        // A 0.25 mm pen at 1:50 is 12.5 world millimetres in a file measured in those.
         expect(svg).toContain('stroke-width="12.5"');
     });
 
     it('cuts the opening out of the wall rather than drawing over it', () => {
-        const wallPaths = [...svg.matchAll(/<path d="M 0 0 L (\d+) 0"/g)];
-
-        // The wall is drawn as two spans, stopping where the door starts.
-        expect(wallPaths[0]?.[1]).toBe('1550');
-        expect(svg).toContain('M 2450 0 L 4000 0');
+        // The poché is a band 150 mm across, filled as two runs that stop either side of the
+        // door rather than as one run with a door painted over it.
+        expect(svg).toContain(
+            '<path d="M 0 -75 L 1550 -75 L 1550 75 L 0 75 Z' +
+                ' M 2450 -75 L 4000 -75 L 4000 75 L 2450 75 Z" fill="#1F2328"/>',
+        );
     });
 
     it('escapes text rather than letting it break the document', () => {

@@ -29,6 +29,12 @@ export interface OverlayContext {
     palette: ScenePalette;
     layers: readonly Layer[];
     lookup: ElementLookup;
+    /**
+     * The elements being painted this frame. A wall is mitred against its neighbours, so
+     * highlighting one on its own has to be told what it meets — otherwise the accent band is
+     * square where the drawing underneath it is not.
+     */
+    neighbours: readonly Element[];
     /** The document's display unit, which a selected dimension still has to write its value in. */
     unit: DisplayUnit;
     /** One screen pixel in world millimetres. */
@@ -62,6 +68,7 @@ function paintAccented(context: OverlayContext, elements: readonly Element[], al
         buildScene(elements, context.layers, {
             palette: context.palette,
             unit: context.unit,
+            context: context.neighbours,
             overrideColor: context.theme.accent,
             // What is selected is drawn whatever its layer says, because the selection is a
             // fact about this moment rather than about the drawing.

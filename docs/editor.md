@@ -6,7 +6,7 @@ How the drawing surface is put together. The reasoning behind the big choices is
 ```
 resources/js/editor/
 ├── geometry/    pure maths — vectors, segments, polygons, bounds, angles
-├── model/       the document: types, parsing, element geometry, picking, factories
+├── model/       the document: types, parsing, element geometry, picking, factories, wall joins
 ├── viewport/    world ↔ screen
 ├── commands/    Command, HistoryStack
 ├── store/       document, editor, viewport, and transient interaction state
@@ -259,11 +259,17 @@ document ──▶ scene ──┬──▶ canvas          the screen
 Writing that geometry four times would guarantee four slightly different answers. This way a
 PDF cannot disagree with what was on screen.
 
-The distinction the scene carries that matters most is **line weight**. A `pen` width is a
-plotted weight — 0.25 mm on the finished sheet — so it stays a constant thickness on screen
-however far you zoom, and prints at 0.25 mm whatever the drawing's scale. A `world` width is a
-real dimension: a 150 mm wall is 150 mm, and it shrinks as you zoom out because the wall does.
-Each output converts pens its own way; nothing else has to think about it.
+The distinction the scene carries that matters most is between a **line** and an **area**. A
+stroke is always a plotted pen weight — 0.25 mm on the finished sheet — so it stays a constant
+thickness on screen however far you zoom, and prints at 0.25 mm whatever the drawing's scale.
+Each output converts that its own way; nothing else has to think about it. Anything with a
+real dimension is an area: a wall's poché is 150 mm across because the wall is, so it is
+filled rather than stroked and gets smaller as you zoom out, the way the wall does.
+
+It was a fat stroke until walls learned to meet each other. A stroke has two ends and they are
+square, which is fine until two walls turn a corner and the outside of it is a notch neither
+of them reaches into. Mitring says where each face of each band really stops, and that shape
+is a quadrilateral, not a line — see §17.
 
 Hidden layers are absent from the scene, so hiding a layer hides it in an export too. A wall's
 openings come only from openings on visible layers, which is why hiding _Openings_ gives solid
@@ -303,7 +309,39 @@ than they were first drawn.
 Below the `lg` breakpoint the editor is not merely hidden — it is not mounted, so a phone does
 not start a render loop for a canvas nobody can draw on.
 
-## 17. What is not here yet
+## 17. Where walls meet
 
-Dimensions and measurement annotations, DXF, and anything collaborative. See
-[roadmap.md](roadmap.md).
+A wall is a band as wide as it is thick. Two of them turning a corner, drawn as two bands with
+square ends, overlap on the inside of the corner and leave a square notch on the outside that
+neither of them reaches into. `model/walls.ts` works out where each face of each band actually
+stops, and the drawing shows a corner instead of two rectangles.
+
+Ends within a millimetre of each other are one junction. Sorted by the direction they leave
+in, each neighbouring pair bounds one wedge of that junction, and the two faces looking into
+that wedge are what have to meet — the same rule for a corner, a T and a crossroads, which is
+why nothing counts how many walls arrived. A very shallow corner mitres to a spike metres long,
+so past eight half-thicknesses the band is cut off square instead, exactly as a stroke join is.
+
+Two walls mitred that way share the sloped edge their bands end on, so their union is the
+corner and nothing is left over. Three or more do not: each band ends on an edge of a small
+polygon between them that is nobody's. That polygon is the junction itself, and it is filed
+under every wall that meets there so that painting one of them alone — a hover, a selection —
+still draws the junction whole.
+
+The other kind of T is a wall that stops against the side of another rather than at its end.
+Whether it was drawn to the other wall's face, to its centreline or a little short of both,
+the stem is carried on to the centreline so the two lots of poché merge and the junction reads
+as one piece rather than as a butt joint with a hairline in it.
+
+None of this touches the document. A join is a fact about how walls are drawn, derived from
+where they are, so moving one wall re-mitres its neighbours without editing them — and undo
+has nothing extra to undo.
+
+Every wall on a layer is filled as **one** shape rather than one per wall. Two fills that
+share an edge each cover about half the pixels along it, and the pale hairline that leaves at
+every mitre is the notch coming back wearing a different hat.
+
+## 18. What is not here yet
+
+Rooms found from the walls around them, dimensions beyond the linear one, DXF, and anything
+collaborative. See [roadmap.md](roadmap.md).

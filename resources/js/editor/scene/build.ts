@@ -1,10 +1,10 @@
 import { findAsset, type AssetPrimitive } from '@/editor/assets/library';
 import { TAU } from '@/editor/geometry/angle';
+import { signedPolygonArea } from '@/editor/geometry/polygon';
 import {
     add,
     clamp,
     distance,
-    normalize,
     perpendicular,
     scale,
     subtract,
@@ -20,6 +20,7 @@ import {
     type ElementLookup,
 } from '@/editor/model/elements';
 import { formatLength } from '@/editor/model/units';
+import { wallBandCorners, wallJoins, type WallJoins } from '@/editor/model/walls';
 import type {
     AssetElement,
     DimensionElement,
@@ -52,6 +53,13 @@ export interface SceneOptions {
     overrideColor?: string;
     /** Hidden means hidden, in export as much as on screen. */
     includeHidden?: boolean;
+    /**
+     * The drawing these elements sit in, when only part of it is being built. A wall mitres
+     * against its neighbours, so painting a selected wall on its own has to be told about
+     * walls it is not painting — otherwise the accent band comes out square and short and
+     * leaves the mitre underneath it showing.
+     */
+    context?: readonly Element[];
 }
 
 export function buildScene(
@@ -87,7 +95,30 @@ export function buildScene(
         }
     }
 
+    // Joins come from the visible walls only: hiding a layer must not leave a mitre cut for
+    // a wall that is no longer in the drawing.
+    const joins = wallJoins(
+        (options.context ?? elements).filter((element) => visible.has(element.layerId)),
+    );
+
+    // Every wall on a layer is filled as one shape, so they are gathered first and the whole
+    // lot is emitted where the first of them appears.
+    const wallsByLayer = new Map<string, WallElement[]>();
+
+    for (const element of elements) {
+        if (element.type !== 'wall' || !visible.has(element.layerId)) continue;
+
+        const existing = wallsByLayer.get(element.layerId);
+
+        if (existing === undefined) {
+            wallsByLayer.set(element.layerId, [element]);
+        } else {
+            existing.push(element);
+        }
+    }
+
     const byLayer = new Map<string, ScenePrimitive[]>();
+    const wallsDrawn = new Set<string>();
 
     for (const element of elements) {
         if (!visible.has(element.layerId)) continue;
@@ -97,9 +128,17 @@ export function buildScene(
             ordered.find((layer) => layer.id === element.layerId)?.color ??
             options.palette.ink;
 
+        if (element.type === 'wall' && wallsDrawn.has(element.layerId)) continue;
+
+        if (element.type === 'wall') {
+            wallsDrawn.add(element.layerId);
+        }
+
         const primitives = primitivesFor(element, {
             lookup,
             openings,
+            joins,
+            wallsOnLayer: (layerId) => wallsByLayer.get(layerId) ?? [],
             colour,
             palette: options.palette,
             overrideColor: options.overrideColor,
@@ -127,6 +166,9 @@ export function buildScene(
 interface BuildContext {
     lookup: ElementLookup;
     openings: Map<string, HostedElement[]>;
+    joins: WallJoins;
+    /** Every wall being painted on one layer, because they are filled as a single shape. */
+    wallsOnLayer: (layerId: string) => readonly WallElement[];
     colour: string;
     palette: ScenePalette;
     overrideColor?: string | undefined;
@@ -136,7 +178,7 @@ interface BuildContext {
 function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[] {
     switch (element.type) {
         case 'wall':
-            return wallPrimitives(element, context);
+            return wallArea(context.wallsOnLayer(element.layerId), context);
 
         case 'line':
             return [
@@ -256,10 +298,32 @@ function dimensionPrimitives(element: DimensionElement, context: BuildContext): 
 }
 
 /**
- * A wall is a solid band, interrupted where an opening sits in it. The band is one stroke as
- * wide as the wall is thick, with butt ends, which gives the poché and squares off the cuts.
+ * The poché of a run of walls: one filled shape, however many walls it took.
+ *
+ * Each wall contributes a band, and the bands are filled together rather than one at a time
+ * because they meet edge to edge at every mitre — and two fills sharing an edge leave a pale
+ * hairline along it, which is the notch it was cleaning up wearing a different hat.
  */
-function wallPrimitives(wall: WallElement, context: BuildContext): ScenePrimitive[] {
+function wallArea(walls: readonly WallElement[], context: BuildContext): ScenePrimitive[] {
+    const rings = walls.flatMap((wall) => wallRings(wall, context));
+
+    if (rings.length === 0) {
+        return [];
+    }
+
+    return [{ kind: 'area', rings, fill: context.colour, stroke: null }];
+}
+
+/**
+ * The closed rings one wall is filled as.
+ *
+ * A band is a quadrilateral rather than a thick line because its ends are not always square:
+ * where walls meet, `model/walls.ts` mitres them so the faces run into one another instead of
+ * leaving a notch on the outside of every corner. An opening cuts the band into runs, and only
+ * the runs that reach an end of the wall carry that end's corners — the cuts either side of a
+ * door are square whatever the corners are doing.
+ */
+function wallRings(wall: WallElement, context: BuildContext): Point[][] {
     const [a, b] = elementWorldPoints(wall, context.lookup);
 
     if (a === undefined || b === undefined) {
@@ -272,12 +336,7 @@ function wallPrimitives(wall: WallElement, context: BuildContext): ScenePrimitiv
         return [];
     }
 
-    const direction = normalize(subtract(b, a));
-    const stroke = {
-        color: context.colour,
-        width: { kind: 'world' as const, mm: wall.geometry.thickness },
-        cap: 'butt' as const,
-    };
+    const band = context.joins.bands.get(wall.id);
 
     const gaps = (context.openings.get(wall.id) ?? [])
         .map((opening) => {
@@ -305,12 +364,22 @@ function wallPrimitives(wall: WallElement, context: BuildContext): ScenePrimitiv
         solid.push([cursor, length]);
     }
 
-    return solid.map(([from, to]): ScenePrimitive => ({
-        kind: 'polyline',
-        points: [add(a, scale(direction, from)), add(a, scale(direction, to))],
-        closed: false,
-        stroke,
-    }));
+    // A junction of three or more walls leaves a small polygon between the bands that belongs
+    // to none of them. It is filed under each of them, so a wall drawn on its own still shows
+    // the junction whole.
+    return [
+        ...solid.map(([from, to]) => wallBandCorners(wall, band, from, to)),
+        ...(context.joins.patches.get(wall.id) ?? []),
+    ].map(sameWinding);
+}
+
+/**
+ * The non-zero fill rule counts a ring's direction, so a ring wound the other way punches a
+ * hole where it overlaps its neighbour. Walls are drawn in whichever direction they were
+ * dragged, so every ring is turned to face the same way before it joins the rest.
+ */
+function sameWinding(ring: Point[]): Point[] {
+    return signedPolygonArea(ring) < 0 ? [...ring].reverse() : ring;
 }
 
 /** The square ends of the wall where an opening begins and stops. */

@@ -69,6 +69,7 @@ function element(primitive: ScenePrimitive, scale: number): string {
 
     switch (primitive.kind) {
         case 'polyline':
+        case 'area':
         case 'arc': {
             const data = toPathData(primitive);
 
@@ -141,11 +142,10 @@ function paintAttributes(primitive: ScenePrimitive, scale: number): string {
 
 /**
  * A pen weight is a width on the finished sheet, so at 1:50 a 0.25 mm pen is 12.5 world
- * millimetres wide in a file whose user units are world millimetres. A world width is a real
- * dimension and passes through untouched.
+ * millimetres wide in a file whose user units are world millimetres.
  */
 export function strokeWidthInWorld(stroke: Stroke, scale: number): number {
-    return stroke.width.kind === 'world' ? stroke.width.mm : stroke.width.mm * scale;
+    return stroke.width * scale;
 }
 
 function escapeText(value: string): string {

@@ -72,6 +72,29 @@ export function intersectSegments(first: Segment, second: Segment): Point | null
     return add(first.a, scale(r, t));
 }
 
+/**
+ * Where two infinite lines cross, given a point on each and the direction it runs in.
+ *
+ * Unlike `intersectSegments` this does not care whether the crossing lies between the points
+ * that defined the lines, which is exactly what mitring a corner needs: the two wall faces
+ * meet past the end of both of them.
+ */
+export function intersectLines(
+    a: Point,
+    alongA: Point,
+    b: Point,
+    alongB: Point,
+    epsilon = 1e-9,
+): Point | null {
+    const denominator = cross(alongA, alongB);
+
+    if (Math.abs(denominator) <= epsilon) {
+        return null; // Parallel: no single crossing point, or every point.
+    }
+
+    return add(a, scale(alongA, cross(subtract(b, a), alongB) / denominator));
+}
+
 export function segmentLength(segment: Segment): number {
     return distance(segment.a, segment.b);
 }

@@ -59,6 +59,27 @@ export function paintPrimitive(
             break;
         }
 
+        case 'area': {
+            ctx.beginPath();
+
+            for (const ring of primitive.rings) {
+                const [first, ...rest] = ring;
+
+                if (first === undefined) continue;
+
+                ctx.moveTo(first.x, first.y);
+
+                for (const p of rest) {
+                    ctx.lineTo(p.x, p.y);
+                }
+
+                ctx.closePath();
+            }
+
+            fillThenStroke(ctx, primitive.fill, primitive.stroke, options);
+            break;
+        }
+
         case 'circle':
             ctx.beginPath();
             ctx.arc(primitive.centre.x, primitive.centre.y, primitive.radius, 0, TAU);
@@ -137,16 +158,11 @@ function fillThenStroke(
 }
 
 /**
- * A world width is a real dimension and used as-is. A pen width is a plotted weight, converted
- * to a fixed number of screen pixels and then back into world units, so it never grows or
- * shrinks with the zoom.
+ * A pen weight is converted to a fixed number of screen pixels and then back into world
+ * units, so it never grows or shrinks with the zoom.
  */
 export function strokeWidthInWorld(stroke: Stroke, px: number): number {
-    if (stroke.width.kind === 'world') {
-        return stroke.width.mm;
-    }
-
-    return Math.max(stroke.width.mm * SCREEN_PX_PER_SHEET_MM, MINIMUM_PEN_PX) * px;
+    return Math.max(stroke.width * SCREEN_PX_PER_SHEET_MM, MINIMUM_PEN_PX) * px;
 }
 
 function sheetToWorld(sheetMm: number, px: number): number {

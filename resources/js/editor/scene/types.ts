@@ -11,18 +11,15 @@ import type { TextAlign } from '@/editor/model/types';
  * Coordinates are world millimetres. Nothing here knows about zoom, pixels or page size.
  */
 
-/**
- * Line weight, and the distinction that matters for a drawing.
- *
- * A `pen` is a plotted weight: 0.25 mm on the finished sheet, whatever the drawing's scale,
- * and constant on screen however far you zoom. A `world` width is a real dimension — a 150 mm
- * wall is 150 mm, and it gets smaller as you zoom out because the wall does.
- */
-export type StrokeWidth = { kind: 'pen'; mm: number } | { kind: 'world'; mm: number };
-
 export interface Stroke {
     color: string;
-    width: StrokeWidth;
+    /**
+     * A plotted pen weight: millimetres on the finished sheet, whatever the drawing's scale.
+     * It stays the same thickness on screen however far you zoom, exactly as it would on a
+     * plotter. Anything with a real dimension — a wall's poché — is an area and is filled,
+     * not stroked, which is why there is only one kind of width here.
+     */
+    width: number;
     cap?: 'butt' | 'round';
     /** Dash pattern in sheet millimetres. */
     dash?: number[] | null;
@@ -36,9 +33,7 @@ export const PEN = {
 } as const;
 
 export function pen(color: string, mm: number = PEN.normal, cap?: 'butt' | 'round'): Stroke {
-    return cap === undefined
-        ? { color, width: { kind: 'pen', mm } }
-        : { color, width: { kind: 'pen', mm }, cap };
+    return cap === undefined ? { color, width: mm } : { color, width: mm, cap };
 }
 
 export type ScenePrimitive =
@@ -65,6 +60,21 @@ export type ScenePrimitive =
           rotation: number;
           stroke: Stroke | null;
           fill?: string | null;
+      }
+    | {
+          /**
+           * One filled shape made of several closed rings — the poché of a whole run of
+           * walls. Drawn as one path rather than as a polygon per wall on purpose: two fills
+           * that share an edge each cover half of the pixels along it, and the seam of pale
+           * hairlines that leaves at every mitre is exactly what cleaning up a corner was
+           * supposed to get rid of.
+           *
+           * Rings are filled by the non-zero rule, so they all have to wind the same way.
+           */
+          kind: 'area';
+          rings: Point[][];
+          fill: string;
+          stroke: Stroke | null;
       }
     | {
           kind: 'arc';

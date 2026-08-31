@@ -102,9 +102,11 @@ document ──▶ scene ──┬──▶ canvas          the screen
                      └──▶ pdf-lib page    a real page at a real scale
 ```
 
-The scene carries line weight as _intent_ rather than as a number: a pen weight is a width on
-the finished sheet, a world width is a real dimension. Each output converts pens its own way,
-which is why a hairline stays a hairline at any zoom and still plots at 0.25 mm.
+The scene carries line weight as _intent_ rather than as a number: every stroke is a pen
+weight, a width on the finished sheet, and each output converts it its own way — which is why
+a hairline stays a hairline at any zoom and still plots at 0.25 mm. Anything with a real
+dimension is an area rather than a stroke: a wall's poché is 150 mm because the wall is, so it
+is a filled shape and shrinks with the drawing.
 
 The cost of this choice is that hit-testing is ours to write. That cost is not really new:
 snapping needs point-to-segment distance, polygon containment and intersection math

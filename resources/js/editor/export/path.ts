@@ -51,6 +51,28 @@ export function toPathData(
             ].join(' ');
         }
 
+        case 'area': {
+            const rings = primitive.rings.flatMap((ring): string[] => {
+                const [first, ...rest] = ring;
+
+                if (first === undefined) return [];
+
+                const start = transform.point(first);
+
+                return [
+                    `M ${round(start.x)} ${round(start.y)}`,
+                    ...rest.map((p) => {
+                        const mapped = transform.point(p);
+
+                        return `L ${round(mapped.x)} ${round(mapped.y)}`;
+                    }),
+                    'Z',
+                ];
+            });
+
+            return rings.length === 0 ? null : rings.join(' ');
+        }
+
         case 'arc': {
             const { centre, radius, from, to, anticlockwise } = primitive;
 

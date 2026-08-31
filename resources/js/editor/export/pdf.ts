@@ -81,7 +81,7 @@ export async function sceneToPdf(
 
     for (const layer of layers) {
         for (const primitive of layer.primitives) {
-            drawPrimitive(kit, page, font, primitive, transform, pageHeightPt, u);
+            drawPrimitive(kit, page, font, primitive, transform, pageHeightPt);
         }
     }
 
@@ -133,7 +133,6 @@ function drawPrimitive(
     primitive: ScenePrimitive,
     transform: PathTransform,
     pageHeightPt: number,
-    unitsPerWorldMm: number,
 ): void {
     if (primitive.kind === 'text') {
         const at = transform.point(primitive.at);
@@ -168,7 +167,7 @@ function drawPrimitive(
             ? {}
             : {
                   borderColor: toColor(kit, stroke.color),
-                  borderWidth: strokeWidthInPoints(stroke, unitsPerWorldMm),
+                  borderWidth: strokeWidthInPoints(stroke),
                   borderLineCap: stroke.cap === 'butt' ? 0 : 1,
               };
 
@@ -211,11 +210,8 @@ function drawPrimitive(
 }
 
 /** A pen is a width on the sheet; a world width is a real dimension and shrinks with the scale. */
-function strokeWidthInPoints(stroke: Stroke, unitsPerWorldMm: number): number {
-    const sheetMm =
-        stroke.width.kind === 'pen' ? stroke.width.mm : stroke.width.mm * unitsPerWorldMm;
-
-    return sheetMm * PT_PER_MM;
+function strokeWidthInPoints(stroke: Stroke): number {
+    return stroke.width * PT_PER_MM;
 }
 
 function drawTitleBlock(
