@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { point } from '@/editor/geometry/vec';
 import { defaultLayers } from '@/editor/model/document';
-import { createLine, createWall } from '@/editor/model/factories';
+import { createLine, createRect, createWall } from '@/editor/model/factories';
 import type { Element, HashiraDocument, SnapSettings } from '@/editor/model/types';
 
 import { snapPoint, type SnapOptions } from './engine';
@@ -163,6 +163,58 @@ describe('the snap engine', () => {
         expect(result.kind).toBe('vertical');
         expect(result.point.x).toBe(6000);
         expect(result.reference).toEqual({ x: 6000, y: 200 });
+    });
+
+    /*
+     * Found by drawing a line in what looked like empty sheet and getting a length that was
+     * not a whole number of grid steps: a chest of drawers across the room had a row through
+     * it, and the guide took the coordinate. A plan with furniture in it has a row and a
+     * column through every edge of every block, so a hint has to beat the grid on distance
+     * before it beats it on priority.
+     */
+    it('will not take a coordinate the grid was closer to', () => {
+        // The block's edge is at y = 3625; the pointer is 17 mm from the grid row at 3700 and
+        // 58 mm from the edge, so the grid has it.
+        const block = createRect(point(2000, 3625), point(3000, 3925), LAYER);
+        const result = snapPoint(
+            point(5000, 3683),
+            options([block], {
+                tolerance: 66,
+                visible: { minX: 0, minY: 0, maxX: 10000, maxY: 10000 },
+            }),
+        );
+
+        expect(result.kind).toBe('grid');
+        expect(result.point.y).toBe(3700);
+    });
+
+    it('takes it when the pointer really is nearer the guide than the grid', () => {
+        const block = createRect(point(2000, 3625), point(3000, 3925), LAYER);
+        const result = snapPoint(
+            point(5000, 3630),
+            options([block], {
+                tolerance: 66,
+                visible: { minX: 0, minY: 0, maxX: 10000, maxY: 10000 },
+            }),
+        );
+
+        expect(result.kind).toBe('horizontal');
+        expect(result.point.y).toBe(3625);
+    });
+
+    /*
+     * A point the tool placed is different: holding a wall horizontal from the corner it
+     * starts at is the strongest intent there is, and losing it to a grid row a few
+     * millimetres nearer would leave the wall not horizontal.
+     */
+    it('holds an anchor’s line however near a grid row is', () => {
+        const result = snapPoint(
+            point(1234, 3649),
+            options([], { anchors: [point(0, 3625)], tolerance: 60 }),
+        );
+
+        expect(result.kind).toBe('horizontal');
+        expect(result.point).toEqual({ x: 1200, y: 3625 });
     });
 
     it('does not reach for a guide to something off screen', () => {

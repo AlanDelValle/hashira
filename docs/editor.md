@@ -214,6 +214,15 @@ An endpoint beats the grid however far away it is, because landing exactly on th
 existing wall matters more than landing on a round number. The grid has no tolerance at all —
 it always offers a candidate, so there is never a dead zone mid-cell where nothing snaps.
 
+Not every reference carries the same weight. A point the tool has already placed holds the
+pointer however close a grid line happens to be — keeping a wall horizontal from the corner it
+starts at is the strongest intent there is, and losing it to a grid row 20 mm away would leave
+the wall not horizontal. A corner somewhere else on screen is a hint rather than an intent, so
+it has to be at least as near as the grid to win. Without that rule a plan with furniture in it
+carries a row and a column through every edge of every block, and the grid effectively stops
+applying: a line drawn in what looked like empty sheet came out 1.015 m long because a chest of
+drawers across the room had a row through it.
+
 Alignment locks only the coordinate that matched and draws a guide back to the point it lined
 up with; the other coordinate still lands on the grid, because the grid always applies. An
 alignment says _this_ coordinate is not yours to choose, not that the rest of the point stopped

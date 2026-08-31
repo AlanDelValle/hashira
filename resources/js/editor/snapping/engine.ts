@@ -105,12 +105,18 @@ export function snapPoint(raw: Point, options: SnapOptions): SnapResult {
     const grid = options.gridSnapEnabled && options.gridSize > 0 ? options.gridSize : 0;
 
     if (settings.axis) {
-        const references = [
-            ...(options.anchors ?? []),
-            ...alignmentReferences(raw, options, near, tolerance, exclude),
-        ];
-
-        candidates.push(...alignments(raw, references, tolerance, grid));
+        // Two kinds of reference, and they do not carry the same weight. A point this tool
+        // placed is what the shape is being drawn from; a corner across the room is a hint.
+        candidates.push(...alignments(raw, options.anchors ?? [], tolerance, grid, true));
+        candidates.push(
+            ...alignments(
+                raw,
+                alignmentReferences(raw, options, near, tolerance, exclude),
+                tolerance,
+                grid,
+                false,
+            ),
+        );
     }
 
     if (grid > 0) {
@@ -166,21 +172,35 @@ function toGrid(value: number, grid: number): number {
     return grid > 0 ? Math.round(value / grid) * grid : value;
 }
 
+/** How far a coordinate is from the nearest grid line, or infinity when there is no grid. */
+function offGrid(value: number, grid: number): number {
+    return grid > 0 ? Math.abs(value - toGrid(value, grid)) : Infinity;
+}
+
 /**
- * Alignment with something already on the drawing: holding the same X or the same Y as a
- * point the tool has placed, or as a nearby endpoint.
+ * Alignment: holding the same X or the same Y as some other point.
  *
- * Only the matching coordinate is locked by the alignment itself. The other still lands on
- * the grid, because the grid always applies — an alignment says *this* coordinate is not
- * yours to choose, not that the rest of the point stopped being drafted. Without that, a wall
- * dragged along a guide came out a fraction of a grid step long in the one direction anybody
- * would expect to be exact, while the same wall dragged diagonally landed on the grid in both.
+ * Only the matching coordinate is locked. The other still lands on the grid, because the grid
+ * always applies — an alignment says *this* coordinate is not yours to choose, not that the
+ * rest of the point stopped being drafted. Without that, a wall dragged along a guide came out
+ * a fraction of a grid step long in the one direction anybody would expect to be exact, while
+ * the same wall dragged diagonally landed on the grid in both.
+ *
+ * `placed` says whether the reference is a point this tool put down. Those hold the pointer
+ * however close a grid line happens to be: keeping a wall horizontal from the corner it starts
+ * at is the strongest intent there is, and losing it to a grid row 20 mm away would make the
+ * wall not horizontal. Every other reference — a corner somewhere else on screen — has to be
+ * *at least as near as the grid* to win, or a plan with furniture in it would carry a row and
+ * a column through every edge of every block and the grid would effectively stop applying. A
+ * tie goes to the alignment: a reference sitting on a grid line lands on the same coordinate
+ * either way, and there the guide is worth drawing.
  */
 function alignments(
     raw: Point,
     references: readonly Point[],
     tolerance: number,
     grid: number,
+    placed: boolean,
 ): Candidate[] {
     const candidates: Candidate[] = [];
 
@@ -188,7 +208,7 @@ function alignments(
         const dx = Math.abs(raw.x - reference.x);
         const dy = Math.abs(raw.y - reference.y);
 
-        if (dx <= tolerance) {
+        if (dx <= tolerance && (placed || dx <= offGrid(raw.x, grid))) {
             candidates.push({
                 point: { x: reference.x, y: toGrid(raw.y, grid) },
                 kind: 'vertical',
@@ -197,7 +217,7 @@ function alignments(
             });
         }
 
-        if (dy <= tolerance) {
+        if (dy <= tolerance && (placed || dy <= offGrid(raw.y, grid))) {
             candidates.push({
                 point: { x: toGrid(raw.x, grid), y: reference.y },
                 kind: 'horizontal',
