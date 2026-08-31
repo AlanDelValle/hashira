@@ -130,6 +130,12 @@ export function LandingPage() {
                             no way to type over it, so a sheet cannot state one length while showing
                             another.
                         </Feature>
+                        <Feature title="Labels that plot">
+                            A label is measured in millimetres like the rest of the drawing, so it
+                            scales with the plan and not with the screen — set at 250 mm it comes
+                            out 5 mm high on a 1:50 sheet. And you type it where it goes, on the
+                            sheet, not into a field beside it.
+                        </Feature>
                         <Feature title="Undo that holds">
                             Every change is a command with a defined inverse, so the history is
                             exact rather than approximate — including across property edits.
