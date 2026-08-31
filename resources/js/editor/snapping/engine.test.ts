@@ -106,6 +106,43 @@ describe('the snap engine', () => {
         expect(result.reference).toEqual(anchor);
     });
 
+    /*
+     * Reported from the editor: with the wall tool and snap on, dragging diagonally landed on
+     * the grid and dragging along a straight line did not. The alignment was winning — as it
+     * should — and taking the free coordinate with it, leaving the wall a fraction of a grid
+     * step long in the one direction anybody would expect to be exact.
+     */
+    it('still lands on the grid in the direction an alignment leaves free', () => {
+        const anchor = point(0, 0);
+        const result = snapPoint(
+            point(1234, 20),
+            options([], { anchors: [anchor], tolerance: 60 }),
+        );
+
+        expect(result.kind).toBe('horizontal');
+        expect(result.point.y).toBe(0);
+        expect(result.point.x).toBe(1200);
+    });
+
+    it('does the same holding a vertical', () => {
+        const result = snapPoint(
+            point(20, 1234),
+            options([], { anchors: [point(0, 0)], tolerance: 60 }),
+        );
+
+        expect(result.kind).toBe('vertical');
+        expect(result.point).toEqual({ x: 0, y: 1200 });
+    });
+
+    it('leaves the free coordinate where the pointer put it when the grid is off', () => {
+        const result = snapPoint(
+            point(1234, 20),
+            options([], { anchors: [point(0, 0)], gridSnapEnabled: false, tolerance: 60 }),
+        );
+
+        expect(result.point).toEqual({ x: 1234, y: 0 });
+    });
+
     it('falls back to the grid when nothing else is near', () => {
         const result = snapPoint(point(1234, 5678), options([]));
 

@@ -93,15 +93,14 @@ export function snapPoint(raw: Point, options: SnapOptions): SnapResult {
         collect(candidates, intersectionsNear(near.segments), raw, tolerance, 'intersection');
     }
 
+    const grid = options.gridSnapEnabled && options.gridSize > 0 ? options.gridSize : 0;
+
     if (settings.axis) {
-        candidates.push(...alignments(raw, options, near.endpoints, tolerance));
+        candidates.push(...alignments(raw, options, near.endpoints, tolerance, grid));
     }
 
-    if (options.gridSnapEnabled && options.gridSize > 0) {
-        const onGrid = {
-            x: Math.round(raw.x / options.gridSize) * options.gridSize,
-            y: Math.round(raw.y / options.gridSize) * options.gridSize,
-        };
+    if (grid > 0) {
+        const onGrid = { x: toGrid(raw.x, grid), y: toGrid(raw.y, grid) };
 
         // The grid always applies; it has the lowest priority rather than a tolerance, so
         // there is never a dead zone between two grid lines where nothing snaps.
@@ -149,16 +148,26 @@ function intersectionsNear(segments: readonly { a: Point; b: Point }[]): Point[]
     return points;
 }
 
+function toGrid(value: number, grid: number): number {
+    return grid > 0 ? Math.round(value / grid) * grid : value;
+}
+
 /**
  * Alignment with something already on the drawing: holding the same X or the same Y as a
- * point the tool has placed, or as a nearby endpoint. Only the matching coordinate is locked;
- * the other stays where the pointer put it.
+ * point the tool has placed, or as a nearby endpoint.
+ *
+ * Only the matching coordinate is locked by the alignment itself. The other still lands on
+ * the grid, because the grid always applies — an alignment says *this* coordinate is not
+ * yours to choose, not that the rest of the point stopped being drafted. Without that, a wall
+ * dragged along a guide came out a fraction of a grid step long in the one direction anybody
+ * would expect to be exact, while the same wall dragged diagonally landed on the grid in both.
  */
 function alignments(
     raw: Point,
     options: SnapOptions,
     endpoints: readonly Point[],
     tolerance: number,
+    grid: number,
 ): Candidate[] {
     const references = [...(options.anchors ?? []), ...endpoints];
     const candidates: Candidate[] = [];
@@ -169,7 +178,7 @@ function alignments(
 
         if (dx <= tolerance) {
             candidates.push({
-                point: { x: reference.x, y: raw.y },
+                point: { x: reference.x, y: toGrid(raw.y, grid) },
                 kind: 'vertical',
                 distance: dx,
                 reference,
@@ -178,7 +187,7 @@ function alignments(
 
         if (dy <= tolerance) {
             candidates.push({
-                point: { x: raw.x, y: reference.y },
+                point: { x: toGrid(raw.x, grid), y: reference.y },
                 kind: 'horizontal',
                 distance: dy,
                 reference,

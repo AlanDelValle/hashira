@@ -210,10 +210,14 @@ An endpoint beats the grid however far away it is, because landing exactly on th
 existing wall matters more than landing on a round number. The grid has no tolerance at all —
 it always offers a candidate, so there is never a dead zone mid-cell where nothing snaps.
 
-Alignment locks only the coordinate that matched, leaving the other where the pointer put it,
-and draws a guide back to the point it lined up with. Tolerance is given in screen pixels and
-converted through the zoom, so snapping feels identical at any magnification. A shape being
-dragged is excluded from its own candidates — otherwise it would pin itself where it started.
+Alignment locks only the coordinate that matched and draws a guide back to the point it lined
+up with; the other coordinate still lands on the grid, because the grid always applies. An
+alignment says _this_ coordinate is not yours to choose, not that the rest of the point stopped
+being drafted — and a wall dragged along a guide that came out a fraction of a grid step long,
+while the same wall dragged diagonally landed on the grid in both directions, was reported as
+the grid not working. Tolerance is given in screen pixels and converted through the zoom, so
+snapping feels identical at any magnification. A shape being dragged is excluded from its own
+candidates — otherwise it would pin itself where it started.
 
 ## 9. Editing by value
 
