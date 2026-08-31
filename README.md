@@ -16,9 +16,12 @@ in the browser.
 ## What it is
 
 Hashira is a drafting tool, not a diagram editor. Walls have thickness and produce real
-poché. Doors and windows belong to a wall and cut an opening in it. Everything is measured
-in millimetres and can be set by typing an exact value, not only by dragging. Drawings
-export as vectors at a real scale on a real page size.
+poché, and they mitre where they meet. Doors and windows belong to a wall and cut an opening
+in it. A room is found from the walls around it rather than traced by hand. Measurements —
+chains, angles, radii — store what they measure and never the number, so a drawing cannot
+come to say one length while showing another. Everything is in millimetres and can be set by
+typing an exact value, not only by dragging. Drawings export as vectors at a real scale on a
+real page size.
 
 It is deliberately small. There is no 3D, no BIM, no AI, no DWG. There is one thing —
 drawing an accurate 2D plan — done properly.
@@ -139,12 +142,14 @@ Documentation index:
 
 Phases 0 to 6 are done: discovery and specification, the foundation (auth, dashboard, CI),
 the editor core, the architecture tools, history and persistence, export and sharing, and
-polish. That is the MVP.
+polish. That is the MVP. Phase 7 is done on top of it: wall joins and cleanups, rooms found
+from the walls that enclose them, chains and angular and radial dimensions and leaders, a
+library that holds blocks you made, and PDF import to trace over.
 
-What comes next is drafting depth (dimension chains, automatic room detection, wall joins),
-then interchange (DXF, richer export), then collaboration, and only after all of that the
-things people ask for first — 3D, BIM semantics, generative features. The reasoning for
-that order, and everything deliberately excluded, is in [`docs/roadmap.md`](docs/roadmap.md).
+What comes next is interchange (DXF, richer export), then collaboration, and only after all
+of that the things people ask for first — 3D, BIM semantics, generative features. The
+reasoning for that order, and everything deliberately excluded, is in
+[`docs/roadmap.md`](docs/roadmap.md).
 
 ## Contributing
 

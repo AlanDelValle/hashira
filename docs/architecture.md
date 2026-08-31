@@ -216,7 +216,9 @@ app/
 ├── Domain/
 │   ├── Projects/    Project model, CreateProject, DuplicateProject, DeleteProject
 │   ├── Documents/   Document, DocumentVersion, SaveDocument, CreateDocumentVersion
-│   └── Sharing/     ShareLink, IssueShareLink, RevokeShareLink
+│   ├── Sharing/     ShareLink, IssueShareLink, RevokeShareLink
+│   ├── Blocks/      Block, BlockSchema, ReferencedBlocks
+│   └── Underlays/   Underlay — a rasterised page to trace over
 ├── Http/            Controllers, Requests, Resources
 ├── Policies/
 └── Models/          User (stays where Laravel expects it)

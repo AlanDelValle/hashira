@@ -5,12 +5,7 @@
   <title>Bedroom</title>
   <rect x="-1040" y="-1040" width="6530" height="5803.64" fill="#ffffff"/>
   <g id="layer_architecture" data-layer="Architecture">
-    <path d="M 0 0 L 4000 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 4000 0 L 4000 1400" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 4000 2600 L 4000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 0 4000 L 4000 4000" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 0 4000 L 0 3850" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path d="M 0 2950 L 0 0" fill="none" stroke="#1F2328" stroke-width="150" stroke-linecap="butt" stroke-linejoin="round"/>
+    <path d="M -75 -75 L 4075 -75 L 3925 75 L 75 75 Z M 4075 -75 L 4075 1400 L 3925 1400 L 3925 75 Z M 4075 2600 L 4075 4075 L 3925 3925 L 3925 2600 Z M 75 3925 L 3925 3925 L 4075 4075 L -75 4075 Z M -75 4075 L -75 3850 L 75 3850 L 75 3925 Z M -75 2950 L -75 -75 L 75 75 L 75 2950 Z" fill="#1F2328"/>
   </g>
   <g id="layer_openings" data-layer="Openings">
     <path d="M 4075 1400 L 3925 1400" fill="none" stroke="#1F2328" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>

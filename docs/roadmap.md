@@ -137,6 +137,19 @@ Both were reported from the editor by someone looking for a tool that was not th
       uploaded, and placed at its own size on a layer of its own — and is never exported and
       never handed out with a share link, because it is somebody else's drawing
 
+Walked in a browser against Herd and PostgreSQL, one feature at a time: a chain measured in
+three steps and carried on with a fourth click, an angle taken at a corner of the seeded room,
+a note pointed at the bed, a room found by hovering inside four walls, a block made from the
+bed and the wardrobe and then placed again, and a two-page PDF imported, its second page
+placed at A4 and traced over — reopened afterwards to check each one came back.
+
+Two things this phase settled that are worth keeping in mind. **A wall is an area, not a fat
+line**: mitring its ends means its band is a quadrilateral, which is what removed the last
+`world` stroke width from the scene and left every stroke a plotted pen weight. And **not
+everything on the sheet belongs in the drawing**: an underlay is on the canvas and in the
+document, and deliberately in neither the scene nor a share link, because what it holds is
+somebody else's work.
+
 ### Phase 8 — Interchange
 
 - DXF import and export
