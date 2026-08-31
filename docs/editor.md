@@ -109,6 +109,13 @@ A tool is a small state machine handed a `ToolContext` (the drawing, a lookup, t
 pick tolerance, the active layer, and a snap function). It writes previews into interaction state
 and produces **exactly one command** when an action completes — never a partial edit.
 
+And when it has finished, it is finished: the next click starts something new rather than
+changing what was just made. That sounds too obvious to write down, and it is written down
+because the dimension tool broke it — it committed a measurement, stayed live, and quietly
+carried that measurement across the drawing on the click meant for the next one. A tool that
+keeps going says so while it is going: the wall tool draws the next wall under the pointer as
+you move, and the block tool keeps a block on the cursor.
+
 The preview is built with the same factory that commits the result, so what is on screen while
 drawing cannot differ from what lands in the document.
 

@@ -262,3 +262,162 @@ describe('placing points along an alignment', () => {
         expect(rect?.type === 'rect' && rect.geometry).toEqual({ width: 1200, height: 700 });
     });
 });
+
+/**
+ * The dimension tool once committed a measurement and stayed live, so the click meant for the
+ * next one carried the last one across the drawing instead. Every tool that takes more than
+ * one click is checked here for the same thing: once it has finished, a further click starts
+ * something new rather than quietly changing what was just made.
+ */
+describe('finishing what a tool started', () => {
+    let canvas: HTMLCanvasElement;
+    let controller: InputController;
+
+    beforeEach(() => {
+        useDocumentStore.setState({ document: emptyDocument(), dropped: [], error: null });
+        history.clear();
+
+        useEditorStore.setState({
+            tool: 'select',
+            pendingAssetId: null,
+            selection: [],
+            textDraft: null,
+        });
+
+        useViewportStore.setState({
+            viewport: { x: 0, y: 0, zoom: 1 },
+            size: { width: 800, height: 600 },
+        });
+
+        canvas = window.document.createElement('canvas');
+        window.document.body.append(canvas);
+
+        canvas.setPointerCapture = () => undefined;
+        canvas.releasePointerCapture = () => undefined;
+        canvas.hasPointerCapture = () => false;
+
+        controller = new InputController(canvas);
+        controller.attach();
+    });
+
+    afterEach(() => {
+        controller.detach();
+        canvas.remove();
+    });
+
+    function click(x: number, y: number): void {
+        for (const type of ['pointerdown', 'pointerup']) {
+            canvas.dispatchEvent(
+                new PointerEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true }),
+            );
+        }
+    }
+
+    function enter(): void {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    }
+
+    function elements() {
+        return useDocumentStore.getState().document.elements;
+    }
+
+    /*
+     * A wall chain is the one that is meant to keep going: each click ends one wall and starts
+     * the next from that corner, which is how a room gets drawn without re-picking every
+     * junction. What matters is that Enter really ends it.
+     */
+    it('starts a fresh wall chain after the last one was finished', () => {
+        useEditorStore.getState().setTool('wall');
+
+        click(0, 0);
+        click(1000, 0);
+        click(1000, 1000);
+        enter();
+
+        expect(elements()).toHaveLength(2);
+
+        const before = elements().map((element) => JSON.stringify(element.geometry));
+
+        click(4000, 4000);
+        click(5000, 4000);
+        enter();
+
+        expect(elements()).toHaveLength(3);
+        expect(
+            elements()
+                .slice(0, 2)
+                .map((element) => JSON.stringify(element.geometry)),
+        ).toEqual(before);
+    });
+
+    it('finishes a polygon and hands the drawing back to the select tool', () => {
+        useEditorStore.getState().setTool('polygon');
+
+        click(0, 0);
+        click(1000, 0);
+        click(1000, 1000);
+        enter();
+
+        expect(elements()).toHaveLength(1);
+        expect(useEditorStore.getState().tool).toBe('select');
+
+        // A further click can only select now; it cannot add a vertex to what was committed.
+        click(2000, 2000);
+
+        expect(elements()).toHaveLength(1);
+        expect(elements()[0]?.type === 'polygon' && elements()[0]?.geometry).toEqual(
+            expect.objectContaining({ closed: false }),
+        );
+    });
+
+    it('finishes a room the same way', () => {
+        useEditorStore.getState().setTool('room');
+
+        click(0, 0);
+        click(1000, 0);
+        click(1000, 1000);
+        enter();
+
+        expect(elements()).toHaveLength(1);
+        expect(useEditorStore.getState().tool).toBe('select');
+
+        click(3000, 3000);
+
+        expect(elements()).toHaveLength(1);
+    });
+
+    it('finishes an angle on its third click', () => {
+        useEditorStore.getState().setTool('angle');
+
+        click(0, 0);
+        click(1000, 0);
+        click(0, 1000);
+
+        expect(elements()).toHaveLength(1);
+        expect(useEditorStore.getState().tool).toBe('select');
+
+        click(3000, 3000);
+
+        expect(elements()).toHaveLength(1);
+    });
+
+    /*
+     * A leader ends by opening the field the note is typed into, and lets go of its points
+     * while doing it — otherwise the next one would start from the last one's elbow.
+     */
+    it('finishes a leader by asking for the note', () => {
+        useEditorStore.getState().setTool('leader');
+
+        click(0, 0);
+        click(500, -500);
+        enter();
+
+        expect(useEditorStore.getState().textDraft?.leader).toEqual([
+            point(0, 0),
+            point(500, -500),
+        ]);
+
+        // Nothing is on the sheet until something is written on it.
+        expect(elements()).toHaveLength(0);
+    });
+});
