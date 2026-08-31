@@ -188,6 +188,8 @@ function drawPrimitive(
                 ...common,
                 xScale: transform.length(primitive.rx),
                 yScale: transform.length(primitive.ry),
+                // Same flip as the text above: the page measures angles the other way round.
+                rotate: kit.degrees(-toDegrees(primitive.rotation)),
             });
         }
 

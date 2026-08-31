@@ -72,7 +72,7 @@ export function paintPrimitive(
                 primitive.centre.y,
                 primitive.rx,
                 primitive.ry,
-                0,
+                primitive.rotation,
                 0,
                 TAU,
             );

@@ -61,6 +61,8 @@ export type ScenePrimitive =
           centre: Point;
           rx: number;
           ry: number;
+          /** Rotation of the `rx` axis, clockwise from east, in radians. */
+          rotation: number;
           stroke: Stroke | null;
           fill?: string | null;
       }

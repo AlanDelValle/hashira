@@ -78,8 +78,17 @@ function element(primitive: ScenePrimitive, scale: number): string {
         case 'circle':
             return `<circle cx="${round(primitive.centre.x)}" cy="${round(primitive.centre.y)}" r="${round(primitive.radius)}"${paint}/>`;
 
-        case 'ellipse':
-            return `<ellipse cx="${round(primitive.centre.x)}" cy="${round(primitive.centre.y)}" rx="${round(primitive.rx)}" ry="${round(primitive.ry)}"${paint}/>`;
+        case 'ellipse': {
+            const spin =
+                primitive.rotation === 0
+                    ? ''
+                    : ` transform="rotate(${round(toDegrees(primitive.rotation))} ${round(primitive.centre.x)} ${round(primitive.centre.y)})"`;
+
+            return (
+                `<ellipse cx="${round(primitive.centre.x)}" cy="${round(primitive.centre.y)}"` +
+                ` rx="${round(primitive.rx)}" ry="${round(primitive.ry)}"${spin}${paint}/>`
+            );
+        }
 
         case 'text': {
             const anchor =

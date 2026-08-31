@@ -479,6 +479,9 @@ function assetPrimitive(
                     centre,
                     rx: distance(centre, place(primitive.cx + primitive.rx, primitive.cy)),
                     ry: distance(centre, place(primitive.cx, primitive.cy + primitive.ry)),
+                    // The axes turn with the block. Mirroring maps the x axis onto itself
+                    // reversed, so it leaves the angle alone.
+                    rotation: element.transform.rotation,
                     stroke,
                 },
             ];
@@ -501,17 +504,24 @@ function assetPrimitive(
                 : [{ kind: 'polyline', points, closed: primitive.closed, stroke }];
         }
 
-        case 'arc':
+        case 'arc': {
+            // Mirroring reflects an angle about the vertical axis, which reverses the
+            // direction the arc is swept in — so the two ends change places.
+            const [from, to] = element.geometry.mirrored
+                ? [Math.PI - primitive.to, Math.PI - primitive.from]
+                : [primitive.from, primitive.to];
+
             return [
                 {
                     kind: 'arc',
                     centre: place(primitive.cx, primitive.cy),
                     radius: primitive.r * arcScale,
-                    from: primitive.from + element.transform.rotation,
-                    to: primitive.to + element.transform.rotation,
+                    from: from + element.transform.rotation,
+                    to: to + element.transform.rotation,
                     anticlockwise: false,
                     stroke,
                 },
             ];
+        }
     }
 }
