@@ -140,10 +140,16 @@ wants to measure between — and the third is read off the pointer as a signed o
 line can be pulled out to either side. What it measures is never one of the decisions: the
 value is read off the two points every time it is drawn, and there is no way to type over it.
 
-The measurement stays live after that third click, and a further click carries it on to
-another point: one dimension line, a value for each step along it, and the parts adding up to
-the whole because they are parts of one mark rather than a row of separate ones. Enter,
-Escape or a double click ends the run.
+Three clicks and it is finished. Holding Shift on that third one keeps the run live instead,
+and each further click carries it on to another point: one dimension line, a value for each
+step along it, and the parts adding up to the whole because they are parts of one mark rather
+than a row of separate ones. Enter, Escape or a double click ends it.
+
+Chaining was the default for a while, and it was wrong. The mark was committed on the third
+click and the tool stayed live, so the next click — meant for a new measurement somewhere else
+— silently carried the last one across the drawing instead, and the tool looked as though it
+would not finish. A tool that says three clicks has to be finished after three clicks. The
+chain is the rarer thing, and it is the one that asks for the extra key.
 
 Three more marks follow the same rule, that a measurement stores what it measures and never
 the number it came to. **Angle** takes the corner and a point along each of its two legs, and

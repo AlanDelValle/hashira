@@ -80,6 +80,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         title: 'Drawing',
         shortcuts: [
             { keys: [['Enter']], label: 'Finish the current chain, polygon or measurement' },
+            { keys: [['Shift', 'Click']], label: 'Measuring: carry the run on as a chain' },
             { keys: [['Esc']], label: 'Cancel what you are drawing, or deselect' },
             { keys: [['Mod', 'Z']], label: 'Undo' },
             { keys: [['Mod', 'Shift', 'Z']], label: 'Redo' },

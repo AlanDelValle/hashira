@@ -43,10 +43,16 @@ function clearDraft(): void {
  * endpoints and intersections are exactly what anyone wants to dimension between, and the
  * third is read off the pointer as a signed offset so the line can be pulled out either way.
  *
- * The measurement stays live after that third click. Another click carries it on to a further
- * point, and the run becomes a chain: one dimension line, a value for each step along it, and
- * the parts adding up to the whole because they are parts of one mark rather than a row of
- * separate ones. Enter or Escape ends the run.
+ * Three clicks and it is finished. Holding Shift on that third one keeps the run live instead,
+ * and each further click carries it on to another point: one dimension line, a value for each
+ * step along it, and the parts adding up to the whole because they are parts of one mark
+ * rather than a row of separate ones. Enter, Escape or a double click ends it.
+ *
+ * Chaining was the default for a while, and it was wrong. The measurement was committed on the
+ * third click and the tool stayed live, so the next click — meant for a new measurement
+ * somewhere else — silently carried the old one across the drawing instead. A tool that says
+ * three clicks has to be finished after three clicks; a chain is the rarer thing and asks for
+ * the extra key.
  */
 export function createDimensionTool(): Tool {
     let from: Point | null = null;
@@ -74,7 +80,7 @@ export function createDimensionTool(): Tool {
         );
     }
 
-    function commit(offset: number, context: ToolContext): void {
+    function commit(offset: number, context: ToolContext, carryOn: boolean): void {
         const element = build(offset, context);
 
         if (element === null) {
@@ -84,7 +90,9 @@ export function createDimensionTool(): Tool {
         runCommand(addElements([element], 'Dimension'));
         useEditorStore.getState().select([element.id]);
 
-        chain = element;
+        // Live only when asked for. Otherwise the next click is a new measurement, which is
+        // what three clicks and a finished mark imply.
+        chain = carryOn ? element : null;
         from = null;
         to = null;
         clearDraft();
@@ -167,7 +175,7 @@ export function createDimensionTool(): Tool {
                 return;
             }
 
-            commit(offsetTowards(from, to, event.world), context);
+            commit(offsetTowards(from, to, event.world), context, event.shift);
         },
 
         onDoubleClick() {
@@ -191,7 +199,7 @@ export function createDimensionTool(): Tool {
             }
 
             if (from !== null && to !== null) {
-                commit(0, context);
+                commit(0, context, false);
                 reset();
 
                 return true;
