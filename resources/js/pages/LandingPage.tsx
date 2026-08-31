@@ -124,6 +124,12 @@ export function LandingPage() {
                             Every length, thickness, angle and coordinate is an editable value.
                             Dragging is for exploring; typing is for deciding.
                         </Feature>
+                        <Feature title="Dimensions, not captions">
+                            A dimension stores the two points it spans and reads the distance every
+                            time it is drawn. Move the wall and the value follows it — and there is
+                            no way to type over it, so a sheet cannot state one length while showing
+                            another.
+                        </Feature>
                         <Feature title="Undo that holds">
                             Every change is a command with a defined inverse, so the history is
                             exact rather than approximate — including across property edits.
