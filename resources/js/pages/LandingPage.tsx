@@ -80,7 +80,8 @@ export function LandingPage() {
                     </div>
 
                     <p className="text-ink-subtle mt-6 font-mono text-[11px]">
-                        In early development — being built in the open, phase by phase.{' '}
+                        Everything on this page works today. What comes next — drafting depth, DXF,
+                        collaboration — is written down rather than promised.{' '}
                         <a
                             href={`${GITHUB_URL}/blob/main/docs/roadmap.md`}
                             className="rounded-sm underline"
