@@ -13,7 +13,7 @@ import {
 } from '@/editor/geometry/vec';
 
 import { wallSegment } from './elements';
-import type { Element, WallElement } from './types';
+import type { Element, HashiraDocument, WallElement } from './types';
 
 /**
  * Where walls meet.
@@ -90,12 +90,54 @@ interface Straight {
     half: number;
 }
 
-function cellKey(x: number, y: number): string {
-    return `${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`;
+/**
+ * Two bucket coordinates packed into one number, so a lookup costs no string.
+ *
+ * This runs a few thousand times per frame while a drawing is being dragged, and the strings
+ * a template would allocate cost more than everything else here put together. The packing
+ * holds coordinates within about ±33 km of the origin, which is a drawing nobody is drafting
+ * at millimetre precision.
+ */
+const COLUMN = 2 ** 26;
+
+function bucket(x: number, y: number, size: number): number {
+    return Math.round(x / size) * COLUMN + Math.round(y / size);
 }
 
-function nodeKey(p: Point): string {
-    return `${Math.round(p.x / NODE_TOLERANCE)}:${Math.round(p.y / NODE_TOLERANCE)}`;
+function cellKey(x: number, y: number): number {
+    return Math.floor(x / CELL) * COLUMN + Math.floor(y / CELL);
+}
+
+function nodeKey(p: Point): number {
+    return bucket(p.x, p.y, NODE_TOLERANCE);
+}
+
+const cached = new WeakMap<HashiraDocument, WallJoins>();
+
+/**
+ * The joins for a whole drawing, worked out once per version of it.
+ *
+ * A document is immutable, so this cannot go stale — the same reasoning `documentIndex` runs
+ * on. It matters because the renderer paints the drawing, the hover and the selection from
+ * three separate scenes every frame, and every one of them needs the same answer: without
+ * this, panning across a large plan would re-mitre every corner three times a frame.
+ *
+ * Hidden layers are left out. A wall nobody can see should not be cutting a mitre into one
+ * they can.
+ */
+export function documentWallJoins(drawing: HashiraDocument): WallJoins {
+    const existing = cached.get(drawing);
+
+    if (existing !== undefined) {
+        return existing;
+    }
+
+    const hidden = new Set(drawing.layers.filter((layer) => !layer.visible).map((l) => l.id));
+    const created = wallJoins(drawing.elements.filter((element) => !hidden.has(element.layerId)));
+
+    cached.set(drawing, created);
+
+    return created;
 }
 
 /**
@@ -134,7 +176,7 @@ export function wallJoins(elements: readonly Element[]): WallJoins {
         return joins;
     }
 
-    const nodes = new Map<string, WallEnd[]>();
+    const nodes = new Map<number, WallEnd[]>();
 
     for (const wall of straights) {
         const { id, half, length } = wall;
@@ -161,7 +203,7 @@ export function wallJoins(elements: readonly Element[]): WallJoins {
         }
     }
 
-    const grid = new Map<string, Straight[]>();
+    const grid = new Map<number, Straight[]>();
 
     for (const wall of straights) {
         for (const key of cellsCovered(wall)) {
@@ -191,7 +233,7 @@ export function wallJoins(elements: readonly Element[]): WallJoins {
 }
 
 /** Every wall registered in the cell around a point, and in the eight touching it. */
-function near(grid: Map<string, Straight[]>, at: Point): Straight[] {
+function near(grid: Map<number, Straight[]>, at: Point): Straight[] {
     const found: Straight[] = [];
 
     for (let x = -1; x <= 1; x++) {
@@ -203,7 +245,7 @@ function near(grid: Map<string, Straight[]>, at: Point): Straight[] {
     return found;
 }
 
-function* cellsCovered(wall: Straight): Iterable<string> {
+function* cellsCovered(wall: Straight): Iterable<number> {
     const minX = Math.min(wall.a.x, wall.b.x);
     const maxX = Math.max(wall.a.x, wall.b.x);
     const minY = Math.min(wall.a.y, wall.b.y);
@@ -211,7 +253,7 @@ function* cellsCovered(wall: Straight): Iterable<string> {
 
     for (let x = Math.floor(minX / CELL); x <= Math.floor(maxX / CELL); x++) {
         for (let y = Math.floor(minY / CELL); y <= Math.floor(maxY / CELL); y++) {
-            yield `${x}:${y}`;
+            yield x * COLUMN + y;
         }
     }
 }
@@ -370,7 +412,7 @@ function writeCorner(
  * drawn to the other wall's face, to its centreline, or a little short of both, the drawing
  * shows one solid junction rather than a butt joint with a hairline in it.
  */
-function runIntoWall(end: WallEnd, grid: Map<string, Straight[]>, bands: Map<string, WallBand>) {
+function runIntoWall(end: WallEnd, grid: Map<number, Straight[]>, bands: Map<string, WallBand>) {
     const reach = end.half + NODE_TOLERANCE;
     let best: number | null = null;
 

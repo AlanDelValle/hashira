@@ -3,6 +3,7 @@ import { boundsCorners, unionBounds, type Bounds } from '@/editor/geometry/bbox'
 import type { Point } from '@/editor/geometry/vec';
 import { elementBounds, type ElementLookup } from '@/editor/model/elements';
 import type { DisplayUnit, Element, Layer } from '@/editor/model/types';
+import type { WallJoins } from '@/editor/model/walls';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
 import type { Marquee } from '@/editor/store/interaction';
@@ -33,11 +34,11 @@ export interface OverlayContext {
     layers: readonly Layer[];
     lookup: ElementLookup;
     /**
-     * The elements being painted this frame. A wall is mitred against its neighbours, so
+     * Where the walls meet, for this frame. A wall is mitred against its neighbours, so
      * highlighting one on its own has to be told what it meets — otherwise the accent band is
      * square where the drawing underneath it is not.
      */
-    neighbours: readonly Element[];
+    joins: WallJoins;
     /** The document's display unit, which a selected dimension still has to write its value in. */
     unit: DisplayUnit;
     /** One screen pixel in world millimetres. */
@@ -88,7 +89,7 @@ function paintAccented(
         buildScene(elements, context.layers, {
             palette: wash ? context.palette : { ...context.palette, roomFill: TRANSPARENT },
             unit: context.unit,
-            context: context.neighbours,
+            joins: context.joins,
             overrideColor: context.theme.accent,
             // What is selected is drawn whatever its layer says, because the selection is a
             // fact about this moment rather than about the drawing.

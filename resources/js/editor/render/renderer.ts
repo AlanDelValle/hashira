@@ -1,4 +1,5 @@
 import { documentIndex } from '@/editor/model/documentIndex';
+import { documentWallJoins, wallJoins } from '@/editor/model/walls';
 import type { ElementLookup } from '@/editor/model/elements';
 import type { Element, HashiraDocument } from '@/editor/model/types';
 import { formatLength } from '@/editor/model/units';
@@ -129,9 +130,17 @@ export class CanvasRenderer {
         const px = 1 / viewport.zoom;
         const palette = this.palette();
 
+        // What a hidden layer hides: the underlays beneath the drawing, and the walls that
+        // would otherwise still be cutting mitres into the ones on show.
+        const hidden = new Set(
+            drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
+        );
+
+        const shown = drawing.elements.filter((element) => !hidden.has(element.layerId));
+
         // Underneath everything, including the grid: a page being traced is the paper the
         // drawing sits on, and it is deliberately not part of the scene the exporters read.
-        paintUnderlays(ctx, onVisibleLayers(drawing), px, this.theme.inkSubtle);
+        paintUnderlays(ctx, shown, px, this.theme.inkSubtle);
 
         if (gridVisible && drawing.settings.grid.visible) {
             paintGrid(ctx, viewport, visible, drawing.settings.grid, this.theme);
@@ -148,6 +157,7 @@ export class CanvasRenderer {
          */
         const index = documentIndex(drawing);
         const preview = interaction.drag?.preview ?? [];
+        const dragged = new Map(preview.map((element) => [element.id, element]));
 
         let onScreen: readonly Element[];
         let lookup: ElementLookup;
@@ -156,7 +166,6 @@ export class CanvasRenderer {
             onScreen = index.near(visible);
             lookup = index.lookup;
         } else {
-            const dragged = new Map(preview.map((element) => [element.id, element]));
             const near = new Set(index.near(visible).map((element) => element.id));
 
             lookup = (id) => dragged.get(id) ?? index.lookup(id);
@@ -165,9 +174,27 @@ export class CanvasRenderer {
                 .map((element) => dragged.get(element.id) ?? element);
         }
 
+        /*
+         * Where the walls meet, once for the frame.
+         *
+         * The drawing, the hover and the selection are three separate scenes, and all three
+         * need the same answer. For a drawing nobody is dragging it is the document's own,
+         * cached against that version of it, so panning across a large plan costs nothing;
+         * while something is being dragged the previewed positions are what the mitres have
+         * to follow, so they are worked out again each frame.
+         */
+        const joins =
+            preview.length === 0
+                ? documentWallJoins(drawing)
+                : wallJoins(shown.map((element) => dragged.get(element.id) ?? element));
+
         paintScene(
             ctx,
-            buildScene(onScreen, drawing.layers, { palette, unit: drawing.settings.unit }),
+            buildScene(onScreen, drawing.layers, {
+                palette,
+                unit: drawing.settings.unit,
+                joins,
+            }),
             { px },
         );
 
@@ -177,7 +204,7 @@ export class CanvasRenderer {
             palette,
             layers: drawing.layers,
             lookup,
-            neighbours: onScreen,
+            joins,
             unit: drawing.settings.unit,
             px,
         };
@@ -238,13 +265,4 @@ export class CanvasRenderer {
 
         writeReadout('zoom', `${Math.round(zoom * 1000) / 10}%`);
     }
-}
-
-/** The elements on layers that are currently shown. Hiding a layer hides its underlays too. */
-function onVisibleLayers(drawing: HashiraDocument): Element[] {
-    const hidden = new Set(
-        drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
-    );
-
-    return drawing.elements.filter((element) => !hidden.has(element.layerId));
 }

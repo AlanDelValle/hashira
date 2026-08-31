@@ -444,6 +444,12 @@ Every wall on a layer is filled as **one** shape rather than one per wall. Two f
 share an edge each cover about half the pixels along it, and the pale hairline that leaves at
 every mitre is the notch coming back wearing a different hat.
 
+The joins are worked out once per version of the document and cached against it, the way the
+index is. The drawing, the hover and the selection are three separate scenes every frame and
+all three need the same answer; without that, panning across a large plan would re-mitre every
+corner three times a frame. While something is being dragged the previewed positions are what
+the mitres have to follow, so they are worked out again — but only then.
+
 ## 19. What is not here yet
 
 DXF, and anything collaborative. See [roadmap.md](roadmap.md).

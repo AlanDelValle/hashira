@@ -61,12 +61,15 @@ export interface SceneOptions {
     /** Hidden means hidden, in export as much as on screen. */
     includeHidden?: boolean;
     /**
-     * The drawing these elements sit in, when only part of it is being built. A wall mitres
-     * against its neighbours, so painting a selected wall on its own has to be told about
-     * walls it is not painting — otherwise the accent band comes out square and short and
-     * leaves the mitre underneath it showing.
+     * Where the walls meet, when the caller has already worked it out.
+     *
+     * A wall mitres against its neighbours, so painting a selected wall on its own has to be
+     * told about walls it is not painting — otherwise the accent band comes out square and
+     * short and leaves the mitre underneath it showing. The screen passes the joins for the
+     * whole drawing, computed once a frame; an exporter, which builds one scene and stops,
+     * leaves this out and lets them be worked out from what it is painting.
      */
-    context?: readonly Element[];
+    joins?: WallJoins;
 }
 
 export function buildScene(
@@ -104,9 +107,8 @@ export function buildScene(
 
     // Joins come from the visible walls only: hiding a layer must not leave a mitre cut for
     // a wall that is no longer in the drawing.
-    const joins = wallJoins(
-        (options.context ?? elements).filter((element) => visible.has(element.layerId)),
-    );
+    const joins =
+        options.joins ?? wallJoins(elements.filter((element) => visible.has(element.layerId)));
 
     // Every wall on a layer is filled as one shape, so they are gathered first and the whole
     // lot is emitted where the first of them appears.
