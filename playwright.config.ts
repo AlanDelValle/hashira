@@ -52,6 +52,17 @@ export default defineConfig({
              * running it locally does not leave junk projects on the dashboard.
              */
             DB_DATABASE: process.env.DB_DATABASE ?? 'hashira_testing',
+
+            /*
+             * And it is told where it is being served rather than inheriting whatever `.env`
+             * happens to say. Laravel builds asset URLs on APP_URL's scheme, so an `.env`
+             * written for Herd — `https://hashira.test` — has this server emitting
+             * `https://127.0.0.1:8123/build/…` from a socket that speaks no TLS. Nothing
+             * loads, the page stays blank, and the failure reads as "the register form never
+             * appeared", which is a long way from the cause. CI copies `.env.example`, which
+             * is where it bit first: locally the file said `http` and the run passed.
+             */
+            APP_URL: `http://127.0.0.1:${PORT}`,
         },
     },
 });
