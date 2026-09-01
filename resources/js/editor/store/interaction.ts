@@ -20,8 +20,16 @@ export interface Marquee {
 }
 
 export interface DragState {
-    /** Where the pointer went down, in world space. */
+    /** Where the pointer went down, in world space, snapped. */
     origin: Point;
+    /**
+     * And where it went down before anything snapped it.
+     *
+     * A move is measured from here, because what snaps during a move is the geometry being
+     * moved rather than the pointer; measuring from a snapped origin would apply the pointer's
+     * correction as well and land the selection somewhere neither of them asked for.
+     */
+    originRaw: Point;
     /** Where it is now. */
     current: Point;
     /** The elements as they were when the drag began, for building the command on release. */

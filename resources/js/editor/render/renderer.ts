@@ -2,9 +2,10 @@ import { sheetAside, type LegendEntry } from '@/editor/export/sheet';
 import { documentIndex } from '@/editor/model/documentIndex';
 import { resolveSheet } from '@/editor/model/sheets';
 import { documentWallJoins, wallJoins } from '@/editor/model/walls';
-import { drawnLayers, type ElementLookup } from '@/editor/model/elements';
-import type { Element, HashiraDocument } from '@/editor/model/types';
-import { formatLength } from '@/editor/model/units';
+import { segmentAngle } from '@/editor/model/edits';
+import { drawnLayers, elementLength, type ElementLookup } from '@/editor/model/elements';
+import type { DisplayUnit, Element, HashiraDocument } from '@/editor/model/types';
+import { formatAngle, formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
 import { useDocumentStore } from '@/editor/store/documentStore';
@@ -294,5 +295,38 @@ export class CanvasRenderer {
         );
 
         writeReadout('zoom', `${Math.round(zoom * 1000) / 10}%`);
+        writeReadout('draft', draftReadout(interaction.preview, unit));
     }
+}
+
+/**
+ * How long the thing being drawn is, while it is still being drawn.
+ *
+ * A wall is committed the moment its second corner is clicked, so "draw it, then read its
+ * length in the properties panel, then correct it" is three steps to place one wall — and the
+ * correction is a different edit from the one that would have been right in the first place.
+ * The number that decides where the click goes has to be on screen before the click.
+ *
+ * It reads off `interaction.preview` — the element the tool would commit if the pointer stopped
+ * here — so it cannot disagree with what lands in the drawing, and it is blank for the tools
+ * whose preview has no length to state.
+ */
+function draftReadout(preview: Element | null, unit: DisplayUnit): string {
+    if (preview === null) {
+        return '';
+    }
+
+    const length = elementLength(preview);
+
+    if (length === null) {
+        return '';
+    }
+
+    const angle = segmentAngle(preview);
+
+    // The same two numbers the properties panel names, in the same units and to the same
+    // precision, because they are about to describe the same wall.
+    return angle === null
+        ? formatLength(length, unit)
+        : `${formatLength(length, unit)}   ${formatAngle(angle, 1)}`;
 }

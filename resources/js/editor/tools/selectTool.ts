@@ -2,7 +2,7 @@ import { snapAngle, toRadians } from '@/editor/geometry/angle';
 import { boundsCentre, boundsContainPoint, boundsFromCorners } from '@/editor/geometry/bbox';
 import { angleBetween, distance, subtract, type Point } from '@/editor/geometry/vec';
 import { replaceElements } from '@/editor/commands/command';
-import { rotateElement, translateElement } from '@/editor/model/elements';
+import { elementWorldPoints, rotateElement, translateElement } from '@/editor/model/elements';
 import { pickAt, pickInBounds } from '@/editor/model/picking';
 import type { Element } from '@/editor/model/types';
 import { runCommand } from '@/editor/store/documentStore';
@@ -10,6 +10,7 @@ import { useEditorStore } from '@/editor/store/editorStore';
 import { interaction } from '@/editor/store/interaction';
 import { requestRepaint } from '@/editor/render/frame';
 import { rotateHandlePosition, rotateHandleRadius, selectionBounds } from '@/editor/render/overlay';
+import { snapTranslation } from '@/editor/snapping/translate';
 
 import type { Tool, ToolContext, ToolEvent } from './types';
 
@@ -26,6 +27,28 @@ const DRAG_THRESHOLD_PX = 3;
 
 /** Shift while rotating holds to these increments. */
 const ROTATE_SNAP = toRadians(15);
+
+/**
+ * How large a selection still snaps by its own geometry while it is dragged.
+ *
+ * Eight is a corner, a door and its wall, a room's worth of walls. Past that a drag is
+ * arranging rather than connecting: nobody lines up forty elements by one of their corners,
+ * and asking every corner of them where it would like to land costs a snap query each, on
+ * every pointer move. Beyond it the pointer leads, as it always did.
+ */
+const SNAP_BY_GEOMETRY_LIMIT = 8;
+
+/**
+ * The points of a dragged selection that are worth landing exactly: every corner, endpoint and
+ * centre the elements have. Empty for a selection too large to be aimed by one of them.
+ */
+function draggedPoints(before: readonly Element[], context: ToolContext): Point[] {
+    if (before.length > SNAP_BY_GEOMETRY_LIMIT) {
+        return [];
+    }
+
+    return before.flatMap((element) => elementWorldPoints(element, context.lookup));
+}
 
 function selectedElements(context: ToolContext): Element[] {
     const { selection } = useEditorStore.getState();
@@ -76,6 +99,7 @@ export function createSelectTool(): Tool {
         interaction.drag = {
             kind,
             origin: event.world,
+            originRaw: event.rawWorld,
             current: event.world,
             before,
             preview: before,
@@ -93,10 +117,27 @@ export function createSelectTool(): Tool {
         drag.current = event.world;
 
         if (drag.kind === 'move') {
-            const delta = subtract(event.world, drag.origin);
+            const points = draggedPoints(drag.before, context);
+
+            /*
+             * Two ways to arrive at the same delta. With the selection's own points in hand it
+             * is measured from the raw pointer and corrected by whichever of those points lands
+             * on something, so the thing being moved is what snaps. Without them — too much
+             * selected for that to mean anything — the pointer leads, snapped as ever.
+             */
+            const moved =
+                points.length === 0
+                    ? { delta: subtract(event.world, drag.origin), result: interaction.snap }
+                    : snapTranslation(
+                          points,
+                          subtract(event.rawWorld, drag.originRaw),
+                          context.snap,
+                      );
+
+            interaction.snap = moved.result;
 
             drag.preview = drag.before.map((element) =>
-                translateElement(element, delta, context.lookup),
+                translateElement(element, moved.delta, context.lookup),
             );
 
             return;

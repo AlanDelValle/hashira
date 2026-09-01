@@ -67,6 +67,14 @@ const PRIORITY: SnapKind[] = [
     'grid',
 ];
 
+/**
+ * How strongly a snap of this kind should win, lowest first — the same order candidates for a
+ * single point are ranked in, exposed because a drag ranks the snaps of several points.
+ */
+export function snapStrength(kind: SnapKind | null): number {
+    return kind === null ? PRIORITY.length : PRIORITY.indexOf(kind);
+}
+
 interface Candidate {
     point: Point;
     kind: SnapKind;

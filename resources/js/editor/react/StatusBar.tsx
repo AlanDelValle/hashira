@@ -28,14 +28,17 @@ export function StatusBar() {
 
     const cursorRef = useRef<HTMLSpanElement>(null);
     const zoomRef = useRef<HTMLSpanElement>(null);
+    const draftRef = useRef<HTMLSpanElement>(null);
 
     useEffect(() => {
         bindReadout('cursor', cursorRef.current);
         bindReadout('zoom', zoomRef.current);
+        bindReadout('draft', draftRef.current);
 
         return () => {
             bindReadout('cursor', null);
             bindReadout('zoom', null);
+            bindReadout('draft', null);
         };
     }, []);
 
@@ -66,6 +69,17 @@ export function StatusBar() {
                 <span ref={cursorRef} className="tabular-nums">
                     —
                 </span>
+            </span>
+
+            {/*
+             * The length of whatever is being drawn, in ink rather than grey: while a wall is
+             * out on the end of the pointer this is the number the next click is aimed at, and
+             * it is empty the rest of the time. Announced, because a length that only exists
+             * on the way past is a length a screen reader user would never meet.
+             */}
+            <span className="flex items-center gap-1">
+                <span className="sr-only">Drawing</span>
+                <span ref={draftRef} aria-live="polite" className="text-ink tabular-nums" />
             </span>
 
             <span className="ml-auto">

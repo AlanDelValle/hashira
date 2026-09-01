@@ -268,7 +268,30 @@ points, since that is when _your click lands here, not under your cursor_ is wor
 the rest of the time it would simply always be on. The coordinate readout says the same thing
 in numbers: it follows the snapped point rather than the pointer, because a readout that
 disagrees with where the editor is about to put something is a readout nobody can use. Turning
-snap off — the toggle is in the same status bar — brings the raw position back.
+snap off — the toggle is in the same status bar — brings the raw position back. Beside it, and
+only while a tool has something on the end of the pointer, is what that thing measures: a
+wall's length and its angle, before the click that commits them. A wall is committed by the
+click that ends it, so a length read afterwards in the properties panel is a correction rather
+than a decision, and the number that decides where the click goes has to be on screen first.
+
+### What snaps while something is dragged
+
+The pointer's own snap answers "where is the cursor?", which is the wrong question once
+something is in hand: what has to land exactly is a corner of the thing being moved, and the
+cursor is wherever it happened to be grabbed. So a move offers every point of the dragged
+selection to the snapper and applies the correction belonging to whichever one lands —
+strongest kind first, and between two of the same kind the shorter correction, or a far corner
+of the selection would drag it across the sheet.
+
+Left to the pointer, a wall dragged up against another stops a few millimetres out: close
+enough to look joined at any sensible zoom, far enough that the two are still two walls. Their
+bands stay square and overlap at the corner instead of mitring into it (§18), and the room they
+enclose is not the room it looks like.
+
+Up to eight elements every point of every one of them is offered. Past that a drag is arranging
+rather than connecting — nobody lines up forty elements by one of their corners — and asking
+each corner where it would like to land costs a snap query on every pointer move, so beyond
+that the pointer leads, as it always did.
 
 ## 9. Editing by value
 
