@@ -55,12 +55,12 @@ export default defineConfig({
 
             /*
              * And it is told where it is being served rather than inheriting whatever `.env`
-             * happens to say. Laravel builds asset URLs on APP_URL's scheme, so an `.env`
-             * written for Herd — `https://hashira.test` — has this server emitting
-             * `https://127.0.0.1:8123/build/…` from a socket that speaks no TLS. Nothing
-             * loads, the page stays blank, and the failure reads as "the register form never
-             * appeared", which is a long way from the cause. CI copies `.env.example`, which
-             * is where it bit first: locally the file said `http` and the run passed.
+             * happens to say. An app URL on `https://` turns on `URL::forceHttps()`, and every
+             * asset then comes back as `https://127.0.0.1:8123/build/…` from a socket that
+             * speaks no TLS: nothing loads, the page stays blank, and the failure reads as
+             * "the register form never appeared", which is a long way from the cause. CI
+             * copies `.env.example`, so whatever that file is set to is what a run inherits —
+             * and the point of naming the URL here is that it no longer matters.
              */
             APP_URL: `http://127.0.0.1:${PORT}`,
         },
