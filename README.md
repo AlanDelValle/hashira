@@ -47,7 +47,7 @@ All three are generated rather than captured by hand: `npm run artwork` drives a
 Chrome against a local instance — signed out for the landing page, signed in as the demo
 account for the rest — and re-exports the landing page's drawing while it is there, so none
 of it can quietly fall out of date. It needs the app running and a seeded database; set
-`APP_URL` if it is not at `https://hashira.test`, and `CHROME_PATH` if Chrome is somewhere
+`APP_URL` if it is not at `http://hashira.test`, and `CHROME_PATH` if Chrome is somewhere
 unusual.
 
 ## Stack
@@ -101,7 +101,7 @@ php artisan migrate --seed
 npm run dev
 ```
 
-Herd serves the directory automatically at `https://hashira.test`. Without Herd,
+Herd serves the directory automatically at `http://hashira.test`. Without Herd,
 `php artisan serve` works the same way at `http://localhost:8000` — set `APP_URL` to match.
 
 The seeder creates a demo account and a sample plan:

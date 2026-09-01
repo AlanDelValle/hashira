@@ -7,7 +7,7 @@ SPA with a plain-TypeScript editor core on the front. Read
 ## Environment
 
 Local development uses **Laravel Herd** (PHP 8.4, Nginx, PostgreSQL). The app is served at
-`https://hashira.test`. There is no Docker setup and no Laravel Boost in this project — do
+`http://hashira.test`. There is no Docker setup and no Laravel Boost in this project — do
 not add either, and do not suggest installing them.
 
 ```bash

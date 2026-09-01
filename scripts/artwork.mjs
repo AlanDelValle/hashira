@@ -11,7 +11,7 @@
  *
  *   npm run artwork
  *
- * It needs the application running (Herd at https://hashira.test, or APP_URL set to wherever
+ * It needs the application running (Herd at http://hashira.test, or APP_URL set to wherever
  * it is), a seeded demo account, and Chrome. Nothing is installed: the browser is driven over
  * the DevTools protocol using Node's own WebSocket client.
  */
@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const BASE_URL = (process.env.APP_URL ?? 'https://hashira.test').replace(/\/$/, '');
+const BASE_URL = (process.env.APP_URL ?? 'http://hashira.test').replace(/\/$/, '');
 const EMAIL = process.env.DEMO_EMAIL ?? 'demo@hashira.test';
 const PASSWORD = process.env.DEMO_PASSWORD ?? 'password';
 const OUT_DIR = 'docs/images';
