@@ -28,7 +28,7 @@ drawing an accurate 2D plan — done properly.
 
 ## Screenshots
 
-![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing, furniture blocks and dimensions, and the properties and layers panels](docs/images/editor.png)
+![The editor with the sample plan open: the tool rail, the sheet showing wall poché, a door swing, furniture blocks and dimensions, and the properties, layers, sheets, title block and notes panels](docs/images/editor.png)
 
 <p align="center"><em>The editor. Walls carry thickness, the door and window cut real
 openings in the wall that hosts them, and the dimensions are read off the geometry rather
@@ -52,15 +52,15 @@ unusual.
 
 ## Stack
 
-|             |                                                                                 |
-| ----------- | ------------------------------------------------------------------------------- |
-| Frontend    | React, TypeScript, Vite, Tailwind CSS                                           |
-| Editor core | Plain TypeScript — no React in the document, geometry or command layers         |
-| Rendering   | Canvas 2D for the viewport; independent serializers for SVG, PNG and PDF export |
-| Backend     | Laravel 13, PHP 8.4, REST, session authentication with CSRF                     |
-| Database    | PostgreSQL — relational metadata, JSONB for the drawing itself                  |
-| Tests       | Vitest + Testing Library on the front, Pest on the back                         |
-| CI          | GitHub Actions                                                                  |
+|             |                                                                                |
+| ----------- | ------------------------------------------------------------------------------ |
+| Frontend    | React, TypeScript, Vite, Tailwind CSS                                          |
+| Editor core | Plain TypeScript — no React in the document, geometry or command layers        |
+| Rendering   | Canvas 2D for the viewport; one scene, serialised to SVG, PNG, PDF and DXF     |
+| Backend     | Laravel 13, PHP 8.4, REST, session authentication with CSRF                    |
+| Database    | PostgreSQL — relational metadata, JSONB for the drawing itself                 |
+| Tests       | Vitest + Testing Library on the front, Pest on the back, Playwright end to end |
+| CI          | GitHub Actions                                                                 |
 
 Local development targets [Laravel Herd](https://herd.laravel.com), which already provides
 PHP, Nginx and PostgreSQL. Containers are on the roadmap for self-hosting, not required to
@@ -135,7 +135,7 @@ Documentation index:
 | [document-format.md](docs/document-format.md) | The drawing schema, versioning and migration rules     |
 | [editor.md](docs/editor.md)                   | How the drawing surface is built                       |
 | [geometry.md](docs/geometry.md)               | The maths layer and its conventions                    |
-|                                               | Database tables and the REST API surface               |
+| [data-model.md](docs/data-model.md)           | Database tables and the REST API surface               |
 | [roadmap.md](docs/roadmap.md)                 | Phases, MVP scope and everything deliberately deferred |
 
 ## Roadmap
@@ -146,8 +146,12 @@ polish. That is the MVP. Phase 7 is done on top of it: wall joins and cleanups, 
 from the walls that enclose them, chains and angular and radial dimensions and leaders, a
 library that holds blocks you made, and PDF import to trace over.
 
-What comes next is interchange (DXF, richer export), then collaboration, and only after all
-of that the things people ask for first — 3D, BIM semantics, generative features. The
+Phase 8 is done: interchange. A drawing has sheets rather than one page size — each with its
+own size, scale and view of the plan — a PDF prints as many of them as you like, with each
+layer on its own page if you want the prints to lay over one another, DXF goes both ways at
+full size, and a print carries a title block that says who drew it and which revision it is,
+its notes and a legend of its layers down the side, and revision clouds to say what changed. Then collaboration, and only after
+all of that the things people ask for first — 3D, BIM semantics, generative features. The
 reasoning for that order, and everything deliberately excluded, is in
 [`docs/roadmap.md`](docs/roadmap.md).
 

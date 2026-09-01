@@ -25,5 +25,12 @@
     },
     "types": ["node", "vite/client", "@testing-library/jest-dom"]
   },
-  "include": ["resources/js", "vite.config.ts", "vitest.config.ts", "eslint.config.js"]
+  "include": [
+    "resources/js",
+    "e2e",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js"
+  ]
 }

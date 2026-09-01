@@ -7,6 +7,7 @@ import type {
     AngleElement,
     AssetElement,
     CircleElement,
+    CloudElement,
     DimensionElement,
     LeaderElement,
     RadiusElement,
@@ -227,6 +228,37 @@ export function createText(
  * label, because a measurement is read when it is looked for and a label is read at a glance.
  */
 export const DEFAULT_DIMENSION_SIZE = 200;
+
+/** A bump about four millimetres across on a 1:50 sheet, which is what a cloud is drawn at. */
+export const DEFAULT_CLOUD_RADIUS = 200;
+
+/**
+ * A revision cloud around a run of points.
+ *
+ * Closed always: a cloud says "this part changed", and a part has an edge all the way round.
+ */
+export function createCloud(
+    points: readonly Point[],
+    layerId: string,
+    radius = DEFAULT_CLOUD_RADIUS,
+): CloudElement | null {
+    const bounds = boundsFromPoints(points);
+
+    if (bounds === null || points.length < 3) {
+        return null;
+    }
+
+    const centre = boundsCentre(bounds);
+
+    return {
+        id: newId(),
+        type: 'cloud',
+        layerId,
+        transform: { x: centre.x, y: centre.y, rotation: 0 },
+        geometry: { points: points.map((p) => subtract(p, centre)), radius },
+        metadata: metadata(),
+    };
+}
 
 /**
  * A measurement between two points. `offset` is signed: which side of the measurement the

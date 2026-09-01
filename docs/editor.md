@@ -103,6 +103,22 @@ holding an arrow key produces one undo step and not sixty. The merged command ke
 Three commands cover everything so far: `addElements`, `deleteElements` and `replaceElements` —
 a move, a rotation and a property edit are all the last one.
 
+### Sending one somewhere else
+
+Each command can `describe()` itself as plain JSON, and `commands/envelope.ts` reads one back.
+Nothing uses it yet — it exists because two things that do not exist yet need exactly the same
+thing, and building it twice later is how they end up disagreeing: co-editing has to send an
+edit down a socket, and a plugin in a sandbox has to send one through a message port.
+
+`parseCommand` is the only way back in, and it validates rather than casts, using the document's
+own schemas. An edit is all-or-nothing, unlike a document: a drawing with one unreadable element
+is still a drawing and opens without it, while an edit with one unreadable element would do
+something other than what it says.
+
+A delete describes only its ids. What it needs in order to _undo_ is where the elements were,
+and that is a fact about the document it ran against — so the far side captures its own, which
+is the only version that would put them back in the right place there.
+
 ## 6. Tools
 
 A tool is a small state machine handed a `ToolContext` (the drawing, a lookup, the viewport, the
@@ -286,7 +302,7 @@ day the other was deleted. **From an SVG** reads shapes and paths and throws awa
 about appearance: fills, strokes, text, images and the rest. A block is drawn with the drawing's
 own pen weight on the layer it is placed on, which is why a plan full of blocks reads as one
 drawing rather than as a scrapbook. Curves are flattened into polylines at a resolution finer
-than the plotter, rather than growing a curve primitive four renderers would have to learn.
+than the plotter, rather than growing a curve primitive five renderers would have to learn.
 
 Sixty-odd blocks is more than a panel that wide can show, so the library searches by name and
 filters by category, and the ones you made are the first shelf and the only ones you can throw
@@ -338,20 +354,55 @@ Restoring runs through `replaceDocument`, a command like any other — so going 
 is itself undoable. A restore is a decision someone can regret, and the drawing they left
 should be one Ctrl+Z away rather than gone.
 
-## 14. One drawing, four outputs
+### Looking at one without restoring it
+
+A version is looked at on a second, much smaller surface. `render/review.ts` owns everything it
+paints — its own viewport, its own scene, no store at all — because putting a version into the
+document store to look at it would mean the drawing being worked on is not the one on screen.
+It paints through the same `buildScene` the editor and the exporters use, and leaves out the
+paper: no grid, no sheet outline, no underlay, because nothing here is being drafted.
+
+### Comparing two
+
+A version is a whole document, so what changed between two of them is recorded nowhere and has
+to be worked out. `model/diff.ts` does that structurally: elements matched by id, and anything
+whose record is not identical reported along with the part of it that differs. Both sides go
+through `parseDocument` first, so a schema 5 snapshot is compared as schema 6 and a migration
+is never reported as somebody's work.
+
+Two things it says that no element records. **A hosted opening does not change when its wall
+does** — a door stores a distance along a wall, so the list says the wall changed while the
+picture shows the door somewhere else, and both are true. And **order is a change even when
+nothing else is**: within a layer, later elements paint on top, so restacking two overlapping
+shapes alters the drawing without altering a single element.
+
+What changed goes over the drawing as a redline (`render/redlines.ts`): outlines only, fills
+dropped, one heavy pen, so a marked wall reads as a wall with a line round it rather than as a
+wall painted green. **Dashed is a state that is gone** — something deleted, or where an edited
+element used to be — and **solid is a state that is there now**. Saying it in the dash as well
+as in the colour is the point: a redline that means something only in colour means nothing to a
+good part of the people reading it, which is also why every mark appears in the list beside it
+in words, and why that list is the thing the keyboard reaches.
+
+Hidden layers are drawn on that surface, unlike anywhere else in the editor. It is a comparison
+of two documents rather than a drawing, and one that leaves half of a version out is not a
+comparison — while a mark over geometry nobody can see would be worse than either.
+
+## 14. One drawing, five outputs
 
 `scene/build.ts` turns the document into primitives — polylines, circles, ellipses, arcs and
 text, in world millimetres. It is the only place that knows what a wall with a door in it looks
-like, and four consumers read it:
+like, and five consumers read it:
 
 ```
 document ──▶ scene ──┬──▶ canvas          the screen
                      ├──▶ canvas @ N×     PNG
                      ├──▶ SVG             a file, layers intact
-                     └──▶ pdf-lib         a page at a real scale
+                     ├──▶ pdf-lib         a page at a real scale
+                     └──▶ DXF             full size, for other software to edit
 ```
 
-Writing that geometry four times would guarantee four slightly different answers. This way a
+Writing that geometry five times would guarantee five slightly different answers. This way a
 PDF cannot disagree with what was on screen.
 
 The distinction the scene carries that matters most is between a **line** and an **area**. A
@@ -366,6 +417,13 @@ square, which is fine until two walls turn a corner and the outside of it is a n
 of them reaches into. Mitring says where each face of each band really stops, and that shape
 is a quadrilateral, not a line — see §18.
 
+Four of those outputs are pictures. DXF is not, and that changes what faithful means. It is
+still written from the scene, so a wall leaves as the shape a wall is drawn as — an outline
+with its openings cut — rather than as a wall, because a DXF has no idea what one is. What
+travels is geometry on layers at full size. Pen weights, fills and the page stay behind: the
+R12 dialect that opens everywhere has nowhere to put a lineweight or a hatch, and model space
+has no paper to print on — scale is a decision about paper, which is what the PDF is for.
+
 Hidden layers are absent from the scene, so hiding a layer hides it in an export too. A wall's
 openings come only from openings on visible layers, which is why hiding _Openings_ gives solid
 walls rather than walls full of holes with nothing in them.
@@ -379,6 +437,23 @@ PDF is a real page. The scale is never quietly adjusted to make a drawing fit: i
 next standard ratio, the title block says which one was used, and a scale bar gives the reader
 something to measure even if the page was resized on the way to them. pdf-lib is around 350 kB
 and most sessions never export a PDF, so it is imported at the moment someone asks for one.
+
+What surrounds the drawing is a sheet rather than a caption. A border encloses the drawing and
+the 26 mm band beneath it — the strip `layoutSheet` takes off the drawing area, on screen as
+well as in the print — and a rule in full ink divides the two. The band is a stamp: the mark in
+a cell at the left, then the drawing's name, the document it came from and the scale bar, then
+the job's facts in labelled cells, two to a column. A long name is set smaller before it is cut
+short, and a field nobody filled in is dropped label and all, so a stamp closes up rather than
+printing empty boxes. It is drawn by `export/furniture.ts`; `export/pdf.ts` is the geometry.
+
+Down the right-hand side goes what the drawing cannot say in geometry: `settings.notes`, one
+note to a line and numbered when there is more than one, with a legend naming the layers under
+them. That strip is paid for in drawing area rather than taken out of the margins — it narrows
+the frame, and the scale steps back if the plan no longer fits — so it is only reserved when
+there is something to print in it: a note somebody wrote, or a legend of more than one layer.
+`sheetAside` is the one place that decides, and both the canvas outline and the print ask it,
+because an outline that reserved a strip the print does not promises room the print has not
+got. Notes that would run into the legend are cut off at the last line that fits, and say so.
 
 PNG is the same scene on an off-screen canvas at a chosen size. Pen weights follow the zoom, so
 a larger export gets crisper lines rather than thicker ones.
@@ -491,4 +566,6 @@ the mitres have to follow, so they are worked out again — but only then.
 
 ## 19. What is not here yet
 
-DXF, and anything collaborative. See [roadmap.md](roadmap.md).
+Anything with a second person in it: presence, cursors, live co-editing, comments. Comparing
+two versions of a drawing is the one part of that phase already here, and it is the part that
+needed nobody else. See [roadmap.md](roadmap.md).

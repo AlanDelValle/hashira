@@ -19,10 +19,12 @@ import {
 
 import type {
     AngleElement,
+    CloudElement,
     DimensionElement,
     DoorElement,
     Element,
     HashiraDocument,
+    Layer,
     LeaderElement,
     RadiusElement,
     TextAlign,
@@ -41,6 +43,31 @@ import type {
  */
 
 export type ElementLookup = (id: string) => Element | undefined;
+
+/**
+ * What each element type is called in the interface.
+ *
+ * One map, because two panels that name the same thing differently is how a "Block" becomes
+ * an "Asset" halfway across the screen.
+ */
+export const ELEMENT_TYPE_NAMES: Record<Element['type'], string> = {
+    wall: 'Wall',
+    line: 'Line',
+    rect: 'Rectangle',
+    circle: 'Circle',
+    polygon: 'Polygon',
+    room: 'Room',
+    door: 'Door',
+    window: 'Window',
+    asset: 'Block',
+    text: 'Text',
+    dimension: 'Dimension',
+    angle: 'Angle',
+    radius: 'Radius',
+    leader: 'Leader',
+    cloud: 'Revision cloud',
+    underlay: 'Underlay',
+};
 
 /** Rough advance width per character as a fraction of font size, for text hit-testing. */
 const TEXT_WIDTH_RATIO = 0.55;
@@ -183,6 +210,7 @@ export function elementWorldPoints(element: Element, lookup: ElementLookup): Poi
         case 'room':
         case 'dimension':
         case 'leader':
+        case 'cloud':
             return element.geometry.points.map((p) => localToWorld(element.transform, p));
 
         case 'angle':
@@ -547,6 +575,90 @@ function textBounds(element: Element & { type: 'text' }): Bounds {
     };
 }
 
+/** One bump of a revision cloud: a half circle struck on a piece of the run. */
+export interface CloudBump {
+    centre: Point;
+    radius: number;
+    from: number;
+    to: number;
+    anticlockwise: boolean;
+}
+
+/**
+ * The bumps a revision cloud is drawn as.
+ *
+ * Each side of the run is divided into whole bumps as near the asked-for size as it can be —
+ * a chain of half circles the same size all the way round reads as a cloud, and a run of
+ * uneven ones reads as a mistake. They bulge outward, which is what makes the mark surround
+ * the thing it is about rather than scallop into it.
+ */
+export function cloudBumps(element: CloudElement): CloudBump[] {
+    const points = elementWorldPoints(element, () => undefined);
+    const radius = element.geometry.radius;
+
+    if (points.length < 2 || radius <= 0) {
+        return [];
+    }
+
+    const outward = outwardSide(points);
+    const bumps: CloudBump[] = [];
+
+    for (let at = 0; at < points.length; at++) {
+        const from = points[at]!;
+        const to = points[(at + 1) % points.length]!;
+        const span = distance(from, to);
+
+        if (span < 1e-6) continue;
+
+        const direction = scale(subtract(to, from), 1 / span);
+        const normal = scale(perpendicular(direction), outward);
+        const count = Math.max(1, Math.round(span / (2 * radius)));
+        const step = span / count;
+
+        for (let bump = 0; bump < count; bump++) {
+            const start = add(from, scale(direction, bump * step));
+            const end = add(from, scale(direction, (bump + 1) * step));
+            const centre = midpoint(start, end);
+            const angleFrom = Math.atan2(start.y - centre.y, start.x - centre.x);
+            const angleTo = Math.atan2(end.y - centre.y, end.x - centre.x);
+
+            // Half a turn either way: the one whose apex is on the outside is the one drawn.
+            const apex = angleFrom + normalizeAngle(angleTo - angleFrom) / 2;
+
+            bumps.push({
+                centre,
+                radius: step / 2,
+                from: angleFrom,
+                to: angleTo,
+                anticlockwise: dot({ x: Math.cos(apex), y: Math.sin(apex) }, normal) < 0,
+            });
+        }
+    }
+
+    return bumps;
+}
+
+/**
+ * Which side of the run is the outside, as +1 or -1 against the segment normal.
+ *
+ * Worked out once from the first side and used for all of them: a simple closed run winds one
+ * way the whole way round, so the outside cannot change halfway.
+ */
+function outwardSide(points: readonly Point[]): 1 | -1 {
+    const from = points[0]!;
+    const to = points[1]!;
+    const span = distance(from, to);
+
+    if (span < 1e-6) {
+        return 1;
+    }
+
+    const normal = perpendicular(scale(subtract(to, from), 1 / span));
+    const nudged = add(midpoint(from, to), scale(normal, Math.min(span, 1) / 100));
+
+    return pointInPolygon(points, nudged) ? -1 : 1;
+}
+
 export function elementBounds(element: Element, lookup: ElementLookup): Bounds | null {
     switch (element.type) {
         case 'circle': {
@@ -584,6 +696,13 @@ export function elementBounds(element: Element, lookup: ElementLookup): Bounds |
 
             // A wall is a band, not a line: its poché reaches half a thickness either side.
             return bounds === null ? null : expandBounds(bounds, element.geometry.thickness / 2);
+        }
+
+        case 'cloud': {
+            const bounds = boundsFromPoints(elementWorldPoints(element, lookup));
+
+            // The bumps bulge outside the run they are struck on, by at most one radius.
+            return bounds === null ? null : expandBounds(bounds, element.geometry.radius);
         }
 
         case 'dimension': {
@@ -661,6 +780,26 @@ export function elementBounds(element: Element, lookup: ElementLookup): Bounds |
         default:
             return boundsFromPoints(elementWorldPoints(element, lookup));
     }
+}
+
+/**
+ * The layers a reader is looking at: visible, and with something on them that prints.
+ *
+ * What a legend lists, and — because a legend of one layer says nothing — part of deciding
+ * whether a sheet gets a strip beside the drawing at all. An underlay does not count: it is a
+ * page of somebody else's drawing to trace over, it is deliberately absent from the scene, and
+ * a layer holding nothing else is a layer nobody sees.
+ */
+export function drawnLayers(document: HashiraDocument): Layer[] {
+    const occupied = new Set(
+        document.elements
+            .filter((element) => element.type !== 'underlay')
+            .map((element) => element.layerId),
+    );
+
+    return document.layers
+        .filter((layer) => layer.visible && occupied.has(layer.id))
+        .sort((a, b) => a.order - b.order);
 }
 
 export function documentBounds(document: HashiraDocument): Bounds | null {
@@ -743,6 +882,15 @@ export function hitTestElement(
                     p,
                     element.geometry.closed,
                 ) <= tolerance
+            );
+
+        case 'cloud':
+            // Picked on the run rather than on the scallops: the bumps are never more than a
+            // radius from it, and chasing the arcs would make a cloud harder to grab than it
+            // looks.
+            return (
+                distanceToPolyline(elementWorldPoints(element, lookup), p, true) <=
+                tolerance + element.geometry.radius
             );
 
         case 'room': {

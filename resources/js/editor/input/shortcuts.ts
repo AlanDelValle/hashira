@@ -34,6 +34,7 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
     { id: 'angle', label: 'Angle', key: 'A' },
     { id: 'radius', label: 'Radius', key: 'U' },
     { id: 'leader', label: 'Leader', key: 'E' },
+    { id: 'cloud', label: 'Revision cloud', key: 'I' },
 ];
 
 /** The key that opens the block library. Not a tool: the tool arms when a block is chosen. */

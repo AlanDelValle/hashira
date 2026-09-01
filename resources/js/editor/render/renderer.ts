@@ -1,6 +1,8 @@
+import { sheetAside, type LegendEntry } from '@/editor/export/sheet';
 import { documentIndex } from '@/editor/model/documentIndex';
+import { resolveSheet } from '@/editor/model/sheets';
 import { documentWallJoins, wallJoins } from '@/editor/model/walls';
-import type { ElementLookup } from '@/editor/model/elements';
+import { drawnLayers, type ElementLookup } from '@/editor/model/elements';
 import type { Element, HashiraDocument } from '@/editor/model/types';
 import { formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
@@ -23,6 +25,12 @@ import {
     type OverlayContext,
 } from './overlay';
 import { writeReadout } from './readout';
+import { paintSheetFrame } from './sheetFrame';
+
+/** The layers a legend would list, which is what decides whether the sheet has a strip. */
+function legendOf(drawing: HashiraDocument): LegendEntry[] {
+    return drawnLayers(drawing).map((layer) => ({ name: layer.name, color: layer.color }));
+}
 import { paintUnderlays } from './underlay';
 import { readTheme, type CanvasTheme } from './theme';
 
@@ -111,7 +119,8 @@ export class CanvasRenderer {
 
         const { viewport, size } = useViewportStore.getState();
         const { document: drawing } = useDocumentStore.getState();
-        const { selection, gridVisible, tool } = useEditorStore.getState();
+        const { selection, gridVisible, tool, sheetFrameVisible, activeSheetId } =
+            useEditorStore.getState();
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = this.theme.sheet;
@@ -197,6 +206,24 @@ export class CanvasRenderer {
             }),
             { px },
         );
+
+        // On top of the drawing, because a page outline is a statement about the drawing
+        // rather than a part of it — and underneath it, the outline is the first thing a
+        // wall's poché covers up.
+        if (sheetFrameVisible) {
+            const sheet = resolveSheet(drawing.settings.sheets, activeSheetId);
+
+            if (sheet !== undefined) {
+                paintSheetFrame(
+                    ctx,
+                    sheet,
+                    index.extent(),
+                    this.theme,
+                    px,
+                    sheetAside(drawing.settings.notes, legendOf(drawing)) !== null,
+                );
+            }
+        }
 
         const overlay: OverlayContext = {
             ctx,

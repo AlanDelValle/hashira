@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 
 import type { Point } from '@/editor/geometry/vec';
-import { DEFAULT_DIMENSION_SIZE, DEFAULT_TEXT_SIZE } from '@/editor/model/factories';
+import {
+    DEFAULT_CLOUD_RADIUS,
+    DEFAULT_DIMENSION_SIZE,
+    DEFAULT_TEXT_SIZE,
+} from '@/editor/model/factories';
 import { newId } from '@/editor/model/id';
 
 /**
@@ -33,6 +37,7 @@ export type ToolId =
     | 'angle'
     | 'radius'
     | 'leader'
+    | 'cloud'
     | 'asset';
 
 /**
@@ -46,7 +51,17 @@ interface EditorStore {
     /** Ids, in selection order. */
     selection: string[];
     activeLayerId: string;
+    /**
+     * Which sheet is being looked at and edited.
+     *
+     * Like the active layer, this is about the person rather than the drawing: two people
+     * with the same plan open are not obliged to be on the same page of it. Null until one
+     * is chosen, which resolves to the drawing's first sheet.
+     */
+    activeSheetId: string | null;
     gridVisible: boolean;
+    /** Whether the active sheet's outline is drawn over the drawing. */
+    sheetFrameVisible: boolean;
     snapToGrid: boolean;
     /** Thickness applied to the next wall drawn, in millimetres. */
     wallThickness: number;
@@ -54,6 +69,8 @@ interface EditorStore {
     textSize: number;
     /** Cap height applied to the next measurement's value, in millimetres at 1:1. */
     dimensionSize: number;
+    /** Bump size applied to the next revision cloud, in millimetres at 1:1. */
+    cloudRadius: number;
     /**
      * Where a label or a note is being typed, if one is.
      *
@@ -71,9 +88,11 @@ interface EditorStore {
 
     setTool: (tool: ToolId) => void;
     setActiveLayer: (layerId: string) => void;
+    setActiveSheet: (sheetId: string) => void;
     setWallThickness: (thickness: number) => void;
     setTextSize: (size: number) => void;
     setDimensionSize: (size: number) => void;
+    setCloudRadius: (radius: number) => void;
     beginText: (at: Point) => void;
     beginNote: (points: Point[]) => void;
     cancelText: () => void;
@@ -84,6 +103,7 @@ interface EditorStore {
     toggleInSelection: (id: string) => void;
     clearSelection: () => void;
     toggleGrid: () => void;
+    toggleSheetFrame: () => void;
     toggleSnap: () => void;
 }
 
@@ -91,11 +111,16 @@ export const useEditorStore = create<EditorStore>((set) => ({
     tool: 'select',
     selection: [],
     activeLayerId: 'layer_architecture',
+    activeSheetId: null,
     gridVisible: true,
+    // Off by default: a page outline around a drawing nobody has decided to print yet is one
+    // more rectangle to read past.
+    sheetFrameVisible: false,
     snapToGrid: true,
     wallThickness: 150,
     textSize: DEFAULT_TEXT_SIZE,
     dimensionSize: DEFAULT_DIMENSION_SIZE,
+    cloudRadius: DEFAULT_CLOUD_RADIUS,
     textDraft: null,
     pendingAssetId: null,
     libraryOpen: false,
@@ -111,6 +136,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
         })),
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
+
+    setActiveSheet: (activeSheetId) => set({ activeSheetId }),
 
     /*
      * Closing the library also puts down whatever block was armed: leaving the tool loaded
@@ -132,6 +159,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setWallThickness: (wallThickness) => set({ wallThickness }),
     setTextSize: (textSize) => set({ textSize }),
     setDimensionSize: (dimensionSize) => set({ dimensionSize }),
+    setCloudRadius: (cloudRadius) => set({ cloudRadius }),
 
     beginText: (at) => set({ textDraft: { id: newId(), at } }),
 
@@ -178,6 +206,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
         set((state) => (state.selection.length === 0 ? state : { selection: [] })),
 
     toggleGrid: () => set((state) => ({ gridVisible: !state.gridVisible })),
+    toggleSheetFrame: () => set((state) => ({ sheetFrameVisible: !state.sheetFrameVisible })),
     toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
 }));
 

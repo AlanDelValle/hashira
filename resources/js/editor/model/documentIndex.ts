@@ -1,4 +1,4 @@
-import { boundsIntersect, type Bounds } from '@/editor/geometry/bbox';
+import { boundsIntersect, unionBounds, type Bounds } from '@/editor/geometry/bbox';
 
 import { elementBounds, type ElementLookup } from './elements';
 import type { Element, HashiraDocument } from './types';
@@ -42,6 +42,14 @@ export interface DocumentIndex {
      * elements above earlier ones. That is the order a pick has to consider them in.
      */
     sortTopDown: (elements: readonly Element[]) => Element[];
+    /**
+     * Everything in the drawing, as one rectangle, or null when there is nothing in it.
+     *
+     * Worked out at most once per version of the document, because a sheet that frames the
+     * whole drawing needs it on every frame it is painted on: doing it the direct way would
+     * walk the entire plan sixty times a second to draw one rectangle.
+     */
+    extent: () => Bounds | null;
 }
 
 const indexes = new WeakMap<HashiraDocument, DocumentIndex>();
@@ -177,6 +185,21 @@ function build(drawing: HashiraDocument): DocumentIndex {
         return [...found].sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
     }
 
+    let extentBounds: Bounds | null = null;
+    let extentDone = false;
+
+    function extent(): Bounds | null {
+        if (!extentDone) {
+            for (const element of drawing.elements) {
+                extentBounds = unionBounds(extentBounds, bounds(element));
+            }
+
+            extentDone = true;
+        }
+
+        return extentBounds;
+    }
+
     function sortTopDown(elements: readonly Element[]): Element[] {
         return [...elements].sort((a, b) => {
             const byLayer = (rank.get(b.layerId) ?? bottom) - (rank.get(a.layerId) ?? bottom);
@@ -185,5 +208,5 @@ function build(drawing: HashiraDocument): DocumentIndex {
         });
     }
 
-    return { lookup, bounds, near, sortTopDown };
+    return { lookup, bounds, near, sortTopDown, extent };
 }

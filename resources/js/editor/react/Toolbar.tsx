@@ -2,6 +2,7 @@ import {
     Angle,
     AppWindow,
     Circle,
+    Cloud,
     Columns2,
     Diameter,
     DoorOpen,
@@ -36,6 +37,7 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     angle: Angle,
     radius: Diameter,
     leader: TextQuote,
+    cloud: Cloud,
     asset: Sofa,
 };
 
@@ -45,7 +47,7 @@ const GROUPS: ToolId[][] = [
     ['wall', 'door', 'window', 'room'],
     ['line', 'rect', 'circle', 'polygon'],
     ['dimension', 'angle', 'radius'],
-    ['text', 'leader'],
+    ['text', 'leader', 'cloud'],
 ];
 
 /**

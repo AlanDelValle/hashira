@@ -262,6 +262,148 @@ describe('opening a version 3 drawing', () => {
     });
 });
 
+/** A version 4 drawing: one page size for the whole plan, which is all a drawing could have. */
+const VERSION_4 = {
+    ...VERSION_3,
+    schemaVersion: 4,
+    name: 'Before sheets',
+    settings: {
+        ...VERSION_3.settings,
+        scale: 100,
+        sheet: { size: 'A4', orientation: 'portrait' },
+    },
+};
+
+describe('opening a version 4 drawing', () => {
+    it('opens, with one sheet where it had one page size', () => {
+        const parsed = parseDocument(VERSION_4);
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.settings.sheets).toHaveLength(1);
+    });
+
+    it('prints on exactly the page it was already being printed on', () => {
+        const parsed = parseDocument(VERSION_4);
+        const sheet = parsed.ok ? parsed.document.settings.sheets[0] : undefined;
+
+        expect(sheet?.size).toBe('A4');
+        expect(sheet?.orientation).toBe('portrait');
+
+        // The drawing's own scale, not the default: a plan drawn for 1:100 does not quietly
+        // start printing at 1:50 because it gained a sheet.
+        expect(sheet?.scale).toBe(100);
+    });
+
+    it('frames the whole drawing, which is what it did before it had a sheet at all', () => {
+        const parsed = parseDocument(VERSION_4);
+
+        expect(parsed.ok && parsed.document.settings.sheets[0]?.centre).toBeNull();
+    });
+
+    it('comes back stamped with the current schema, unchanged in every other way', () => {
+        const parsed = parseDocument(VERSION_4);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_4.elements.length);
+    });
+});
+
+/** A version 5 drawing: on sheets, but from before a print could say who drew it. */
+const VERSION_5 = {
+    ...VERSION_4,
+    schemaVersion: 5,
+    name: 'Before title blocks',
+    settings: {
+        ...VERSION_4.settings,
+        sheet: undefined,
+        sheets: [
+            {
+                id: 'sheet_1',
+                name: 'Sheet 1',
+                size: 'A3',
+                orientation: 'landscape',
+                scale: 100,
+                centre: null,
+            },
+        ],
+    },
+};
+
+describe('opening a version 5 drawing', () => {
+    it('opens, keeping the sheet it was written with', () => {
+        const parsed = parseDocument(VERSION_5);
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.settings.sheets[0]?.scale).toBe(100);
+    });
+
+    /*
+     * 6 added what a title block says beyond the title, and the revision cloud. A reader that
+     * predates either would drop every cloud in a drawing and every field of its title block,
+     * and then save it back without them — which is why it is a version at all.
+     */
+    it('gains a title block with nothing in it yet', () => {
+        const parsed = parseDocument(VERSION_5);
+
+        expect(parsed.ok && parsed.document.settings.titleBlock).toEqual({
+            project: '',
+            client: '',
+            drawnBy: '',
+            revision: '',
+            date: '',
+        });
+    });
+
+    it('comes back stamped with the current schema, unchanged in every other way', () => {
+        const parsed = parseDocument(VERSION_5);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_5.elements.length);
+    });
+});
+
+/** A version 6 drawing: issued, stamped and clouded, but with nothing written beside it. */
+const VERSION_6 = {
+    ...VERSION_5,
+    schemaVersion: 6,
+    name: 'Before notes',
+    settings: {
+        ...VERSION_5.settings,
+        titleBlock: {
+            project: 'Maltings, unit 4',
+            client: 'Bauer',
+            drawnBy: 'AD',
+            revision: 'C',
+            date: '2026-03-14',
+        },
+    },
+};
+
+describe('opening a version 6 drawing', () => {
+    /*
+     * 7 added the notes printed beside the drawing. A reader that predates them would drop
+     * every one and save the drawing back without it, which is why it is a version at all.
+     */
+    it('gains notes with nothing written in them yet', () => {
+        const parsed = parseDocument(VERSION_6);
+
+        expect(parsed.ok && parsed.document.settings.notes).toBe('');
+    });
+
+    it('keeps the title block it was issued with', () => {
+        const parsed = parseDocument(VERSION_6);
+
+        expect(parsed.ok && parsed.document.settings.titleBlock.revision).toBe('C');
+    });
+
+    it('comes back stamped with the current schema, unchanged in every other way', () => {
+        const parsed = parseDocument(VERSION_6);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_6.elements.length);
+    });
+});
+
 describe('a drawing from a newer Hashira', () => {
     it('is refused outright rather than opened with pieces missing', () => {
         const parsed = parseDocument({ ...VERSION_1, schemaVersion: SCHEMA_VERSION + 1 });

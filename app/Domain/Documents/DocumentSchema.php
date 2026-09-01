@@ -24,12 +24,14 @@ final class DocumentSchema
      * Bump this only alongside a migration and a fixture test.
      *
      * 2 added the `dimension` element; 3 turned it into a chain of points and added the
-     * `angle`, `radius` and `leader` marks beside it; 4 added the `underlay`. The server
-     * validates the envelope rather than the interior, so the number is all that changes
-     * here — but it has to change, or the server would refuse every document the current
-     * client writes.
+     * `angle`, `radius` and `leader` marks beside it; 4 added the `underlay`; 5 turned the
+     * one page a drawing was printed on into a list of sheets; 6 added what a title block
+     * says beyond the title, and the revision cloud; 7 added the notes printed beside the
+     * drawing. The server validates the envelope rather than the interior, so the number is
+     * all that changes here — but it has to change, or the server would refuse every document
+     * the current client writes.
      */
-    public const CURRENT_VERSION = 4;
+    public const CURRENT_VERSION = 7;
 
     /** A generous ceiling for a 2D plan; enough for thousands of elements. */
     public const MAX_BYTES = 8 * 1024 * 1024;
@@ -72,11 +74,54 @@ final class DocumentSchema
                     'intersection' => true,
                     'axis' => true,
                 ],
-                'sheet' => ['size' => 'A3', 'orientation' => 'landscape'],
+                'sheets' => self::defaultSheets(),
                 'title' => $name,
+                'titleBlock' => self::emptyTitleBlock(),
+                'notes' => '',
             ],
             'layers' => self::defaultLayers(),
             'elements' => [],
+        ];
+    }
+
+    /**
+     * The page a new drawing is printed on. Mirrors defaultSheets() in model/document.ts.
+     *
+     * `centre` is null, so the sheet frames whatever gets drawn and steps its scale back
+     * until it fits — a page that is useful before anybody has decided where it looks.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function defaultSheets(): array
+    {
+        return [
+            [
+                'id' => 'sheet_1',
+                'name' => 'Sheet 1',
+                'size' => 'A3',
+                'orientation' => 'landscape',
+                'scale' => 50,
+                'centre' => null,
+            ],
+        ];
+    }
+
+    /**
+     * What a title block says beyond the title, before anybody has said anything.
+     *
+     * Mirrors emptyTitleBlock() in model/document.ts. Empty rather than absent, so the panel
+     * that edits it has fields to put a caret in.
+     *
+     * @return array<string, string>
+     */
+    public static function emptyTitleBlock(): array
+    {
+        return [
+            'project' => '',
+            'client' => '',
+            'drawnBy' => '',
+            'revision' => '',
+            'date' => '',
         ];
     }
 

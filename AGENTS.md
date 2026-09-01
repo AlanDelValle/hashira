@@ -71,17 +71,26 @@ npm run format:check
 npm run typecheck
 npm run test
 npm run build
+npm run e2e
 ```
 
 That is the same list CI runs, in the same order. `format:check` is easy to leave out locally
 and is the one that fails a green-looking branch.
 
+`npm run e2e` is the one path through the whole application, and it comes last because it
+serves what `npm run build` just produced. It starts its own `php artisan serve` and writes to
+`hashira_testing`, so nothing has to be running first — but it needs Chromium once, with
+`npx playwright install chromium`. Skip it only if that download is not available, and say so
+rather than reporting the list as passed.
+
 ## Scope discipline
 
-The MVP scope and everything deliberately excluded are in
-[`docs/roadmap.md`](docs/roadmap.md). Do not implement 3D, BIM, DWG/DXF, generative
-features, multiplayer or a plugin system. If something seems worth adding, add it to the
-roadmap instead of the codebase.
+The scope, and everything deliberately excluded, is in [`docs/roadmap.md`](docs/roadmap.md).
+Do not implement 3D, BIM, DWG, generative features, multiplayer or a plugin system. If
+something seems worth adding, add it to the roadmap instead of the codebase.
+
+DXF was on that list until Phase 8, which is the phase that does it — from the scene and to
+R12 ASCII, with the reasoning in the roadmap. DWG is not the same thing and is still out.
 
 ## Design direction
 

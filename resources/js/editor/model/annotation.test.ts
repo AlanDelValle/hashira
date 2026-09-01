@@ -8,6 +8,7 @@ import { buildScene } from '@/editor/scene/build';
 import { defaultLayers, emptyDocument, parseDocument } from './document';
 import {
     angleFrame,
+    cloudBumps,
     elementBounds,
     elementSize,
     elementWorldPoints,
@@ -16,9 +17,16 @@ import {
     makeLookup,
     radiusFrame,
 } from './elements';
-import { createAngle, createCircle, createLeader, createRadius, createUnderlay } from './factories';
+import {
+    createAngle,
+    createCircle,
+    createCloud,
+    createLeader,
+    createRadius,
+    createUnderlay,
+} from './factories';
 import { setRadiusDiameter, setUnderlayOpacity } from './edits';
-import type { CircleElement, UnderlayElement } from './types';
+import type { CircleElement, CloudElement, UnderlayElement } from './types';
 
 const LAYER = 'layer_dimensions';
 const NO_LOOKUP = makeLookup([]);
@@ -239,3 +247,94 @@ describe('a page to trace over', () => {
         expect(parsed.ok && parsed.document.elements[0]).toEqual(page);
     });
 });
+
+describe('a revision cloud', () => {
+    /** A four metre square, wound anticlockwise on screen. */
+    const SQUARE = [point(0, 0), point(4000, 0), point(4000, 4000), point(0, 4000)];
+
+    function cloud(radius = 200): CloudElement {
+        const made = createCloud(SQUARE, LAYER, radius);
+
+        expect(made).not.toBeNull();
+
+        return made!;
+    }
+
+    it('needs something to go round', () => {
+        expect(createCloud([point(0, 0), point(100, 0)], LAYER)).toBeNull();
+    });
+
+    /*
+     * The whole point of the mark: it surrounds what changed. Bumps that scalloped inward
+     * would eat into the drawing they are pointing at, and would still look like a cloud in a
+     * thumbnail.
+     */
+    it('bulges outward, so it surrounds the run rather than biting into it', () => {
+        const bumps = cloudBumps(cloud());
+        const apexes = bumps.map((bump) => {
+            const middle = bump.from + normalisedHalf(bump.from, bump.to, bump.anticlockwise);
+
+            return {
+                x: bump.centre.x + bump.radius * Math.cos(middle),
+                y: bump.centre.y + bump.radius * Math.sin(middle),
+            };
+        });
+
+        // Every apex is outside the square, which is what "outward" means for a closed run.
+        const outside = apexes.filter((at) => at.x < -1 || at.x > 4001 || at.y < -1 || at.y > 4001);
+
+        expect(outside).toHaveLength(apexes.length);
+    });
+
+    it('divides each side into whole bumps of the size it was given', () => {
+        const bumps = cloudBumps(cloud(200));
+
+        // Four sides of four metres, in bumps four hundred across: ten a side.
+        expect(bumps).toHaveLength(40);
+
+        // Half the size, twice as many.
+        expect(cloudBumps(cloud(100))).toHaveLength(80);
+    });
+
+    it('reaches past the run it is struck on, and its extent says so', () => {
+        const bounds = elementBounds(cloud(200), NO_LOOKUP);
+
+        expect(bounds?.minX).toBeLessThan(0);
+        expect(bounds?.maxY).toBeGreaterThan(4000);
+    });
+
+    /*
+     * A cloud is a mark about the drawing, not a shape in it. Drawing the run it is struck on
+     * would put a closed outline around part of a plan, which reads as something built.
+     */
+    it('draws as bumps and never as the outline underneath them', () => {
+        const [layer] = buildScene([cloud()], defaultLayers(), {
+            palette: { ink: '#000', subtle: '#555', roomFill: '#eee' },
+        });
+
+        expect(layer?.primitives.every((primitive) => primitive.kind === 'arc')).toBe(true);
+        expect(layer?.primitives).toHaveLength(40);
+    });
+
+    it('is picked anywhere along its run', () => {
+        const drawn = cloud();
+
+        expect(hitTestElement(drawn, NO_LOOKUP, point(2000, 0), 50)).toBe(true);
+        expect(hitTestElement(drawn, NO_LOOKUP, point(2000, 2000), 50)).toBe(false);
+    });
+
+    it('survives a save and a load', () => {
+        const drawing = { ...emptyDocument('Plan'), elements: [cloud()] };
+        const parsed = parseDocument(JSON.parse(JSON.stringify(drawing)));
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.elements[0]?.type).toBe('cloud');
+    });
+});
+
+/** Halfway along the arc, in the direction it is actually drawn. */
+function normalisedHalf(from: number, to: number, anticlockwise: boolean): number {
+    const forward = (((to - from) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+    return anticlockwise ? -(Math.PI * 2 - forward) / 2 : forward / 2;
+}

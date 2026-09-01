@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 7,
+  "name": "Ground floor",
+  "settings": {
+    "unit": "m",
+    "scale": 50,
+    "grid": {
+      "size": 100,
+      "subdivisions": 2,
+      "visible": true,
+      "snap": true
+    },
+    "snapping": {
+      "enabled": true,
+      "endpoint": true,
+      "midpoint": true,
+      "intersection": true,
+      "axis": true
+    },
+    "sheets": [
+      {
+        "id": "sheet_1",
+        "name": "Sheet 1",
+        "size": "A3",
+        "orientation": "landscape",
+        "scale": 50,
+        "centre": null
+      }
+    ],
+    "title": "Ground floor",
+    "titleBlock": {
+      "project": "",
+      "client": "",
+      "drawnBy": "",
+      "revision": "",
+      "date": ""
+    },
+    "notes": ""
+  },
+  "layers": [
+    {
+      "id": "layer_architecture",
+      "name": "Architecture",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 0
+    },
+    {
+      "id": "layer_openings",
+      "name": "Openings",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 1
+    },
+    {
+      "id": "layer_furniture",
+      "name": "Furniture",
+      "color": "#5F636B",
+      "visible": true,
+      "locked": false,
+      "order": 2
+    },
+    {
+      "id": "layer_dimensions",
+      "name": "Dimensions",
+      "color": "#2C58C4",
+      "visible": true,
+      "locked": false,
+      "order": 3
+    },
+    {
+      "id": "layer_annotations",
+      "name": "Annotations",
+      "color": "#5F636B",
+      "visible": true,
+      "locked": false,
+      "order": 4
+    }
+  ],
+  "elements": []
+}

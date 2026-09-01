@@ -18,7 +18,7 @@ export type AssetPrimitive =
     | { kind: 'arc'; cx: number; cy: number; r: number; from: number; to: number };
 
 export type AssetCategory =
-    'seating' | 'tables' | 'beds' | 'storage' | 'kitchen' | 'bathroom' | 'structure';
+    'seating' | 'tables' | 'beds' | 'storage' | 'kitchen' | 'bathroom' | 'structure' | 'annotation';
 
 export interface AssetDefinition {
     id: string;
@@ -71,6 +71,7 @@ const a = (cx: number, cy: number, radius: number, from: number, to: number): As
 
 const FURNITURE = 'layer_furniture';
 const ARCHITECTURE = 'layer_architecture';
+const ANNOTATIONS = 'layer_annotations';
 
 /** Evenly spaced parallel lines, for stair treads and slatted shelving. */
 function treads(count: number, vertical: boolean): AssetPrimitive[] {
@@ -470,6 +471,36 @@ export const ASSET_LIBRARY: AssetDefinition[] = [
         layerId: FURNITURE,
         draw: [e(0.5, 0.5, 0.5, 0.5), a(0.5, 0.5, 0.3, 0.6, 3.2), a(0.5, 0.5, 0.16, 3.6, 6.1)],
     },
+
+    // ── Annotation ───────────────────────────────────────────────────────────
+    /*
+     * Marks that belong to the print rather than to the building. They land on the annotations
+     * layer, so hiding it takes the whole apparatus of a sheet off the drawing at once.
+     */
+    {
+        id: 'north',
+        name: 'North point',
+        category: 'annotation',
+        width: 700,
+        height: 900,
+        layerId: ANNOTATIONS,
+        draw: [
+            // A pointer with a hollow half and a filled one, which is how a north point reads
+            // as a direction rather than as an arrowhead.
+            p([0.5, 0, 0.85, 1, 0.5, 0.72], true),
+            p([0.5, 0, 0.15, 1, 0.5, 0.72], true),
+            e(0.5, 0.42, 0.5, 0.5),
+        ],
+    },
+    {
+        id: 'break-line',
+        name: 'Break line',
+        category: 'annotation',
+        width: 2000,
+        height: 200,
+        layerId: ANNOTATIONS,
+        draw: [p([0, 0.5, 0.42, 0.5, 0.47, 0, 0.53, 1, 0.58, 0.5, 1, 0.5])],
+    },
 ];
 
 const BY_ID = new Map(ASSET_LIBRARY.map((asset) => [asset.id, asset]));
@@ -508,4 +539,5 @@ export const ASSET_CATEGORIES: { id: AssetCategory; name: string }[] = [
     { id: 'kitchen', name: 'Kitchen' },
     { id: 'bathroom', name: 'Bathroom' },
     { id: 'structure', name: 'Structure' },
+    { id: 'annotation', name: 'Annotation' },
 ];

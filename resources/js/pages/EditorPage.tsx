@@ -1,11 +1,20 @@
-import { ChevronLeft, FileInput, History, Maximize2, Redo2, Share2, Undo2 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+    ChevronLeft,
+    FileInput,
+    History,
+    Import,
+    Maximize2,
+    Redo2,
+    Share2,
+    Undo2,
+} from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { documentBounds } from '@/editor/model/elements';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
-import { ExportMenu } from '@/editor/react/ExportMenu';
+import { DxfImportDialog } from '@/editor/react/DxfImportDialog';
+import { ExportDialog } from '@/editor/react/ExportDialog';
 import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
 import { ShareDialog } from '@/editor/react/ShareDialog';
 import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
@@ -17,11 +26,10 @@ import { SidePanel } from '@/editor/react/SidePanel';
 import { TextDraft } from '@/editor/react/TextDraft';
 import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
+import { useFrameOnce, zoomToDrawing } from '@/editor/react/framing';
 import { useHistory } from '@/editor/react/useHistory';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
-import { useViewportStore } from '@/editor/store/viewportStore';
-import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
 import { useDocument } from '@/projects/useDocument';
 import { registerBlocks } from '@/projects/useBlocks';
 import { cn } from '@/lib/cn';
@@ -40,7 +48,6 @@ export function EditorPage() {
     const parseError = useDocumentStore((state) => state.error);
     const dropped = useDocumentStore((state) => state.dropped);
     const drawingId = useDocumentStore((state) => state.document.id);
-    const size = useViewportStore((state) => state.size);
     const elementCount = useDocumentStore((state) => state.document.elements.length);
     const libraryOpen = useEditorStore((state) => state.libraryOpen);
 
@@ -90,33 +97,7 @@ export function EditorPage() {
         return () => window.removeEventListener('beforeunload', warnIfUnsaved);
     }, []);
 
-    // Frame the drawing once, when it and the canvas both exist. Re-framing on every change
-    // would fight the person using it.
-    const framed = useRef<string | null>(null);
-
-    useEffect(() => {
-        if (size.width === 0 || size.height === 0 || framed.current === drawingId) {
-            return;
-        }
-
-        const viewportStore = useViewportStore.getState();
-        const bounds = documentBounds(useDocumentStore.getState().document);
-
-        if (bounds === null) {
-            viewportStore.setViewport(
-                centreOn({ x: 0, y: 0, zoom: DEFAULT_ZOOM }, { x: 0, y: 0 }, size),
-            );
-            framed.current = drawingId;
-
-            return;
-        }
-
-        // Recorded only when the framing actually happened, so a canvas that was still
-        // mid-layout gets another go rather than being written off as done.
-        if (viewportStore.fit(bounds)) {
-            framed.current = drawingId;
-        }
-    }, [drawingId, size]);
+    useFrameOnce(drawingId);
 
     if (loading) {
         return <FullPageSpinner label="Opening drawing" />;
@@ -219,14 +200,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
     const [versionsOpen, setVersionsOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
     const [underlayOpen, setUnderlayOpen] = useState(false);
-
-    function zoomToFit() {
-        const bounds = documentBounds(useDocumentStore.getState().document);
-
-        if (bounds !== null) {
-            useViewportStore.getState().fit(bounds);
-        }
-    }
+    const [dxfOpen, setDxfOpen] = useState(false);
 
     return (
         <header className="border-line bg-surface flex items-center gap-3 border-b px-3">
@@ -265,7 +239,7 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
 
                 <span className="bg-line mx-1.5 h-4 w-px" aria-hidden />
 
-                <HeaderButton label="Zoom to fit" shortcut="Shift 1" onClick={zoomToFit}>
+                <HeaderButton label="Zoom to fit" shortcut="Shift 1" onClick={zoomToDrawing}>
                     <Maximize2 className="size-3.5" aria-hidden />
                 </HeaderButton>
 
@@ -277,9 +251,13 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
                     <FileInput className="size-3.5" aria-hidden />
                 </HeaderButton>
 
+                <HeaderButton label="Import a DXF" onClick={() => setDxfOpen(true)}>
+                    <Import className="size-3.5" aria-hidden />
+                </HeaderButton>
+
                 <span className="bg-line mx-1.5 h-4 w-px" aria-hidden />
 
-                <ExportMenu />
+                <ExportDialog />
 
                 <HeaderButton label="Share" onClick={() => setShareOpen(true)}>
                     <Share2 className="size-3.5" aria-hidden />
@@ -293,6 +271,8 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
             />
 
             <ShareDialog projectId={projectId} open={shareOpen} onOpenChange={setShareOpen} />
+
+            <DxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} />
 
             <UnderlayDialog
                 projectId={projectId}

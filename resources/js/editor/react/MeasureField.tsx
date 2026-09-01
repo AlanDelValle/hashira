@@ -26,6 +26,16 @@ export function MeasureField({ label, value, format, parse, onCommit, suffix }: 
     const [draft, setDraft] = useState(() => format(value));
     const focused = useRef(false);
 
+    /*
+     * Escape has to be able to say "not this one" to the blur it causes.
+     *
+     * Putting the draft back and then blurring is not enough, and used to be exactly what this
+     * did: `setDraft` schedules a render, while `blur()` dispatches synchronously, so the blur
+     * handler still closed over the draft being abandoned — and committed the very value
+     * Escape was pressed to throw away.
+     */
+    const abandoning = useRef(false);
+
     useEffect(() => {
         if (!focused.current) {
             setDraft(format(value));
@@ -61,6 +71,14 @@ export function MeasureField({ label, value, format, parse, onCommit, suffix }: 
                     }}
                     onBlur={() => {
                         focused.current = false;
+
+                        if (abandoning.current) {
+                            abandoning.current = false;
+                            setDraft(format(value));
+
+                            return;
+                        }
+
                         commit();
                     }}
                     onChange={(event) => setDraft(event.target.value)}
@@ -70,7 +88,7 @@ export function MeasureField({ label, value, format, parse, onCommit, suffix }: 
                         }
 
                         if (event.key === 'Escape') {
-                            setDraft(format(value));
+                            abandoning.current = true;
                             event.currentTarget.blur();
                         }
                     }}

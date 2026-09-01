@@ -25,6 +25,7 @@ import {
 import {
     createCircleTool,
     createLineTool,
+    createCloudTool,
     createPolygonTool,
     createRectTool,
 } from '@/editor/tools/drawTools';
@@ -89,6 +90,7 @@ export class InputController {
             rect: createRectTool(),
             circle: createCircleTool(),
             polygon: createPolygonTool(),
+            cloud: createCloudTool(),
             text: createTextTool(),
             dimension: createDimensionTool(),
             angle: createAngleTool(),

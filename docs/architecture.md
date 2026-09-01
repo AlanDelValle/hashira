@@ -92,15 +92,41 @@ So the viewport is **Canvas 2D**, driven by a `requestAnimationFrame` loop that 
 stores imperatively. React never renders during a drag.
 
 Export is then _not_ "screenshot the DOM". The document is turned into a scene of primitives
-once, and four outputs consume it — so the screen and a PDF cannot disagree about what a wall
+once, and five outputs consume it — so the screen and a PDF cannot disagree about what a wall
 with a door in it looks like:
 
 ```
-document ──▶ scene ──┬──▶ canvas          the screen
-                     ├──▶ canvas @ N×     PNG
-                     ├──▶ SVG string      vector, layers intact
-                     └──▶ pdf-lib page    a real page at a real scale
+document ──▶ scene ──┬──▶ canvas           the screen
+                     ├──▶ canvas @ N×      PNG
+                     ├──▶ SVG string       vector, layers intact
+                     ├──▶ pdf-lib pages    real pages at a real scale
+                     └──▶ DXF entities     full size, for other software to edit
 ```
+
+A PDF is the one output made of pages, so it is the one that knows about sheets: it prints a
+list of them, and can put each layer on a page of its own. Every page is laid out from the
+same extent, which is what makes a set of layer prints lay over one another — the reason
+anybody asks for one. The others have no page to divide, so they stay the whole drawing.
+
+DXF is the one output that is not a picture, and it changes what "faithful" means. It is
+still written from the scene, so a wall leaves as the shape a wall is drawn as rather than as
+a wall — DXF has no idea what one is. What travels is geometry on layers at full size; pen
+weights, fills and the page do not, because R12 has nowhere to put them.
+
+Reading one runs the whole thing backwards, and is the only pipeline in the editor that does:
+
+```
+file ──▶ shapes ──▶ elements ──▶ command ──▶ document
+        (the file's        (millimetres,
+         units and y)       y the other way)
+```
+
+`interchange/dxfImport.ts` reduces a DXF's dozens of entity types to three shapes — a
+polyline, a circle and a run of text — by flattening curves and exploding block references
+where they stand. Everything a person has to decide sits between the two halves: what the
+units are, which layers to bring, and whether the file is small enough to be a drawing at all.
+Nothing imported becomes a wall, a door or a room, because nothing in a DXF says which lines
+are one; what arrives is shapes, honestly labelled as such.
 
 The scene carries line weight as _intent_ rather than as a number: every stroke is a pen
 weight, a width on the finished sheet, and each output converts it its own way — which is why
@@ -132,16 +158,35 @@ interface Command {
   readonly coalesceKey: string | null;
   execute(document: HashiraDocument): HashiraDocument;
   undo(document: HashiraDocument): HashiraDocument;
+  describe(): CommandEnvelope;
 }
 ```
 
 Both halves are pure functions returning a _new_ document rather than mutating one, so a
-command can be replayed, inspected, or sent over a wire without carrying hidden state.
+command can be replayed and inspected without carrying hidden state.
 
 `HistoryStack` executes, pushes, and can pop. Nothing else writes to the document — not a
 React handler, not a tool, not the properties panel. Undo/redo is therefore correct by
-construction rather than by remembering to snapshot, and the same commands are the natural
-seam for future collaboration and for a scripting/plugin API.
+construction rather than by remembering to snapshot.
+
+**A command is also a closure, and that is the one thing it cannot be when it has to leave
+this process.** Live co-editing sends an edit down a socket; a plugin in a sandbox sends one
+through a message port. Both want the same thing, so `describe()` is on the interface: the
+edit as plain JSON, with `parseCommand` in `commands/envelope.ts` as the way back.
+
+Two decisions there are worth not re-arguing:
+
+- **State, never intent.** An envelope says "these elements become those", not "move this by
+  200 mm". That is what a command already _is_ — `execute` and `undo` are pure functions of
+  captured state — so describing intent instead would be a redesign of this layer wearing a
+  serialisation costume. It also means two editors that disagree resolve per element to
+  whichever state arrived last, which is a rule you can say out loud.
+- **One way in, and it validates.** `parseCommand` is the only thing that produces a `Command`
+  from an envelope, and it is a parser rather than a cast — an envelope is by definition from
+  somewhere else. It holds an element in a command to exactly what an element in a drawing is
+  held to, because it uses the document's own schemas. A delete sends only its ids: where the
+  elements were is a fact about the document it ran against, so the far side captures its own
+  and can put them back in the order _it_ has them in.
 
 Three commands cover every edit so far: `addElements`, `deleteElements` and
 `replaceElements` — a move, a rotation and a property edit are all the last one.
@@ -250,7 +295,11 @@ Every conversion goes through `viewport.toWorld()` / `viewport.toScreen()`. Ad-h
 arithmetic on coordinates inside a component is treated as a bug.
 
 Drawing **scale** (1:50, 1:100) is a separate concept: it affects export page geometry and
-the printed scale bar, not on-screen zoom.
+the printed scale bar, not on-screen zoom. A **sheet** carries a scale of its own, along with
+a page size and the point it looks at — see `settings.sheets` in the document format. Laying a
+drawing onto a sheet happens in exactly one place, `export/sheet.ts`, which is what the PDF
+prints and what the canvas outlines: a page worked out twice is a page that agrees with the
+print until one of the two is changed.
 
 ---
 
@@ -262,15 +311,25 @@ One `<canvas>`, one rAF loop, painted in a fixed order:
 1. paper / sheet background
 2. grid              (adaptive: subdivisions fade out as you zoom away)
 3. document elements, in layer order, hidden layers skipped
-4. selection outlines and transform handles
-5. active-tool preview (in-progress wall, rubber band)
-6. snap indicator
-7. dimension and measurement overlay
+4. the active sheet's outline, when it is switched on
+5. selection outlines and transform handles
+6. active-tool preview (in-progress wall, rubber band)
+7. snap indicator
+8. dimension and measurement overlay
 ```
 
 The loop paints only when something is marked dirty, so an idle editor costs nothing.
-Layers 1–3 come from the document; 4–7 come from interaction state, which is why they can
-update at pointer rate without touching React.
+Layers 1–3 come from the document; 5–8 come from interaction state, which is why they can
+update at pointer rate without touching React. The sheet outline sits between the two: the
+page is in the document, but it is paper rather than drawing — never in the scene, never
+exported as ink, and drawn over the plan because it is a statement about the plan.
+
+There is a second canvas, and it is deliberately not this one. A saved version is looked at on
+`render/review.ts`, a small surface that is _given_ a document rather than reading one: its own
+viewport, its own scene, no store at all — so inspecting an old version cannot disturb the
+drawing that is open. It paints through the same scene builder, with the comparison between two
+versions marked over the top as a redline. Working out that comparison is `model/diff.ts`, which
+is pure and knows nothing about canvases; see [editor.md](editor.md).
 
 ---
 
@@ -307,18 +366,32 @@ Testing effort follows risk, not coverage percentage.
 - **Feature tests (Pest)** — authorization above all: a user must not read or write another
   user's project; a share token exposes the shared document and nothing else.
 - **E2E (Playwright)** — one honest path: register → create project → draw a wall → reload →
-  the wall is still there.
+  the wall is still there. It lives in `e2e/`, runs against a real Laravel process and a real
+  PostgreSQL, and is served the built assets rather than a dev server, because what it proves
+  has to be what a person would be given.
 
 We are explicitly not writing a test per getter.
+
+There is deliberately **one** end-to-end test. A suite of them is slow, flaky, and duplicates
+coverage that is cheaper a layer down; a single one that never fails for a silly reason is the
+one people keep green. It also never looks at pixels — what the canvas is holding is read
+through the things around it that name it, because a screenshot comparison fails for every
+reason except the one that matters.
 
 ---
 
 ## 7. What we are deliberately not building yet
 
-3D, BIM, DWG/DXF, generative AI, CRDT multiplayer, comments, payments, organisations, a
-large block library, a mobile editor. See [roadmap.md](roadmap.md). The architecture leaves
-room for them — commands for collaboration, JSONB for entity extraction, share-link roles
-for permissions — without paying for them now.
+3D, BIM, DWG, generative AI, CRDT multiplayer, comments, payments, organisations, a large
+block library, a mobile editor. See [roadmap.md](roadmap.md). The architecture leaves room
+for them — commands for collaboration, JSONB for entity extraction, share-link roles for
+permissions — without paying for them now.
+
+Two things have come off that list and the list did not notice, which is the failure mode a
+list like this has. **DXF** left in Phase 8, in both directions. **Version history browsing and
+comparison** left in Phase 9.5 — comparing two drawings is here; the second person looking at
+one with you is not. Anything struck off here belongs in the same commit as the feature that
+strikes it.
 
 ---
 

@@ -28,6 +28,13 @@ export function setRotation(element: Element, rotation: number): Element {
     return { ...element, transform: { ...element.transform, rotation } };
 }
 
+/** How big a revision cloud's bumps are. Smaller bumps, more of them: the run does not move. */
+export function setCloudRadius(element: Element, radius: number): Element {
+    return element.type !== 'cloud' || radius <= 0
+        ? element
+        : { ...element, geometry: { ...element.geometry, radius } };
+}
+
 export function setLayer(element: Element, layerId: string): Element {
     return { ...element, layerId };
 }

@@ -13,6 +13,7 @@ import {
 import {
     angleFrame,
     angleStrokes,
+    cloudBumps,
     dimensionFrame,
     dimensionStrokes,
     doorSwing,
@@ -70,6 +71,16 @@ export interface SceneOptions {
      * leaves this out and lets them be worked out from what it is painting.
      */
     joins?: WallJoins;
+
+    /**
+     * How to find an element the scene refers to but does not contain.
+     *
+     * A door has no position of its own, only a distance along the wall hosting it, so a scene
+     * built from *part* of a drawing has to be told where the rest of it is. Left out, the
+     * elements passed are all there is — which is what a whole drawing needs, and what an
+     * exporter has.
+     */
+    lookup?: ElementLookup;
 }
 
 export function buildScene(
@@ -77,7 +88,7 @@ export function buildScene(
     layers: readonly Layer[],
     options: SceneOptions,
 ): SceneLayer[] {
-    const lookup = makeLookup(elements);
+    const lookup = options.lookup ?? makeLookup(elements);
     const ordered = [...layers].sort((a, b) => a.order - b.order);
 
     const visible = new Set(
@@ -209,6 +220,22 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                     fill: element.style?.fill ?? null,
                 },
             ];
+
+        case 'cloud':
+            /*
+             * A chain of half circles rather than the run they are struck on: the run itself
+             * is never drawn, because a cloud is a mark about the drawing and a closed outline
+             * around part of a plan would read as something in it.
+             */
+            return cloudBumps(element).map((bump): ScenePrimitive => ({
+                kind: 'arc',
+                centre: bump.centre,
+                radius: bump.radius,
+                from: bump.from,
+                to: bump.to,
+                anticlockwise: bump.anticlockwise,
+                stroke: pen(context.colour),
+            }));
 
         case 'polygon':
             return [

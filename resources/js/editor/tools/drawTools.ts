@@ -9,7 +9,13 @@ import {
     scale,
     type Point,
 } from '@/editor/geometry/vec';
-import { createCircle, createLine, createPolygon, createRect } from '@/editor/model/factories';
+import {
+    createCircle,
+    createCloud,
+    createLine,
+    createPolygon,
+    createRect,
+} from '@/editor/model/factories';
 import type { Element } from '@/editor/model/types';
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand } from '@/editor/store/documentStore';
@@ -207,6 +213,95 @@ export function createPolygonTool(): Tool {
         onKeyDown(key, context) {
             if (key === 'Enter') {
                 commit(context, false);
+
+                return true;
+            }
+
+            return false;
+        },
+
+        cancel() {
+            vertices = [];
+            clearDraft();
+        },
+    };
+}
+
+/**
+ * The revision cloud, collected the same way a polygon is and always closed.
+ *
+ * A cloud says "this part changed", and a part has an edge all the way round — so Enter and a
+ * double click close it rather than leaving it open, and three points is the least that
+ * surrounds anything.
+ */
+export function createCloudTool(): Tool {
+    let vertices: Point[] = [];
+
+    function radius(): number {
+        return useEditorStore.getState().cloudRadius;
+    }
+
+    function preview(context: ToolContext, cursor: Point | null): void {
+        const points = cursor === null ? vertices : [...vertices, cursor];
+
+        interaction.draftPoints = vertices;
+        interaction.preview =
+            points.length >= 3 ? createCloud(points, context.activeLayerId, radius()) : null;
+
+        requestRepaint();
+    }
+
+    function commit(context: ToolContext): void {
+        const element =
+            vertices.length >= 3 ? createCloud(vertices, context.activeLayerId, radius()) : null;
+
+        vertices = [];
+        clearDraft();
+
+        if (element === null) {
+            return;
+        }
+
+        runCommand(addElements([element], 'Revision cloud'));
+        finish([element.id]);
+    }
+
+    return {
+        id: 'cloud',
+        cursor: 'crosshair',
+
+        onPointerDown(event, context) {
+            const first = vertices[0];
+
+            if (
+                first !== undefined &&
+                vertices.length >= 3 &&
+                equals(event.world, first, context.tolerance)
+            ) {
+                commit(context);
+
+                return;
+            }
+
+            vertices = [...vertices, event.world];
+            preview(context, null);
+        },
+
+        onPointerMove(event, context) {
+            if (vertices.length === 0) {
+                return;
+            }
+
+            preview(context, event.world);
+        },
+
+        onDoubleClick(_event, context) {
+            commit(context);
+        },
+
+        onKeyDown(key, context) {
+            if (key === 'Enter') {
+                commit(context);
 
                 return true;
             }

@@ -150,20 +150,116 @@ everything on the sheet belongs in the drawing**: an underlay is on the canvas a
 document, and deliberately in neither the scene nor a share link, because what it holds is
 somebody else's work.
 
-### Phase 8 — Interchange
+### Phase 8 — Interchange `[x]`
 
-- DXF import and export
-- Richer export: multi-sheet, layouts, per-layer PDF
-- Project and drawing templates
-- Print-oriented annotation tooling
+The first phase about a drawing leaving and entering, rather than about drawing. It touches
+contracts more than geometry: the schema, the API, and what a file promises somebody else's
+software.
 
-### Phase 9 — Collaboration
+- [x] **8.1 Sheets and layouts.** Schema 5: `settings.sheet` — one page size framing whatever
+      there was — became `settings.sheets`, pages each with a size, a scale and a place to
+      look. A sheet with a `centre` is a window at the scale it was given, clipped to its
+      frame; one without frames the whole drawing and steps its scale back until it fits,
+      which is what every drawing did before. The canvas draws the page from the same layout
+      function the PDF prints it from, and a PDF is the sheet being worked on.
+- [x] **8.2 Richer export.** The PDF exporter prints a list of pages rather than a page:
+      several sheets in one file, and optionally a page per layer so the prints lay over one
+      another. Every page is laid out from the same extent, which is what makes them register.
+      The export menu became a dialog, because which sheets and whether to split by layer are
+      choices, and it says how many pages will come out before it runs. The margin a framed
+      sheet leaves around the drawing moved into `layoutSheet`, so the outline on screen is
+      now exactly the page that prints — it was padding in the exporter alone.
+- [x] **8.3 DXF export.** A fifth reader of the scene, and the first that is not a picture:
+      R12 ASCII, full size, on layers, with the drawing's palette mapped to colour indices by
+      hue. Mirrored in y, because the drawing grows downward and a DXF grows upward. What R12
+      does not have is what it costs — no lineweights, no `LWPOLYLINE`, no `HATCH`, so a
+      wall's poché leaves as the outline a drafter would hatch on arrival
+- [x] **8.4 DXF import.** The first thing here that runs the pipeline backwards: a file in,
+      elements out. Reads R12 and after — lines, polylines with their bulges, circles, arcs,
+      ellipses, text, paragraphs and solids — explodes block references and dimension blocks
+      where they stand, mirrors y, and takes the units from `$INSUNITS` or from whoever is
+      asked. **Nothing imported becomes a wall**, because nothing in a DXF says which lines
+      are one. Bounded at ten thousand shapes, since a drawing is one JSON document saved
+      whole and a survey is not a plan to draw over
+- [x] **8.5 Print-oriented annotation tooling.** Schema 6, the drawing as something issued
+      rather than only drawn: `settings.titleBlock` holds what a print says beyond the title —
+      project, client, who drew it, which revision, the date it went out — and the `cloud`
+      element is the mark that says which part changed. A cloud is a closed run drawn as a
+      chain of outward half circles, never as the run itself: it is a note about the drawing,
+      and an outline around part of a plan would read as something built. A north point and a
+      break line joined the block library, on a new annotation shelf
+- [x] **8.6 The sheet as a document.** What a print looked like was still a drawing on white
+      paper with a line of grey text along the bottom. Now a border encloses the sheet, the
+      title block is a ruled stamp of labelled fields with the mark in the corner of it, and
+      schema 7 adds `settings.notes` — printed down a strip beside the drawing with a legend
+      of the layers under them. The strip is paid for in drawing area rather than taken out of
+      the margins, so `layoutSheet` decides it and the canvas outline narrows with the print.
+      The mark itself moved to `lib/mark.ts`, because the interface and the exporter now both
+      draw it and two copies of a logo is two logos
 
-- Realtime presence and cursors (Laravel Reverb)
-- Live co-editing built on the existing command stream
-- Comments and mentions anchored to drawing coordinates
-- Version history browsing and comparison (restore landed in Phase 4)
-- Share-link roles: viewer, commenter, editor
+Walked in a browser against Herd and PostgreSQL, one at a time: a drawing saved before sheets
+opening onto the page it was already printed at, a second sheet placed over part of the plan
+and printed on its own, ten pages of one drawing laid out to register when stacked, a DXF
+written and then read straight back in — fifty shapes landing on the layers they left from —
+and a revision cloud drawn with `I` around the bed, printed under a title block that says who
+drew it and when.
+
+Decisions taken at the start of the phase, so they are not re-argued halfway through:
+
+- **DXF is written from the scene, not from the document, and targets R12 ASCII.** The scene
+  is already the one description four outputs agree on, so a fifth costs no new geometry, and
+  R12 is the dialect that opens everywhere. It means a wall exports as the shape it is drawn
+  as rather than as a wall: DXF has no semantics for one, and inventing them in a `DIMENSION`
+  entity nobody can read back is worse than exporting what is on the sheet.
+- **Curves flatten to polylines on import.** The document has `circle`, but no arc or spline.
+  A new element type costs a schema version and a branch in four renderers, for shapes that
+  are a few millimetres on the finished sheet — where the flattening is already finer than the
+  plotter. The same trade the SVG block importer made.
+- **DWG stays out.** It is Phase 10, and nothing in this phase is a step towards it.
+
+### Phase 9 — Collaboration `[~]`
+
+The first phase about more than one person. Everything before it assumes one: a drawing saved
+whole against a revision, one history stack, and authorization from the authenticated user.
+
+One piece of the groundwork is already in place, ahead of the phase that needs it: **a command
+can be serialised**. `describe()` writes an edit as plain JSON and `commands/envelope.ts` reads
+one back, validated against the document's own schemas. It was built during the refinement pass
+rather than inside a feature, because live co-editing here and the plugin sandbox in Phase 10
+need the identical thing, and building it twice is how the two end up disagreeing.
+
+- [ ] Realtime presence and cursors (Laravel Reverb)
+- [ ] Live co-editing built on the existing command stream
+- [ ] Comments and mentions anchored to drawing coordinates
+- [x] **Version history browsing and comparison** (restore landed in Phase 4). A version is
+      looked at without being restored, on a surface that is handed a document rather than
+      reading one, and any two of them are compared: elements matched by id, and what differs
+      marked on the drawing and listed beside it. The current drawing is a version like any
+      other in that list, which makes the default comparison "what have I done since I last
+      saved a version"
+- [ ] Share-link roles: viewer, commenter, editor
+
+Started with the one part of this phase that needs none of the others. Comparing two versions
+is a question about two documents; there is no websocket in it and no second person, so it
+could be built while the decisions the rest of the phase turns on were still open.
+
+What it settled, which the rest of the phase should not re-argue:
+
+- **A comparison is computed, not recorded.** A version is a whole document — the drawing is
+  one JSONB column and a snapshot copies it — so what changed between two of them is worked
+  out by comparing them rather than by keeping a log. When co-editing brings an operation log,
+  that log is for _ordering_ live edits and is not what this reads: two snapshots a month
+  apart have no operations between them left to replay.
+- **A version is looked at on a surface of its own.** `render/review.ts` is given a document
+  instead of reading one, so inspecting an old version cannot disturb the drawing that is
+  open. It is also the shape the rest of the phase needs — a surface that paints somebody
+  else's state.
+- **A redline never means something in colour alone.** Dashed is a state that is gone, solid
+  is a state that is there now, every mark is in the list beside it in words, and the three
+  colours the marks use are held to contrast like every other pair the interface paints. The
+  same rule will decide what a remote cursor and a comment pin look like.
+- **Both sides are migrated before they are compared.** A schema 5 snapshot is read as schema
+  6, so a migration is never reported as somebody's work.
 
 ### Phase 10 — Platform
 
@@ -173,6 +269,12 @@ somebody else's work.
 - Self-hosting improvements: containers, backups, upgrade path
 
 ### Only after all of the above
+
+**Project and drawing templates.** Started Phase 8 and taken back out of it, because the
+question it asks is not a technical one: what a template _is_ — a set of layers and page
+sizes, a drawing to start from, a whole project preloaded — decides the data model, and
+deciding that from the implementation end is how a feature ends up being three features
+nobody wanted. It waits until there is an answer.
 
 3D extrusion, BIM-style semantics, and any generative feature. These are only worth building
 on top of a drafting tool that is already good; built before it, they are a demo, not a

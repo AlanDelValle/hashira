@@ -6,14 +6,22 @@ import { point } from '@/editor/geometry/vec';
 import { defaultLayers, parseDocument } from './document';
 import {
     documentBounds,
+    drawnLayers,
     elementBounds,
     hitTestElement,
     makeLookup,
     rotateElement,
     translateElement,
 } from './elements';
-import { createCircle, createLine, createPolygon, createRect, createWall } from './factories';
-import type { DoorElement, Element, HashiraDocument } from './types';
+import {
+    createCircle,
+    createLine,
+    createPolygon,
+    createRect,
+    createUnderlay,
+    createWall,
+} from './factories';
+import { SCHEMA_VERSION, type DoorElement, type Element, type HashiraDocument } from './types';
 import { formatAngle, formatLength, formatScale, parseAngle, parseLength } from './units';
 
 const LAYER = 'layer_architecture';
@@ -34,8 +42,19 @@ function documentWith(elements: Element[]): HashiraDocument {
                 intersection: true,
                 axis: true,
             },
-            sheet: { size: 'A3', orientation: 'landscape' },
+            sheets: [
+                {
+                    id: 'sheet_1',
+                    name: 'Sheet 1',
+                    size: 'A3',
+                    orientation: 'landscape',
+                    scale: 50,
+                    centre: null,
+                },
+            ],
             title: 'Test',
+            titleBlock: { project: '', client: '', drawnBy: '', revision: '', date: '' },
+            notes: '',
         },
         layers: defaultLayers(),
         elements,
@@ -159,6 +178,32 @@ describe('element geometry', () => {
             maxY: 200,
         });
     });
+
+    /*
+     * Which layers a legend lists, and — since a legend of one says nothing — whether a sheet
+     * reserves a strip beside the drawing at all. An empty layer is not one a reader can see,
+     * and neither is one holding only an underlay: that is a page to trace over, it never
+     * reaches the scene, and it certainly never prints.
+     */
+    it('counts the layers a reader can actually see', () => {
+        const document = documentWith([createRect(point(0, 0), point(400, 200), LAYER)]);
+
+        expect(drawnLayers(document).map((layer) => layer.id)).toEqual([LAYER]);
+
+        const traced = documentWith([createUnderlay('underlay_1', point(0, 0), 1000, 1000, LAYER)]);
+
+        expect(drawnLayers(traced)).toEqual([]);
+    });
+
+    it('leaves out a layer that has been hidden', () => {
+        const document = documentWith([createRect(point(0, 0), point(400, 200), LAYER)]);
+
+        document.layers = document.layers.map((layer) =>
+            layer.id === LAYER ? { ...layer, visible: false } : layer,
+        );
+
+        expect(drawnLayers(document)).toEqual([]);
+    });
 });
 
 describe('hit testing', () => {
@@ -258,6 +303,43 @@ describe('parsing a document', () => {
         expect(result.document.settings.scale).toBe(50);
         expect(result.document.settings.title).toBe('Plan');
         expect(result.document.layers).toHaveLength(5);
+    });
+
+    it('gives a drawing with no readable sheet a page to print on', () => {
+        const result = parseDocument({
+            ...blank,
+            schemaVersion: SCHEMA_VERSION,
+            settings: { sheets: [{ name: 'Broken' }] },
+        });
+
+        expect(result.ok).toBe(true);
+        expect(result.ok && result.document.settings.sheets).toHaveLength(1);
+        expect(result.ok && result.document.settings.sheets[0]?.name).toBe('Sheet 1');
+    });
+
+    it('drops one unreadable sheet without taking the rest of the settings with it', () => {
+        const good = {
+            id: 'sheet_a',
+            name: 'Ground floor',
+            size: 'A1',
+            orientation: 'portrait',
+            scale: 100,
+            centre: null,
+        };
+
+        const result = parseDocument({
+            ...blank,
+            schemaVersion: SCHEMA_VERSION,
+            settings: { unit: 'cm', sheets: [good, { id: 'sheet_b', size: 'Foolscap' }] },
+        });
+
+        expect(result.ok && result.document.settings.sheets.map((sheet) => sheet.id)).toEqual([
+            'sheet_a',
+        ]);
+
+        // The point of parsing sheets one at a time: a page nobody can read must not cost the
+        // drawing its unit, its grid and everything else in the same object.
+        expect(result.ok && result.document.settings.unit).toBe('cm');
     });
 
     it('refuses a document written by a newer schema', () => {

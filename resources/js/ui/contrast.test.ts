@@ -43,7 +43,12 @@ const TEXT_PAIRS: Pair[] = [
     { fg: 'accent-strong', bg: 'accent-soft', where: 'selected text' },
     { fg: 'danger', bg: 'surface', where: 'save failures and the delete menu item' },
     { fg: 'danger', bg: 'danger-soft', where: 'the highlighted delete menu item' },
-    { fg: 'positive', bg: 'surface', where: 'confirmation copy' },
+    {
+        fg: 'positive',
+        bg: 'surface',
+        where: 'confirmation copy, and an added element in a comparison',
+    },
+    { fg: 'caution', bg: 'surface', where: 'an edited element in a version comparison' },
     { fg: 'ink-inverse', bg: 'ink', where: 'the primary button' },
     { fg: 'ink-inverse', bg: 'danger', where: 'the destructive button' },
 ];
@@ -55,6 +60,15 @@ const UI_PAIRS: Pair[] = [
     { fg: 'line-strong', bg: 'sunken', where: 'a hovered secondary button, keys in the reference' },
     { fg: 'accent', bg: 'surface', where: 'the focus ring' },
     { fg: 'accent', bg: 'canvas', where: 'the focus ring on a page background' },
+
+    /*
+     * Redlines, drawn on the sheet rather than set in type. They are the one place the palette
+     * carries meaning as graphics, and each is dashed or haloed as well as coloured, so this
+     * is the 3:1 bar for non-text content rather than the 4.5:1 one for words.
+     */
+    { fg: 'positive', bg: 'sheet', where: 'what was drawn, in a version comparison' },
+    { fg: 'danger', bg: 'sheet', where: 'what was deleted, in a version comparison' },
+    { fg: 'caution', bg: 'sheet', where: 'what was edited, in a version comparison' },
 ];
 
 describe('colour contrast', () => {

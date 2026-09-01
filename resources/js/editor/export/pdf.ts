@@ -4,11 +4,12 @@ import type { PDFFont, PDFPage, RGB } from 'pdf-lib';
 import { toDegrees } from '@/editor/geometry/angle';
 import type { Bounds } from '@/editor/geometry/bbox';
 import type { Point } from '@/editor/geometry/vec';
-import type { SheetOrientation, SheetSize, TextAlign } from '@/editor/model/types';
+import type { Sheet, TextAlign, TitleBlock } from '@/editor/model/types';
 import type { SceneLayer, ScenePrimitive, Stroke } from '@/editor/scene/types';
 
+import { drawSheetFurniture, type StampFonts, type StampKit } from './furniture';
 import { toPathData, type PathTransform } from './path';
-import { layoutSheet, scaleBarMetres, SHEET_MARGIN_MM, TITLE_BLOCK_HEIGHT_MM } from './sheet';
+import { layoutSheet, PT_PER_MM, sheetAside, type LegendEntry } from './sheet';
 
 /**
  * PDF export.
@@ -17,9 +18,10 @@ import { layoutSheet, scaleBarMetres, SHEET_MARGIN_MM, TITLE_BLOCK_HEIGHT_MM } f
  * prints crisply and can be measured with a ruler. The scale is never quietly adjusted to make
  * a drawing fit: it steps to the next standard ratio, the title block says which one, and a
  * scale bar gives the reader a way to check even if the page was resized on the way to them.
+ *
+ * What surrounds the drawing — the border, the notes beside it, the title block — is drawn by
+ * `furniture.ts`. This file is the geometry; that one is the paperwork.
  */
-
-const PT_PER_MM = 72 / 25.4;
 
 /**
  * The parts of pdf-lib the helpers below need.
@@ -30,34 +32,95 @@ const PT_PER_MM = 72 / 25.4;
  */
 type PdfKit = Pick<typeof PdfLib, 'rgb' | 'degrees'>;
 
+/**
+ * One printed page: a sheet, and what is drawn on it.
+ *
+ * Splitting a drawing across pages — one per sheet, or one per layer so the prints can be
+ * laid over each other — is a decision about what to print, not about how to print it, so it
+ * is made before anything gets here. What this file guarantees is that every page is laid out
+ * from the same extent, which is what makes a set of layer prints register when stacked.
+ */
+export interface PrintedPage {
+    sheet: Sheet;
+    layers: readonly SceneLayer[];
+    /**
+     * Which page this is, written in the title block: the sheet's name, the layer's, or both.
+     * Left out for a drawing printed on one page, where naming it says nothing the reader did
+     * not already know.
+     */
+    label?: string;
+    /**
+     * The layers this page is a drawing of, for the legend beside it — which is per page and
+     * not per drawing, because a page printed as one layer is a drawing of one layer.
+     */
+    legend?: readonly LegendEntry[];
+}
+
 export interface PdfOptions {
+    /** The drawing's extent. Every page is laid out from it, so the set registers. */
     bounds: Bounds;
-    scale: number;
-    sheet: { size: SheetSize; orientation: SheetOrientation };
     title: string;
     /** Shown in the title block beside the title. */
     subtitle?: string;
+    /** What the title block says beyond the title. Empty fields are simply not printed. */
+    titleBlock?: TitleBlock;
+    /** What the drawing says in words, one note to a line. */
+    notes?: string;
 }
 
 export async function sceneToPdf(
-    layers: readonly SceneLayer[],
+    pages: readonly PrintedPage[],
     options: PdfOptions,
 ): Promise<Blob> {
-    const { PDFDocument, StandardFonts, degrees, rgb } = await import('pdf-lib');
-    const kit: PdfKit = { rgb, degrees };
-
-    const layout = layoutSheet(
-        options.bounds,
-        options.sheet.size,
-        options.sheet.orientation,
-        options.scale,
-    );
+    const { PDFDocument, StandardFonts, ...operators } = await import('pdf-lib');
+    const kit: PdfKit = { rgb: operators.rgb, degrees: operators.degrees };
 
     const document = await PDFDocument.create();
     document.setTitle(options.title);
     document.setProducer('Hashira');
 
-    const font = await document.embedFont(StandardFonts.Helvetica);
+    // Two weights, because a title block without one is a list rather than a hierarchy. The
+    // drawing itself is set in the regular face at whatever size its own text elements ask for.
+    const fonts: StampFonts = {
+        regular: await document.embedFont(StandardFonts.Helvetica),
+        bold: await document.embedFont(StandardFonts.HelveticaBold),
+    };
+
+    const stamp: StampKit = {
+        rgb: operators.rgb,
+        setCharacterSpacing: operators.setCharacterSpacing,
+    };
+
+    for (const page of pages) {
+        drawPage(kit, stamp, operators, document, fonts, page, options);
+    }
+
+    const bytes = await document.save();
+
+    return new Blob([bytes as BlobPart], { type: 'application/pdf' });
+}
+
+/** The operators used to clip a page, which the helpers below do not need. */
+type Clipping = Pick<
+    typeof PdfLib,
+    'clip' | 'endPath' | 'popGraphicsState' | 'pushGraphicsState' | 'rectangle'
+>;
+
+function drawPage(
+    kit: PdfKit,
+    stamp: StampKit,
+    clipping: Clipping,
+    document: PdfLib.PDFDocument,
+    fonts: StampFonts,
+    printed: PrintedPage,
+    options: PdfOptions,
+): void {
+    const { clip, endPath, popGraphicsState, pushGraphicsState, rectangle } = clipping;
+
+    // What goes beside the drawing decides how much page the drawing gets, so it is settled
+    // before the page is laid out rather than drawn into whatever room is left over.
+    const aside = sheetAside(options.notes ?? '', printed.legend ?? []);
+    const layout = layoutSheet(options.bounds, printed.sheet, aside !== null);
     const page = document.addPage([layout.page.width * PT_PER_MM, layout.page.height * PT_PER_MM]);
 
     /*
@@ -79,17 +142,42 @@ export async function sceneToPdf(
 
     const pageHeightPt = layout.page.height * PT_PER_MM;
 
-    for (const layer of layers) {
+    /*
+     * The drawing is clipped to its frame, always.
+     *
+     * A sheet looking at one part of a plan is a window, and what a window does not show has
+     * to stop at the glass: without this, a wall running off the side of the page carries on
+     * across the margin and straight through the title block. A sheet framing the whole
+     * drawing has nothing outside the frame to cut, so the clip costs it nothing.
+     */
+    page.pushOperators(
+        pushGraphicsState(),
+        rectangle(
+            layout.frame.x * PT_PER_MM,
+            (layout.page.height - layout.frame.y - layout.frame.height) * PT_PER_MM,
+            layout.frame.width * PT_PER_MM,
+            layout.frame.height * PT_PER_MM,
+        ),
+        clip(),
+        endPath(),
+    );
+
+    for (const layer of printed.layers) {
         for (const primitive of layer.primitives) {
-            drawPrimitive(kit, page, font, primitive, transform, pageHeightPt);
+            drawPrimitive(kit, page, fonts.regular, primitive, transform, pageHeightPt);
         }
     }
 
-    drawTitleBlock(kit, page, font, layout, options);
+    page.pushOperators(popGraphicsState());
 
-    const bytes = await document.save();
-
-    return new Blob([bytes as BlobPart], { type: 'application/pdf' });
+    drawSheetFurniture(stamp, page, fonts, layout, {
+        title: options.title,
+        subtitle: options.subtitle ?? '',
+        titleBlock: options.titleBlock,
+        sheet: printed.sheet,
+        label: printed.label,
+        aside,
+    });
 }
 
 /**
@@ -212,115 +300,6 @@ function drawPrimitive(
 /** A pen is a width on the sheet; a world width is a real dimension and shrinks with the scale. */
 function strokeWidthInPoints(stroke: Stroke): number {
     return stroke.width * PT_PER_MM;
-}
-
-function drawTitleBlock(
-    kit: PdfKit,
-    page: PDFPage,
-    font: PDFFont,
-    layout: ReturnType<typeof layoutSheet>,
-    options: PdfOptions,
-): void {
-    const ink = kit.rgb(0.09, 0.1, 0.11);
-    const muted = kit.rgb(0.37, 0.39, 0.42);
-
-    const top = layout.page.height - SHEET_MARGIN_MM - TITLE_BLOCK_HEIGHT_MM;
-    const left = SHEET_MARGIN_MM;
-    const right = layout.page.width - SHEET_MARGIN_MM;
-
-    const mm = (value: number) => value * PT_PER_MM;
-    const fromTop = (value: number) => (layout.page.height - value) * PT_PER_MM;
-
-    // A rule above the block rather than a box around it: the drawing is the subject, and a
-    // full frame competes with it.
-    page.drawLine({
-        start: { x: mm(left), y: fromTop(top) },
-        end: { x: mm(right), y: fromTop(top) },
-        thickness: 0.4 * PT_PER_MM,
-        color: ink,
-    });
-
-    page.drawText(options.title, {
-        x: mm(left),
-        y: fromTop(top + 8),
-        size: 10,
-        font,
-        color: ink,
-    });
-
-    if (options.subtitle !== undefined && options.subtitle !== '') {
-        page.drawText(options.subtitle, {
-            x: mm(left),
-            y: fromTop(top + 14),
-            size: 7,
-            font,
-            color: muted,
-        });
-    }
-
-    const facts = [
-        `1:${layout.scale}`,
-        `${options.sheet.size} ${options.sheet.orientation}`,
-        new Date().toISOString().slice(0, 10),
-    ].join('     ');
-
-    page.drawText(facts, {
-        x: mm(right) - font.widthOfTextAtSize(facts, 8),
-        y: fromTop(top + 8),
-        size: 8,
-        font,
-        color: muted,
-    });
-
-    drawScaleBar(kit, page, font, layout, muted, ink);
-}
-
-/**
- * A divided bar the length of a round number of metres. A stated ratio is only as good as the
- * page it was printed on; a bar survives being photocopied at 94%.
- */
-function drawScaleBar(
-    kit: PdfKit,
-    page: PDFPage,
-    font: PDFFont,
-    layout: ReturnType<typeof layoutSheet>,
-    muted: RGB,
-    ink: RGB,
-): void {
-    const metres = scaleBarMetres(layout.scale, layout.frame.width / 3);
-    const lengthMm = (metres * 1000) / layout.scale;
-
-    const left = SHEET_MARGIN_MM;
-    const baseline = layout.page.height - SHEET_MARGIN_MM - 4;
-    const height = 1.6;
-    const divisions = 4;
-
-    const mm = (value: number) => value * PT_PER_MM;
-    const fromTop = (value: number) => (layout.page.height - value) * PT_PER_MM;
-
-    for (let i = 0; i < divisions; i++) {
-        const from = left + (lengthMm * i) / divisions;
-
-        page.drawRectangle({
-            x: mm(from),
-            y: fromTop(baseline),
-            width: mm(lengthMm / divisions),
-            height: mm(height),
-            color: i % 2 === 0 ? ink : kit.rgb(1, 1, 1),
-            borderColor: ink,
-            borderWidth: 0.2 * PT_PER_MM,
-        });
-    }
-
-    const label = `0${' '.repeat(2)}—${' '.repeat(2)}${metres} m`;
-
-    page.drawText(label, {
-        x: mm(left + lengthMm + 3),
-        y: fromTop(baseline + 0.2),
-        size: 7,
-        font,
-        color: muted,
-    });
 }
 
 /** `#rrggbb` into pdf-lib's colour, falling back to black rather than throwing on a surprise. */

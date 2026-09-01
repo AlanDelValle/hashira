@@ -6,6 +6,8 @@ import { cn } from '@/lib/cn';
 const WIDTHS = {
     sm: 'w-[min(28rem,calc(100vw-2rem))]',
     lg: 'w-[min(44rem,calc(100vw-2rem))]',
+    // Wide enough to put a drawing next to a list of what changed in it.
+    xl: 'w-[min(72rem,calc(100vw-2rem))]',
 } as const;
 
 interface ModalProps {

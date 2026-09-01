@@ -52,6 +52,14 @@
     --color-danger-soft: #fbeeed;
     --color-positive: #2f6b45;
 
+    /*
+     * The third colour a comparison needs, alongside positive for what was drawn and danger
+     * for what was deleted: an edit is neither. It is only ever used there, and never on its
+     * own — a change is dashed or haloed as well as coloured, because a redline that means
+     * something only in colour means nothing to a good part of the people reading it.
+     */
+    --color-caution: #8a5a00;
+
     /* Drafting surface — the sheet inside the editor, always paper regardless of UI theme */
     --color-sheet: #ffffff;
     --color-grid-minor: #e9e7e2;

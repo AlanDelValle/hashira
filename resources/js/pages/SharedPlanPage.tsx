@@ -1,15 +1,13 @@
 import { Maximize2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { documentBounds } from '@/editor/model/elements';
 import { formatScale } from '@/editor/model/units';
 import { CanvasHost } from '@/editor/react/CanvasHost';
+import { useFrameOnce, zoomToDrawing } from '@/editor/react/framing';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { registerBlocks } from '@/projects/useBlocks';
 import { useEditorStore } from '@/editor/store/editorStore';
-import { useViewportStore } from '@/editor/store/viewportStore';
-import { centreOn, DEFAULT_ZOOM } from '@/editor/viewport/viewport';
 import { api, type Envelope } from '@/lib/api';
 import type { SharedDocumentPayload } from '@/types/api';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
@@ -34,7 +32,6 @@ export function SharedPlanPage() {
     const drawingId = useDocumentStore((state) => state.document.id);
     const elementCount = useDocumentStore((state) => state.document.elements.length);
     const scale = useDocumentStore((state) => state.document.settings.scale);
-    const size = useViewportStore((state) => state.size);
 
     useEffect(() => {
         let cancelled = false;
@@ -66,43 +63,9 @@ export function SharedPlanPage() {
         };
     }, [token, load]);
 
-    const framed = useRef<string | null>(null);
-
-    useEffect(() => {
-        if (name === null || size.width === 0 || size.height === 0) {
-            return;
-        }
-
-        if (framed.current === drawingId) {
-            return;
-        }
-
-        const viewport = useViewportStore.getState();
-        const bounds = documentBounds(useDocumentStore.getState().document);
-
-        if (bounds === null) {
-            viewport.setViewport(
-                centreOn({ x: 0, y: 0, zoom: DEFAULT_ZOOM }, { x: 0, y: 0 }, size),
-            );
-            framed.current = drawingId;
-
-            return;
-        }
-
-        // Recorded only when the framing actually happened, so a canvas that was still
-        // mid-layout gets another go rather than being written off as done.
-        if (viewport.fit(bounds)) {
-            framed.current = drawingId;
-        }
-    }, [name, drawingId, size]);
-
-    function zoomToFit() {
-        const bounds = documentBounds(useDocumentStore.getState().document);
-
-        if (bounds !== null) {
-            useViewportStore.getState().fit(bounds);
-        }
-    }
+    // Not until the drawing has arrived: framing an empty store would fix the viewport on
+    // nothing and count that as done.
+    useFrameOnce(drawingId, name !== null);
 
     if (loading) {
         return <FullPageSpinner label="Opening shared drawing" />;
@@ -144,7 +107,7 @@ export function SharedPlanPage() {
                     type="button"
                     title="Zoom to fit  ·  Shift 1"
                     aria-label="Zoom to fit"
-                    onClick={zoomToFit}
+                    onClick={zoomToDrawing}
                     className="text-ink-muted hover:bg-sunken hover:text-ink flex size-7 items-center justify-center rounded-md transition-colors"
                 >
                     <Maximize2 className="size-3.5" aria-hidden />

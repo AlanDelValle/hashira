@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 use App\Models\User;
 
+it('hands back an XSRF token to a tab that lost its own', function (): void {
+    // The route exists so that refreshing a cookie does not depend on the SPA catch-all
+    // answering a path meant for a package this application does not install.
+    $this->get('/api/csrf-cookie')
+        ->assertNoContent()
+        ->assertCookie('XSRF-TOKEN');
+});
+
 it('registers a user and signs them in', function (): void {
     $this->postJson('/api/register', [
         'name' => 'Ada',

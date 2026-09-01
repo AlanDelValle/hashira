@@ -16,8 +16,20 @@ import type { Point } from '@/editor/geometry/vec';
  * pair of them, and `angle`, `radius` and `leader` joined it.
  *
  * 4 added the `underlay`: a page of somebody else's drawing to trace over.
+ *
+ * 5 gave a drawing more than one sheet of paper. `settings.sheet` — one page size, framing
+ * whatever there was — became `settings.sheets`, a list of pages each with its own size,
+ * scale and view of the drawing.
+ *
+ * 6 is the drawing as something issued rather than only drawn: `settings.titleBlock` holds
+ * what a title block says beyond the title, and the `cloud` element is the mark that says
+ * which part of the plan changed since the last print.
+ *
+ * 7 is the sheet as a document rather than a picture: `settings.notes` is what the print says
+ * in words, printed in a strip beside the drawing. A reader that predates it drops the notes
+ * and saves the drawing back without them — which is the whole reason this is a number.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 7;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -41,14 +53,65 @@ export interface SnapSettings {
     axis: boolean;
 }
 
+/**
+ * A sheet of paper the drawing is printed on.
+ *
+ * A drawing is drawn at full size and printed at a ratio, and a sheet is where that ratio is
+ * finally decided: a page size, the scale plotted on it, and which part of the drawing it
+ * shows. Paper is not drawing — a sheet holds no geometry and nothing is ever drawn *into*
+ * one, which is why it lives in the settings rather than among the elements.
+ *
+ * `centre` is the world point the middle of the page looks at, and the page then shows
+ * exactly what fits around it: the frame is a physical size, so the scale decides the extent
+ * rather than the other way round. `null` means the sheet frames the whole drawing and steps
+ * its scale back until it fits — which is what every drawing did before it had sheets, and
+ * what a new one still does.
+ */
+export interface Sheet {
+    id: string;
+    name: string;
+    size: SheetSize;
+    orientation: SheetOrientation;
+    /** The denominator of the plotted scale: 50 means 1:50. */
+    scale: number;
+    centre: Point | null;
+}
+
+/**
+ * What a title block says, beyond the drawing's own name.
+ *
+ * Held on the document rather than on each sheet, because these are facts about the job and
+ * not about the page: every sheet of a set is drawn by the same person for the same client.
+ * What varies per page — which sheet this is — the sheet already knows its own name for.
+ *
+ * `date` is written as it is issued rather than derived, because a drawing carries the day it
+ * was issued and not the day it was printed. Left empty, the print falls back to today, which
+ * is what it did before there was anywhere to say otherwise.
+ */
+export interface TitleBlock {
+    project: string;
+    client: string;
+    drawnBy: string;
+    revision: string;
+    date: string;
+}
+
 export interface DocumentSettings {
     unit: DisplayUnit;
     /** The denominator of the drawing scale: 50 means 1:50. */
     scale: number;
     grid: GridSettings;
     snapping: SnapSettings;
-    sheet: { size: SheetSize; orientation: SheetOrientation };
+    /** At least one, in the order they are printed. */
+    sheets: Sheet[];
     title: string;
+    titleBlock: TitleBlock;
+    /**
+     * What the sheet says in words: one note to a line, printed down the strip beside the
+     * drawing. A property of the drawing rather than of a page, like the title block, so a set
+     * of sheets cannot carry two different versions of the same instruction.
+     */
+    notes: string;
 }
 
 export interface Layer {
@@ -193,6 +256,19 @@ export interface LeaderElement extends BaseElement {
     geometry: { points: Point[]; content: string; fontSize: number };
 }
 
+/**
+ * A revision cloud: the mark that says which part of the drawing changed.
+ *
+ * A closed run of points, drawn as a chain of bumps along it rather than as the run itself —
+ * so it reads as a note about the drawing rather than as something in it. `radius` is the size
+ * of one bump in millimetres at 1:1, like text: it scales with the drawing, so a cloud is the
+ * same size on the sheet however the plan is plotted.
+ */
+export interface CloudElement extends BaseElement {
+    type: 'cloud';
+    geometry: { points: Point[]; radius: number };
+}
+
 export interface TextElement extends BaseElement {
     type: 'text';
     /** `fontSize` is millimetres at 1:1, so text scales with the drawing, not the screen. */
@@ -237,6 +313,7 @@ export type Element =
     | AngleElement
     | RadiusElement
     | LeaderElement
+    | CloudElement
     | UnderlayElement;
 
 export type ElementType = Element['type'];

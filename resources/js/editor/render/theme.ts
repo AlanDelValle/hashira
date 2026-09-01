@@ -15,6 +15,15 @@ export interface CanvasTheme {
     line: string;
     accent: string;
     accentSoft: string;
+
+    /**
+     * Read for the version comparison, which is the only thing on the canvas that paints in
+     * anything but ink, layer colour and accent. Kept as the stylesheet names them: what they
+     * mean is the redliner's business, not the theme's.
+     */
+    positive: string;
+    danger: string;
+    caution: string;
 }
 
 const FALLBACK: CanvasTheme = {
@@ -27,6 +36,9 @@ const FALLBACK: CanvasTheme = {
     line: '#e5e3de',
     accent: '#2c58c4',
     accentSoft: '#ecf1fc',
+    positive: '#2f6b45',
+    danger: '#a9302a',
+    caution: '#8a5a00',
 };
 
 const TOKENS: Record<keyof CanvasTheme, string> = {
@@ -39,6 +51,9 @@ const TOKENS: Record<keyof CanvasTheme, string> = {
     line: '--color-line',
     accent: '--color-accent',
     accentSoft: '--color-accent-soft',
+    positive: '--color-positive',
+    danger: '--color-danger',
+    caution: '--color-caution',
 };
 
 export function readTheme(root: Element): CanvasTheme {

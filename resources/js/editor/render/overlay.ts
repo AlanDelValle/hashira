@@ -90,6 +90,11 @@ function paintAccented(
             palette: wash ? context.palette : { ...context.palette, roomFill: TRANSPARENT },
             unit: context.unit,
             joins: context.joins,
+            // What is highlighted is rarely the whole of what it depends on. A door carries
+            // only a distance along its wall, so a door selected on its own has to be told
+            // where that wall is — otherwise it resolves nothing and the highlight for it
+            // quietly paints nothing at all.
+            lookup: context.lookup,
             overrideColor: context.theme.accent,
             // What is selected is drawn whatever its layer says, because the selection is a
             // fact about this moment rather than about the drawing.

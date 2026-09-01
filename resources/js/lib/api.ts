@@ -44,8 +44,14 @@ function readCookie(name: string): string | null {
 
 /**
  * Laravel sets the XSRF-TOKEN cookie on any response, including the one that served this
- * page — so it is normally already present. The Sanctum endpoint is the fallback for the
- * cases where it is not, such as a session that expired while the tab sat open.
+ * page — so it is normally already present. `/api/csrf-cookie` is the fallback for the cases
+ * where it is not, such as a session that expired while the tab sat open.
+ *
+ * That route is ours. It used to be Sanctum's, which this application does not install (see
+ * architecture.md §2.1): the request only ever succeeded because the SPA catch-all answered
+ * it with the whole HTML shell and the session middleware attached the cookie on the way
+ * past. Refreshing a cookie should not cost a page download, and it should not depend on a
+ * route pattern that has nothing to do with it.
  */
 async function csrfToken(): Promise<string | null> {
     const existing = readCookie(CSRF_COOKIE);
@@ -54,7 +60,7 @@ async function csrfToken(): Promise<string | null> {
         return existing;
     }
 
-    await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
+    await fetch('/api/csrf-cookie', { credentials: 'same-origin' });
 
     return readCookie(CSRF_COOKIE);
 }

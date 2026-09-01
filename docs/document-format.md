@@ -1,4 +1,4 @@
-# Document format — schema version 4
+# Document format — schema version 7
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 4,
+  "schemaVersion": 7,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -48,12 +48,52 @@ determined by `layer.order`, not by array position.
     "intersection": true,
     "axis": true,
   },
-  "sheet": { "size": "A3", "orientation": "landscape" },
+  "sheets": [/* below */],
   "title": "Ground floor — 1:50", // printed in the export title block
+  "titleBlock": {
+    "project": "Maltings, unit 4",
+    "client": "",
+    "drawnBy": "AD",
+    "revision": "C",
+    "date": "2026-03-14", // as issued; empty prints the day it was made
+  },
+  // One note to a line, printed down the strip beside the drawing. A strip is paid for in
+  // drawing area, so the first note narrows the frame and may step the scale back.
+  "notes": "All dimensions in millimetres.\nVerify on site.",
 }
 ```
 
 Grid presets offered in the UI: 50 mm, 100 mm, 250 mm, 500 mm, 1000 mm.
+
+### 2.1 Sheets
+
+A drawing is drawn at full size and printed at a ratio. A sheet is where that ratio is
+finally decided: a page size, the scale plotted on it, and which part of the drawing it
+shows. There is always at least one.
+
+```jsonc
+{
+  "id": "sheet_1",
+  "name": "Ground floor",
+  "size": "A3", // "A4" | "A3" | "A2" | "A1"
+  "orientation": "landscape",
+  "scale": 50, // the denominator: 1:50
+  "centre": { "x": 12000, "y": 8000 }, // or null
+}
+```
+
+`centre` is the world point the middle of the page looks at, and the page then shows exactly
+what fits around it — the frame is a physical size, so the scale decides the extent rather
+than the other way round. Anything outside the frame is clipped, which is what lets a plan be
+split across several pages.
+
+`centre: null` means the sheet frames the whole drawing instead, stepping its scale back to
+the next standard ratio until everything fits. That is what a drawing did before it had
+sheets, and what a new one still does.
+
+`settings.scale` remains the drawing's own scale: what the screen and the SVG are sized at,
+and what a new sheet inherits. A sheet holds no geometry — paper is not drawing, and nothing
+is ever drawn _into_ one.
 
 ---
 
@@ -131,6 +171,7 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 | `angle`     | `{ vertex, from, to, radius, fontSize }`    | the value is derived — §4.4   |
 | `radius`    | `{ hostId, angle, diameter, fontSize }`     | hosted on a circle — §4.4     |
 | `leader`    | `{ points, content, fontSize }`             | a note, and a line to it      |
+| `cloud`     | `{ points, radius }`                        | a revision mark — §4.9        |
 | `underlay`  | `{ underlayId, width, height, opacity }`    | a page to trace over — §4.8   |
 
 `Point` is `{ "x": number, "y": number }`.
@@ -206,6 +247,21 @@ It is the one thing in a drawing that is not _of_ the drawing, and two rules fol
 A reader that cannot resolve the id draws nothing at all rather than a placeholder, for the
 same reason: an outline where a page would be advertises a document that is not being given.
 
+### 4.9 Revision clouds
+
+A `cloud` is a closed run of `points` with a bump `radius`, drawn as a chain of outward half
+circles along it — never as the run itself.
+
+```jsonc
+{ "points": [/* three or more */], "radius": 200 }
+```
+
+Each side is divided into whole bumps as near the asked-for size as it will go, because a run
+of uneven ones reads as a mistake rather than as a cloud. `radius` is millimetres at 1:1, like
+text, so the mark stays the same size on the sheet however the plan is plotted. The run
+underneath is never drawn: a cloud is a note about the drawing, and a closed outline around
+part of a plan would read as something built.
+
 ### 4.5 Hosted openings
 
 Doors and windows are not free-floating rectangles. They store:
@@ -252,7 +308,7 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
 
 ```json
 {
-  "schemaVersion": 4,
+  "schemaVersion": 7,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {
@@ -266,7 +322,16 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
       "intersection": true,
       "axis": true
     },
-    "sheet": { "size": "A3", "orientation": "landscape" },
+    "sheets": [
+      {
+        "id": "sheet_1",
+        "name": "Sheet 1",
+        "size": "A3",
+        "orientation": "landscape",
+        "scale": 50,
+        "centre": null
+      }
+    ],
     "title": "Studio"
   },
   "layers": [
@@ -339,12 +404,15 @@ runtime contract and the compile-time contract cannot drift apart.
 
 ### 6.1 History
 
-| Version | Change                                                                                                                                                                                                                          |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1       | The original format.                                                                                                                                                                                                            |
-| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                                                            |
-| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one.                                    |
-| 4       | Added the `underlay`: a page to trace over. Nothing already written changes shape, so the step restamps the version — but a reader that predates the type would drop every underlay in a drawing and save it back without them. |
+| Version | Change                                                                                                                                                                                                                                                                                                                                            |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1       | The original format.                                                                                                                                                                                                                                                                                                                              |
+| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                                                                                                                                                                              |
+| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one.                                                                                                                                                      |
+| 4       | Added the `underlay`: a page to trace over. Nothing already written changes shape, so the step restamps the version — but a reader that predates the type would drop every underlay in a drawing and save it back without them.                                                                                                                   |
+| 5       | `settings.sheet` — one page size, framing whatever there was — became `settings.sheets`, a list of pages each with its own size, scale and view of the drawing. The one page becomes the first of the list, carrying the drawing's own scale, so a plan opens onto exactly the page it was already printed on.                                    |
+| 7       | Added `settings.notes` — what the sheet says in words, printed beside the drawing, one note to a line. Nothing already written changes shape, so the step restamps the version; a reader that predates it would drop the notes and save the drawing back without them.                                                                            |
+| 6       | Added `settings.titleBlock` — what a print says beyond the title — and the `cloud` element, the mark that says which part of a drawing changed. Nothing already written changes shape, so the step restamps the version; a reader that predates either would drop every cloud and every title-block field and save the drawing back without them. |
 
 ---
 

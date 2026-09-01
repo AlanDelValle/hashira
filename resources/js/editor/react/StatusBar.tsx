@@ -20,8 +20,10 @@ export function StatusBar() {
     const selectionCount = useEditorStore((state) => state.selection.length);
     const gridVisible = useEditorStore((state) => state.gridVisible);
     const snapToGrid = useEditorStore((state) => state.snapToGrid);
+    const sheetFrameVisible = useEditorStore((state) => state.sheetFrameVisible);
     const toggleGrid = useEditorStore((state) => state.toggleGrid);
     const toggleSnap = useEditorStore((state) => state.toggleSnap);
+    const toggleSheetFrame = useEditorStore((state) => state.toggleSheetFrame);
     const setShortcutsOpen = useEditorStore((state) => state.setShortcutsOpen);
 
     const cursorRef = useRef<HTMLSpanElement>(null);
@@ -41,6 +43,13 @@ export function StatusBar() {
         <footer className="border-line bg-surface text-ink-subtle flex items-center gap-4 border-t px-3 font-mono text-[11px]">
             <Toggle label="Grid" pressed={gridVisible} shortcut="G" onClick={toggleGrid} />
             <Toggle label="Snap" pressed={snapToGrid} shortcut="S" onClick={toggleSnap} />
+
+            {/*
+             * No key of its own. Grid and snap are toggled while drawing, dozens of times an
+             * hour; a page outline is turned on when somebody is thinking about printing, and
+             * a letter spent on it is a letter a tool cannot have.
+             */}
+            <Toggle label="Sheet" pressed={sheetFrameVisible} onClick={toggleSheetFrame} />
 
             <Divider />
 
@@ -94,7 +103,8 @@ function Toggle({
 }: {
     label: string;
     pressed: boolean;
-    shortcut: string;
+    /** Omitted for a toggle that has no keyboard shortcut, rather than promising a key. */
+    shortcut?: string;
     onClick: () => void;
 }) {
     return (
@@ -102,8 +112,8 @@ function Toggle({
             type="button"
             onClick={onClick}
             aria-pressed={pressed}
-            aria-keyshortcuts={shortcut}
-            title={`${label}  ·  ${shortcut}`}
+            {...(shortcut === undefined ? {} : { 'aria-keyshortcuts': shortcut })}
+            title={shortcut === undefined ? label : `${label}  ·  ${shortcut}`}
             className={cn(
                 'rounded-sm px-1 transition-colors',
                 pressed ? 'text-ink' : 'text-ink-subtle hover:text-ink-muted',

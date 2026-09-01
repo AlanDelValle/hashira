@@ -1,12 +1,24 @@
-import type { Element, HashiraDocument, Layer } from '@/editor/model/types';
+import type {
+    DocumentSettings,
+    Element,
+    HashiraDocument,
+    Layer,
+    Sheet,
+} from '@/editor/model/types';
+
+import type { CommandEnvelope } from './envelope';
 
 /**
  * The only way the document changes.
  *
  * A command is a pure function of the document and its own captured state: `execute` returns
  * the next document, `undo` returns the previous one. Nothing mutates in place, so undo is
- * exact by construction rather than by remembering to snapshot, and the same objects are what
- * a future collaboration or scripting layer would send over a wire.
+ * exact by construction rather than by remembering to snapshot.
+ *
+ * A command is also a *closure*, which is the one thing it cannot be when it has to leave this
+ * process — for another person's editor, or for a plugin running in a sandbox. `describe`
+ * is the way out: plain JSON that says what the edit is, with `parseCommand` in `envelope.ts`
+ * as the way back in. See that file for why there is only one way back in.
  */
 export interface Command {
     readonly label: string;
@@ -20,6 +32,9 @@ export interface Command {
 
     execute(document: HashiraDocument): HashiraDocument;
     undo(document: HashiraDocument): HashiraDocument;
+
+    /** This edit as plain JSON, for anything that has to send it somewhere. */
+    describe(): CommandEnvelope;
 }
 
 /** A command that swaps elements for edited copies: a move, a rotation, a property edit. */
@@ -51,6 +66,8 @@ export function addElements(added: readonly Element[], label = 'Add'): Command {
                 document,
                 document.elements.filter((element) => !ids.has(element.id)),
             ),
+
+        describe: () => ({ type: 'addElements', label, elements: [...added] }),
     };
 }
 
@@ -87,6 +104,16 @@ export function deleteElements(ids: readonly string[], label = 'Delete'): Comman
 
             return withElements(document, elements);
         },
+
+        /*
+         * Only the ids travel, never `removed`.
+         *
+         * What a delete has to say is which elements go; what it needs in order to *undo* is
+         * where they were, and that is a fact about the document it ran against. Somewhere
+         * else, running against its own copy, it captures its own — which is the only version
+         * that would put them back in the right order there.
+         */
+        describe: () => ({ type: 'deleteElements', label, ids: [...ids] }),
     };
 }
 
@@ -120,6 +147,14 @@ export function replaceElements(
 
         execute: (document) => swap(document, after),
         undo: (document) => swap(document, before),
+
+        describe: () => ({
+            type: 'replaceElements',
+            label,
+            coalesceKey,
+            before: [...before],
+            after: [...after],
+        }),
     };
 }
 
@@ -158,6 +193,92 @@ export function replaceLayers(
         coalesceKey: null,
         execute: (document) => ({ ...document, layers: [...after] }),
         undo: (document) => ({ ...document, layers: [...before] }),
+
+        describe: () => ({
+            type: 'replaceLayers',
+            label,
+            before: [...before],
+            after: [...after],
+        }),
+    };
+}
+
+/**
+ * Replace the sheet list.
+ *
+ * Adding a page, moving one over a different part of the plan, changing what it is plotted at
+ * — all of it is an edit to the drawing and undoable like any other. A sheet holds no
+ * geometry, but deleting one throws away a decision about how the drawing is presented, and
+ * that is exactly the kind of thing Ctrl+Z is for.
+ */
+export function replaceSheets(
+    before: readonly Sheet[],
+    after: readonly Sheet[],
+    label: string,
+): Command {
+    function withSheets(document: HashiraDocument, sheets: readonly Sheet[]): HashiraDocument {
+        return { ...document, settings: { ...document.settings, sheets: [...sheets] } };
+    }
+
+    return {
+        label,
+        coalesceKey: null,
+        execute: (document) => withSheets(document, after),
+        undo: (document) => withSheets(document, before),
+
+        describe: () => ({
+            type: 'replaceSheets',
+            label,
+            before: [...before],
+            after: [...after],
+        }),
+    };
+}
+
+/**
+ * Replace the settings.
+ *
+ * What a title block says is part of the drawing and belongs in its history like anything
+ * else: a revision letter typed into the wrong field is exactly what Ctrl+Z is for.
+ */
+export function replaceSettings(
+    before: DocumentSettings,
+    after: DocumentSettings,
+    label: string,
+): Command {
+    return {
+        label,
+        coalesceKey: null,
+        execute: (document) => ({ ...document, settings: after }),
+        undo: (document) => ({ ...document, settings: before }),
+
+        describe: () => ({ type: 'replaceSettings', label, before, after }),
+    };
+}
+
+/**
+ * Several edits as one, undone in one.
+ *
+ * Importing a drawing adds elements *and* the layers they land on; doing that as two commands
+ * would mean two presses of Ctrl+Z, and a press in between that leaves elements on layers
+ * that no longer exist. Undo runs the parts backwards, which is the only order that returns
+ * the document to where it started.
+ */
+export function combine(label: string, commands: readonly Command[]): Command {
+    return {
+        label,
+        coalesceKey: null,
+
+        execute: (document) => commands.reduce((current, step) => step.execute(current), document),
+
+        undo: (document) =>
+            [...commands].reverse().reduce((current, step) => step.undo(current), document),
+
+        describe: () => ({
+            type: 'combine',
+            label,
+            commands: commands.map((step) => step.describe()),
+        }),
     };
 }
 
@@ -178,5 +299,12 @@ export function replaceDocument(
         coalesceKey: null,
         execute: () => after,
         undo: () => before,
+
+        /*
+         * Two whole drawings, which is what restoring a version actually is. It is the one
+         * envelope big enough to be worth thinking twice about putting on a live channel: a
+         * restore is a thing to announce, not a thing to stream.
+         */
+        describe: () => ({ type: 'replaceDocument', label, before, after }),
     };
 }

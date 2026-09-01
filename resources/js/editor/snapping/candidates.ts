@@ -54,6 +54,7 @@ function segmentsOf(element: Element, lookup: ElementLookup): Segment[] {
         case 'angle':
         case 'radius':
         case 'leader':
+        case 'cloud':
             return [];
 
         // A page being traced is a picture, not geometry. Snapping to its edges would land

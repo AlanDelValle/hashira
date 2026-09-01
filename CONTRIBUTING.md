@@ -21,10 +21,21 @@ npm run lint           # ESLint
 npm run typecheck      # tsc --noEmit
 npm run test           # Vitest
 npm run build          # production build must succeed
+npm run e2e            # Playwright: one path through the whole application
 ```
 
 CI runs all of these. A pull request that fails any of them will not be reviewed until it
 passes, so it saves everyone time to run them first.
+
+`npm run e2e` starts its own `php artisan serve`, so nothing needs to be running first — but it
+serves what `npm run build` produced, so build before you run it. It needs Chromium once
+(`npx playwright install chromium`), and it registers an account and saves a drawing for real:
+it does that in `hashira_testing`, the database the PHP suite already owns, so it never leaves
+junk projects on the dashboard you are drawing in.
+
+The other side of sharing that database: **do not run it at the same time as `composer test`**.
+Pest truncates `hashira_testing` between tests, and it will happily do that underneath a
+browser halfway through drawing a wall. CI runs the two in separate jobs for the same reason.
 
 ## What makes a change easy to merge
 

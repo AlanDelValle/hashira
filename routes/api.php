@@ -23,6 +23,19 @@ use Illuminate\Support\Facades\Route;
  * sensitive parked in localStorage.
  */
 
+/*
+ * Somewhere for a tab to go and get its XSRF-TOKEN back.
+ *
+ * Every response from the `web` group carries that cookie, so this is normally never needed —
+ * the page that served the SPA already set it. The case it exists for is a tab left open until
+ * its session expired, which then has no token to send with its next write.
+ *
+ * It answers with nothing at all: the cookie is attached by the middleware, and the body would
+ * only be something to ignore. Sanctum has an endpoint for exactly this, and this application
+ * deliberately does not use Sanctum — see architecture.md §2.1 — so it has its own.
+ */
+Route::get('csrf-cookie', fn () => response()->noContent())->name('csrf-cookie');
+
 Route::post('register', [RegisteredUserController::class, 'store'])
     ->middleware('throttle:6,1')
     ->name('register');

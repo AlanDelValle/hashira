@@ -5,6 +5,7 @@ import { polygonArea } from '@/editor/geometry/polygon';
 import {
     angleFrame,
     dimensionFrame,
+    ELEMENT_TYPE_NAMES,
     elementLength,
     elementWorldPoints,
     makeLookup,
@@ -18,6 +19,7 @@ import {
     setAssetMirrored,
     setAssetSize,
     setCircleRadius,
+    setCloudRadius,
     setDoorFlipped,
     setDoorSwing,
     setLayer,
@@ -48,24 +50,6 @@ import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
 import { ChoiceRow, MeasureField, ReadonlyRow, ToggleRow } from './MeasureField';
-
-const TYPE_NAMES: Record<Element['type'], string> = {
-    wall: 'Wall',
-    line: 'Line',
-    rect: 'Rectangle',
-    circle: 'Circle',
-    polygon: 'Polygon',
-    room: 'Room',
-    door: 'Door',
-    window: 'Window',
-    asset: 'Block',
-    text: 'Text',
-    dimension: 'Dimension',
-    angle: 'Angle',
-    radius: 'Radius',
-    leader: 'Leader',
-    underlay: 'Underlay',
-};
 
 /**
  * The properties of what is selected, as values you can type into.
@@ -142,7 +126,7 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
 
     return (
         <div className="space-y-2 px-3">
-            <ReadonlyRow label="Type" value={TYPE_NAMES[element.type]} />
+            <ReadonlyRow label="Type" value={ELEMENT_TYPE_NAMES[element.type]} />
 
             {element.type !== 'door' && element.type !== 'window' && element.type !== 'radius' && (
                 <>
@@ -433,6 +417,19 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                         onCommit={(value) => set(setTextSize(element, value), 'Note size', 'size')}
                     />
                 </>
+            )}
+
+            {element.type === 'cloud' && (
+                <MeasureField
+                    label="Bump"
+                    value={element.geometry.radius}
+                    format={length}
+                    parse={toLength}
+                    suffix={unit}
+                    onCommit={(value) =>
+                        set(setCloudRadius(element, value), 'Cloud bump', 'radius')
+                    }
+                />
             )}
 
             {element.type === 'underlay' && (

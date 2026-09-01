@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { newId } from './id';
+import { DEFAULT_SHEET_ORIENTATION, DEFAULT_SHEET_SIZE } from './sheets';
 
 import {
     SCHEMA_VERSION,
@@ -8,6 +9,8 @@ import {
     type Element,
     type HashiraDocument,
     type Layer,
+    type Sheet,
+    type TitleBlock,
 } from './types';
 
 /**
@@ -50,7 +53,13 @@ const baseFields = {
     metadata: metadataSchema,
 };
 
-const elementSchema = z.discriminatedUnion('type', [
+/*
+ * Exported, along with `layerSchema`, `sheetSchema` and `mergeSettings` below, because a
+ * command arriving from somewhere else carries the same pieces a document does and must be
+ * held to the same rules. A second set of schemas for the same shapes is a second set to keep
+ * in step — see commands/envelope.ts.
+ */
+export const elementSchema = z.discriminatedUnion('type', [
     z.object({
         ...baseFields,
         type: z.literal('wall'),
@@ -156,6 +165,14 @@ const elementSchema = z.discriminatedUnion('type', [
     }),
     z.object({
         ...baseFields,
+        type: z.literal('cloud'),
+        geometry: z.object({
+            points: z.array(pointSchema).min(3),
+            radius: finiteNumber.positive(),
+        }),
+    }),
+    z.object({
+        ...baseFields,
         type: z.literal('underlay'),
         geometry: z.object({
             underlayId: z.string().min(1),
@@ -175,7 +192,7 @@ const elementSchema = z.discriminatedUnion('type', [
     }),
 ]);
 
-const layerSchema = z.object({
+export const layerSchema = z.object({
     id: z.string().min(1),
     name: z.string().min(1),
     color: z.string().min(1),
@@ -205,23 +222,67 @@ const settingsSchema = z
                 axis: z.boolean().optional(),
             })
             .optional(),
-        sheet: z
+        title: z.string().optional(),
+        notes: z.string().optional(),
+        titleBlock: z
             .object({
-                size: z.enum(['A4', 'A3', 'A2', 'A1']).optional(),
-                orientation: z.enum(['portrait', 'landscape']).optional(),
+                project: z.string().optional(),
+                client: z.string().optional(),
+                drawnBy: z.string().optional(),
+                revision: z.string().optional(),
+                date: z.string().optional(),
             })
             .optional(),
-        title: z.string().optional(),
     })
     .optional();
 
+/**
+ * A sheet is validated whole, unlike the rest of the settings.
+ *
+ * Every field decides where ink lands on a page, so there is no sensible half of one to keep
+ * — a sheet either says what it prints or it is not a sheet. It is parsed one at a time and
+ * away from the settings above, so that a single unreadable page cannot cost a drawing its
+ * grid, its units and everything else in the same object.
+ */
+export const sheetSchema = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    size: z.enum(['A4', 'A3', 'A2', 'A1']),
+    orientation: z.enum(['portrait', 'landscape']),
+    scale: finiteNumber.positive(),
+    centre: pointSchema.nullable(),
+});
+
+const DEFAULT_SCALE = 50;
+
+/** Mirrors DocumentSchema::defaultSheets() on the server. */
+export function defaultSheets(scale: number): Sheet[] {
+    return [
+        {
+            id: 'sheet_1',
+            name: 'Sheet 1',
+            size: DEFAULT_SHEET_SIZE,
+            orientation: DEFAULT_SHEET_ORIENTATION,
+            scale,
+            centre: null,
+        },
+    ];
+}
+
+/** Mirrors DocumentSchema::emptyTitleBlock() on the server. */
+export function emptyTitleBlock(): TitleBlock {
+    return { project: '', client: '', drawnBy: '', revision: '', date: '' };
+}
+
 export const DEFAULT_SETTINGS: DocumentSettings = {
     unit: 'm',
-    scale: 50,
+    scale: DEFAULT_SCALE,
     grid: { size: 100, subdivisions: 2, visible: true, snap: true },
     snapping: { enabled: true, endpoint: true, midpoint: true, intersection: true, axis: true },
-    sheet: { size: 'A3', orientation: 'landscape' },
+    sheets: defaultSheets(DEFAULT_SCALE),
     title: '',
+    titleBlock: emptyTitleBlock(),
+    notes: '',
 };
 
 /** Mirrors DocumentSchema::defaultLayers() on the server. */
@@ -280,7 +341,12 @@ export function emptyDocument(name = 'Untitled'): HashiraDocument {
         schemaVersion: SCHEMA_VERSION,
         id: newId(),
         name,
-        settings: { ...DEFAULT_SETTINGS, title: name },
+        settings: {
+            ...DEFAULT_SETTINGS,
+            sheets: defaultSheets(DEFAULT_SCALE),
+            titleBlock: emptyTitleBlock(),
+            title: name,
+        },
         layers: defaultLayers(),
         elements: [],
     };
@@ -299,18 +365,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
+export function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
     const parsed = settingsSchema.safeParse(raw);
     const value = parsed.success ? (parsed.data ?? {}) : {};
+    const scale = value.scale ?? DEFAULT_SETTINGS.scale;
 
     return {
         unit: value.unit ?? DEFAULT_SETTINGS.unit,
-        scale: value.scale ?? DEFAULT_SETTINGS.scale,
+        scale,
         grid: { ...DEFAULT_SETTINGS.grid, ...value.grid },
         snapping: { ...DEFAULT_SETTINGS.snapping, ...value.snapping },
-        sheet: { ...DEFAULT_SETTINGS.sheet, ...value.sheet },
+        sheets: resolveSheets(isRecord(raw) ? raw.sheets : undefined, scale),
         title: value.title ?? fallbackTitle,
+        titleBlock: { ...emptyTitleBlock(), ...value.titleBlock },
+        notes: value.notes ?? '',
     };
+}
+
+/**
+ * The sheets a drawing was saved with, dropping any that cannot be read.
+ *
+ * A drawing with no readable sheet is given one, the same way a drawing with no readable
+ * layer is given the standard set: there is nowhere to print it otherwise, and refusing to
+ * open a plan over a page size is not a trade anybody would take.
+ */
+function resolveSheets(raw: unknown, scale: number): Sheet[] {
+    const parsed = Array.isArray(raw)
+        ? raw.flatMap((sheet): Sheet[] => {
+              const result = sheetSchema.safeParse(sheet);
+
+              return result.success ? [result.data] : [];
+          })
+        : [];
+
+    return parsed.length > 0 ? parsed : defaultSheets(scale);
 }
 
 /**
@@ -328,6 +416,18 @@ function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
  * 3 → 4 added the `underlay`. Nothing already written changes shape, so the step restamps the
  * version — but a reader that predates the type would drop every underlay in a drawing and
  * save it back without them, which is why it is a version at all.
+ *
+ * 4 → 5 gave a drawing more than one sheet. The single `settings.sheet` becomes the first of
+ * a list, carrying the drawing's own scale onto it — so a drawing opens onto exactly the page
+ * it was already being printed at, and gains the ability to have a second one.
+ *
+ * 5 → 6 added what a title block says beyond the title, and the revision cloud. Nothing
+ * already written changes shape, so the step restamps the version and lets the settings fill
+ * their own blanks — but a reader that predates either would drop every cloud in a drawing and
+ * every field of its title block, and then save it back without them.
+ *
+ * 6 → 7 added the drawing's notes, printed beside it. Again nothing already written changes
+ * shape, and again an older reader would drop them on the way back out.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -350,7 +450,48 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
         document = { ...document, schemaVersion: 4 };
     }
 
+    if (document.schemaVersion === 4) {
+        document = {
+            ...document,
+            schemaVersion: 5,
+            settings: sheetAsList(document.settings),
+        };
+    }
+
+    if (document.schemaVersion === 5) {
+        document = { ...document, schemaVersion: 6 };
+    }
+
+    if (document.schemaVersion === 6) {
+        document = { ...document, schemaVersion: 7 };
+    }
+
     return document;
+}
+
+/** A schema-4 drawing's one page size, as the first sheet of the list that replaced it. */
+function sheetAsList(settings: unknown): unknown {
+    if (!isRecord(settings)) {
+        return settings;
+    }
+
+    const { sheet, ...rest } = settings;
+    const page = isRecord(sheet) ? sheet : {};
+    const scale = typeof rest.scale === 'number' ? rest.scale : DEFAULT_SCALE;
+
+    return {
+        ...rest,
+        sheets: [
+            {
+                id: 'sheet_1',
+                name: 'Sheet 1',
+                size: page.size ?? DEFAULT_SHEET_SIZE,
+                orientation: page.orientation ?? DEFAULT_SHEET_ORIENTATION,
+                scale,
+                centre: null,
+            },
+        ],
+    };
 }
 
 /** A schema-2 dimension, as a run of the two points it was written with. */

@@ -187,11 +187,23 @@ async function exportPlanSvg(page) {
         })()`,
     );
 
-    // Radix opens its menu on pointerdown, so a synthetic click never reaches it.
+    // Radix opens on pointerdown, so a synthetic click never reaches it.
     await clickElement(page, 'button[aria-label="Export"]');
-    await waitFor(page, 'document.querySelector(\'[role="menu"]\') !== null');
+    await waitFor(page, 'document.querySelector(\'[role="dialog"]\') !== null');
     await pause(300);
-    await clickElement(page, '[role="menuitem"]', (item) => `${item}.innerText.startsWith("SVG")`);
+
+    // The export dialog: choose the format, then run it.
+    await clickElement(
+        page,
+        '[role="dialog"] button',
+        (item) => `${item}.innerText.startsWith("SVG")`,
+    );
+    await pause(200);
+    await clickElement(
+        page,
+        '[role="dialog"] button',
+        (item) => `${item}.innerText.trim() === "Export"`,
+    );
 
     const svg = await evaluate(page, 'window.__svg');
 
