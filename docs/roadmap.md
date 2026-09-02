@@ -306,17 +306,19 @@ Phase 10 and the two can be taken in either order.
       a thickness outside it — which is why 11.2 comes first. Nothing records that an area was
       asked for: four walls are what gets created, and the area shown afterwards is measured
       off them, so rounding to the grid step reports what was drawn instead of what was wanted
-- [ ] **11.4 The room as a named, hatched space.** Schema 9: a room gains a `name` and draws
-      its own stamp, instead of a label floating beside it. The sample plan's "Bedroom" is a
-      `text` sitting over a `room` that has never heard of it, so moving the room leaves the
-      name behind, and the area in the stamp is measured rather than typed like every other
-      value on a sheet. Hatching arrives with it — the material conventions a plan is read by,
-      after NBR 6492: concrete, blockwork, earth, sand, timber, tile, grass, water. Each is
-      clipped to the room by a scanline in `geometry/hatch.ts` and comes out as polylines, so
-      no output needs a line of code for it. It is cached per version of the document like the
-      joins and the index are, capped in segments per room, and dropped on screen below about
-      two pixels of spacing — a hatch nobody can resolve is a grey rectangle that costs a
-      frame. The legend printed beside the drawing gains the patterns the drawing really uses
+- [ ] **11.4 The room as a named, hatched space.** Schema 9: a room gains a `name` and can
+      draw its own stamp — the name, and the area measured off its own geometry like every
+      other value on a sheet. The text tool is untouched and stays exactly what it is, for
+      everything that is not the name of a room; what changes is that a room no longer needs
+      one. The sample plan's "Bedroom" is a `text` sitting over a `room` that has never heard
+      of it, so moving the room leaves the name behind. Hatching arrives with it — the
+      material conventions a plan is read by, taken from NBR 6492 rather than invented:
+      concrete, blockwork, earth, sand, timber, tile, grass, water. Each is clipped to the
+      room by a scanline in `geometry/hatch.ts` and comes out as polylines, so no output needs
+      a line of code for it. It is cached per version of the document like the joins and the
+      index are, capped in segments per room, and dropped on screen below about two pixels of
+      spacing — a hatch nobody can resolve is a grey rectangle that costs a frame. The legend
+      printed beside the drawing gains the patterns the drawing really uses
 - [ ] **11.5 The layers panel as a scene tree.** No schema: `metadata.label` has been in the
       format since version 1 and nothing has ever read it. A layer expands into what is on it,
       each element names itself — a text by its content, a room by its name and area, a wall
@@ -356,6 +358,11 @@ Decisions taken before the phase starts, so they are not re-argued halfway throu
   rightly so. A concrete hatch is notation and has to stay legible whatever the scale. Each
   pattern says which it is, which is the split the code already makes between a pen weight in
   sheet millimetres and a cap height in world ones.
+- **The clipper takes one ring, because a room is one ring.** A scanline over a simple polygon
+  is not a shortcut taken here: `room.geometry` is a single list of points, so a room with a
+  column standing in it is not something the format can express in the first place. Holes
+  would have to begin at the element and not at the clipper, which makes them a question for
+  whichever phase turns out to need a room with a hole in it.
 - **An element's name is derived until somebody types one.** Nothing stores "Wall 12".
   `model/naming.ts` answers what an element calls itself from what it is, and only an
   overriding name is written down. It is the rule that keeps a dimension from storing its
