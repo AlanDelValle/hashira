@@ -268,6 +268,108 @@ What it settled, which the rest of the phase should not re-argue:
 - Organisations, teams and granular permissions
 - Self-hosting improvements: containers, backups, upgrade path
 
+### Phase 11 — Drafting depth `[ ]`
+
+The phase about a drawing saying what it already knows. A wall has two faces and reports one
+length; a room is a shape with an area and no name; a layer holds forty elements and lists
+none of them. Very little here is new geometry — it is the editor reading out what its own
+model has already worked out, which is most of the distance between a drawing tool and a
+drafting one. It is about drawing rather than about the platform, so it does not depend on
+Phase 10 and the two can be taken in either order.
+
+- [ ] **11.1 Openings beyond the door and the window.** Schema 8: `door.geometry` gains how
+      its leaf reads — single, double, sliding, folding, overhead, gate, or none at all —
+      and how its head reads, square or arched. A gate, a garage door and an arch are a leaf, a
+      leaf and a head rather than three element types, because a type costs a branch in five
+      readers plus picking, snapping, bounds, the properties panel and the version comparison,
+      and all three are a hole in a wall. An arch is drawn in plan as the clear opening with
+      its springing dashed: a plan is a section at about 1.5 m and the arch is above it, so
+      the rise is stored to keep the information rather than to put a curve where a drafter
+      reads a wall. Widths become host-aware while this is open — `hostedFrame` clamps an
+      opening's offset to its wall and does not clamp its width, so a 3 m garage door in a
+      2 m wall hangs out of both ends
+- [ ] **11.2 Which face of a wall.** No schema, because `wallJoins` already has the answer:
+      every band is mitred to parameters along its centreline — `startLeft`, `endLeft`,
+      `startRight`, `endRight` — so each face's length is a subtraction that is currently
+      thrown away after painting. Which face is _inside_ is decided by what encloses it and
+      not by the order `a → b` was drawn, since `rooms.ts` already walks the face a point
+      stands in. Where nothing encloses a wall, neither face is called internal: they are
+      named by orientation instead, because a wall that bounds nothing has no inside, and
+      claiming one is the same mistake as a dimension storing its value. The four band corners
+      and the two face midpoints join the snap candidates, so a dimension can at last be taken
+      to a face — through a source the snap collector reads rather than through
+      `elementWorldPoints`, which also feeds bounds, box select and DXF
+- [ ] **11.3 A room drawn from its area.** No schema. A target area is typed the way a wall's
+      thickness is typed, and the rubber rectangle holds that area while the drag changes its
+      proportion: 12 m² is 3.00 × 4.00 or 2.40 × 5.00, read off the status bar from the same
+      preview the tool commits. The target is the internal face, so the centrelines fall half
+      a thickness outside it — which is why 11.2 comes first. Nothing records that an area was
+      asked for: four walls are what gets created, and the area shown afterwards is measured
+      off them, so rounding to the grid step reports what was drawn instead of what was wanted
+- [ ] **11.4 The room as a named, hatched space.** Schema 9: a room gains a `name` and draws
+      its own stamp, instead of a label floating beside it. The sample plan's "Bedroom" is a
+      `text` sitting over a `room` that has never heard of it, so moving the room leaves the
+      name behind, and the area in the stamp is measured rather than typed like every other
+      value on a sheet. Hatching arrives with it — the material conventions a plan is read by,
+      after NBR 6492: concrete, blockwork, earth, sand, timber, tile, grass, water. Each is
+      clipped to the room by a scanline in `geometry/hatch.ts` and comes out as polylines, so
+      no output needs a line of code for it. It is cached per version of the document like the
+      joins and the index are, capped in segments per room, and dropped on screen below about
+      two pixels of spacing — a hatch nobody can resolve is a grey rectangle that costs a
+      frame. The legend printed beside the drawing gains the patterns the drawing really uses
+- [ ] **11.5 The layers panel as a scene tree.** No schema: `metadata.label` has been in the
+      format since version 1 and nothing has ever read it. A layer expands into what is on it,
+      each element names itself — a text by its content, a room by its name and area, a wall
+      by its length, a block by the block — and a name somebody types goes to that field
+      through a command, so renaming undoes like everything else. Hovering a row writes to
+      `interaction` and asks for a repaint rather than rendering React, which is rule 5 and
+      also the only way several hundred rows stay usable. The panel finally does what §3 of
+      the document format says it does, too: create, rename, recolour, reorder and delete a
+      layer, offering to move its contents before it empties one
+- [ ] **11.6 A library somebody can furnish a house from.** No schema — a block is an id and a
+      size, and §4.6 already says what an unknown one draws. Thirty-nine blocks in eight
+      categories become about a hundred and twenty in fourteen: Office, Garage, Garden,
+      Laundry and Pool, plus the services symbols and the circulation pieces that turn up the
+      moment a whole house is drawn, at real sizes rather than plausible ones. `LibraryPanel`
+      gets its own comment corrected on the way past: it advertises sixty-odd blocks in seven
+      categories, and has never once been right
+
+The order is the dependency order rather than the order the six were asked in. 11.2 comes
+before 11.3 because "twelve square metres" is a question about an internal face, and 11.4
+before 11.5 because a room with a name is what a layer has to list. 11.6 depends on nothing
+and can be built beside any of them.
+
+Decisions taken before the phase starts, so they are not re-argued halfway through:
+
+- **Two schema numbers, not six.** Only the openings and the room change the shape of a
+  document; the other four sub-phases derive, draw or arrange, and write nothing new. That
+  matters because of rule 7: a reader that predates a version refuses the file outright, and
+  each number costs a migration and a literal-JSON fixture on both sides — `model/document.ts`
+  and `DocumentSchema.php`. Six numbers would have made this a phase about migrating.
+- **A hatch is geometry, not a fill.** The obvious route is a `CanvasPattern` on screen, a
+  `<pattern>` in the SVG, a tiling pattern in the PDF and nothing in the DXF: four
+  implementations of one drawing, which guarantees four slightly different drawings and is
+  the thing a single scene exists to prevent. R12 has no `HATCH` either. Clipped lines are
+  what all five readers can draw identically, and what a hatch explodes to on arrival anyway.
+- **A material scales in the world; a convention scales on the sheet.** A 400 mm tile is a
+  real size and has to measure 400 mm however the plan is plotted — small at 1:100, and
+  rightly so. A concrete hatch is notation and has to stay legible whatever the scale. Each
+  pattern says which it is, which is the split the code already makes between a pen weight in
+  sheet millimetres and a cap height in world ones.
+- **An element's name is derived until somebody types one.** Nothing stores "Wall 12".
+  `model/naming.ts` answers what an element calls itself from what it is, and only an
+  overriding name is written down. It is the rule that keeps a dimension from storing its
+  value, applied to a list instead of to a sheet.
+- **Hiding and locking stay on the layer.** A tree makes per-element visibility look natural,
+  and it costs two fields on every element in the document — so a schema number — to
+  duplicate a state the layer already has, and then to have to answer why something is
+  invisible while its layer is visible. Isolating a layer and moving elements between layers
+  cover what the request is usually really about.
+- **Nothing here generates a plan.** The area tool is the one thing in this phase that could
+  drift towards a generative feature, and the line is that it draws four walls and stops: no
+  layout, no suggestion, no second room. The scope discipline in AGENTS.md is not relaxed by a
+  tool that happens to take a number as input.
+
 ### Only after all of the above
 
 **Project and drawing templates.** Started Phase 8 and taken back out of it, because the
