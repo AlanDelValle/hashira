@@ -1,0 +1,402 @@
+{
+  "schemaVersion": 7,
+  "id": "demo",
+  "name": "Bedroom",
+  "settings": {
+    "unit": "m",
+    "scale": 50,
+    "grid": {
+      "size": 100,
+      "subdivisions": 2,
+      "visible": true,
+      "snap": true
+    },
+    "snapping": {
+      "enabled": true,
+      "endpoint": true,
+      "midpoint": true,
+      "intersection": true,
+      "axis": true
+    },
+    "sheets": [
+      {
+        "id": "sheet_1",
+        "name": "Sheet 1",
+        "size": "A3",
+        "orientation": "landscape",
+        "scale": 50,
+        "centre": null
+      }
+    ],
+    "title": "Bedroom",
+    "titleBlock": {
+      "project": "",
+      "client": "",
+      "drawnBy": "",
+      "revision": "",
+      "date": ""
+    },
+    "notes": ""
+  },
+  "layers": [
+    {
+      "id": "layer_architecture",
+      "name": "Architecture",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 0
+    },
+    {
+      "id": "layer_openings",
+      "name": "Openings",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 1
+    },
+    {
+      "id": "layer_furniture",
+      "name": "Furniture",
+      "color": "#5F636B",
+      "visible": true,
+      "locked": false,
+      "order": 2
+    },
+    {
+      "id": "layer_dimensions",
+      "name": "Dimensions",
+      "color": "#2C58C4",
+      "visible": true,
+      "locked": false,
+      "order": 3
+    },
+    {
+      "id": "layer_annotations",
+      "name": "Annotations",
+      "color": "#5F636B",
+      "visible": true,
+      "locked": false,
+      "order": 4
+    }
+  ],
+  "elements": [
+    {
+      "id": "el_0",
+      "type": "wall",
+      "layerId": "layer_architecture",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "a": {
+          "x": 0,
+          "y": 0
+        },
+        "b": {
+          "x": 4000,
+          "y": 0
+        },
+        "thickness": 150
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_1",
+      "type": "wall",
+      "layerId": "layer_architecture",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "a": {
+          "x": 4000,
+          "y": 0
+        },
+        "b": {
+          "x": 4000,
+          "y": 4000
+        },
+        "thickness": 150
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_2",
+      "type": "wall",
+      "layerId": "layer_architecture",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "a": {
+          "x": 0,
+          "y": 4000
+        },
+        "b": {
+          "x": 4000,
+          "y": 4000
+        },
+        "thickness": 150
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_3",
+      "type": "wall",
+      "layerId": "layer_architecture",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "a": {
+          "x": 0,
+          "y": 4000
+        },
+        "b": {
+          "x": 0,
+          "y": 0
+        },
+        "thickness": 150
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_4",
+      "type": "window",
+      "layerId": "layer_openings",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "hostId": "el_1",
+        "offset": 2000,
+        "width": 1200
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_5",
+      "type": "door",
+      "layerId": "layer_openings",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "hostId": "el_3",
+        "offset": 600,
+        "width": 900,
+        "swing": "left",
+        "flipped": false
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_6",
+      "type": "dimension",
+      "layerId": "layer_dimensions",
+      "transform": {
+        "x": 2000,
+        "y": 0,
+        "rotation": 0
+      },
+      "geometry": {
+        "points": [
+          {
+            "x": -2000,
+            "y": 0
+          },
+          {
+            "x": 2000,
+            "y": 0
+          }
+        ],
+        "offset": -250,
+        "fontSize": 200
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_7",
+      "type": "dimension",
+      "layerId": "layer_dimensions",
+      "transform": {
+        "x": 4000,
+        "y": 2000,
+        "rotation": 0
+      },
+      "geometry": {
+        "points": [
+          {
+            "x": 0,
+            "y": 2000
+          },
+          {
+            "x": 0,
+            "y": -2000
+          }
+        ],
+        "offset": 700,
+        "fontSize": 200
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_8",
+      "type": "dimension",
+      "layerId": "layer_dimensions",
+      "transform": {
+        "x": 4000,
+        "y": 2000,
+        "rotation": 0
+      },
+      "geometry": {
+        "points": [
+          {
+            "x": 0,
+            "y": 600
+          },
+          {
+            "x": 0,
+            "y": -600
+          }
+        ],
+        "offset": 400,
+        "fontSize": 200
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_9",
+      "type": "dimension",
+      "layerId": "layer_dimensions",
+      "transform": {
+        "x": 0,
+        "y": 3400,
+        "rotation": 0
+      },
+      "geometry": {
+        "points": [
+          {
+            "x": 0,
+            "y": 450
+          },
+          {
+            "x": 0,
+            "y": -450
+          }
+        ],
+        "offset": -250,
+        "fontSize": 200
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_10",
+      "type": "text",
+      "layerId": "layer_annotations",
+      "transform": {
+        "x": 2100,
+        "y": 2350,
+        "rotation": 0
+      },
+      "geometry": {
+        "content": "Bedroom",
+        "fontSize": 250,
+        "align": "center"
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_11",
+      "type": "asset",
+      "layerId": "layer_furniture",
+      "transform": {
+        "x": 2300,
+        "y": 1075,
+        "rotation": 0.0
+      },
+      "geometry": {
+        "assetId": "bed-double",
+        "width": 1400,
+        "height": 2000,
+        "mirrored": false
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_12",
+      "type": "asset",
+      "layerId": "layer_furniture",
+      "transform": {
+        "x": 375,
+        "y": 1325,
+        "rotation": 1.5707963267948966
+      },
+      "geometry": {
+        "assetId": "wardrobe",
+        "width": 2500,
+        "height": 600,
+        "mirrored": false
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "el_13",
+      "type": "asset",
+      "layerId": "layer_furniture",
+      "transform": {
+        "x": 2300,
+        "y": 3775,
+        "rotation": 0.0
+      },
+      "geometry": {
+        "assetId": "bookshelf",
+        "width": 900,
+        "height": 300,
+        "mirrored": false
+      },
+      "metadata": {
+        "createdAt": "2026-01-01T00:00:00+00:00"
+      }
+    }
+  ]
+}

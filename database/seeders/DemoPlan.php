@@ -152,6 +152,13 @@ final class DemoPlan
      * geometry every time it draws it, so the number on the sheet cannot drift away from the
      * thing it measures.
      *
+     * The two points go in a `points` run, which is the shape a dimension has had since schema
+     * 3. This wrote `a` and `b` for four schema versions after that, and because the seed
+     * stamps the current version nothing migrated it on the way in: every dimension in a
+     * freshly seeded plan was dropped on load as unreadable, and a fresh install opened its
+     * sample drawing missing a third of itself. It went unseen because the development
+     * database was seeded before the change and never seeded again.
+     *
      * @return array<string, mixed>
      */
     private static function dimension(
@@ -168,8 +175,10 @@ final class DemoPlan
             'dimension',
             DocumentSchema::LAYER_DIMENSIONS,
             [
-                'a' => ['x' => $ax - $centreX, 'y' => $ay - $centreY],
-                'b' => ['x' => $bx - $centreX, 'y' => $by - $centreY],
+                'points' => [
+                    ['x' => $ax - $centreX, 'y' => $ay - $centreY],
+                    ['x' => $bx - $centreX, 'y' => $by - $centreY],
+                ],
                 'offset' => $offset,
                 'fontSize' => 200,
             ],
