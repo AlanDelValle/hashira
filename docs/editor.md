@@ -558,6 +558,29 @@ None of this touches the document. A join is a fact about how walls are drawn, d
 where they are, so moving one wall re-mitres its neighbours without editing them — and undo
 has nothing extra to undo.
 
+### The two faces, and which one is inside
+
+A mitred wall has three lengths. The centreline is what was drawn and what gets typed into;
+each face is longer or shorter than it by whatever the corners at its ends did. A 4.00 m wall
+in two 150 mm corners measures 3.85 m along the inside and 4.15 m along the outside, and those
+are the two numbers somebody setting the job out actually measures. `wallFaces` reads them off
+the band, which has held all four of its corners since walls learned to mitre — nothing new is
+computed, it was simply thrown away once the poché was filled.
+
+Which face is _inside_ is not a question the wall can answer. The order `a → b` happened to be
+drawn in says nothing about buildings, so each side is probed a millimetre off its face and
+asked whether the walls close a space around that point — the same walk that finds a room.
+Inside and outside are used only where exactly one side says yes. A partition with a room on
+either side has two insides and no outside, and a garden wall has neither; both of those have
+their sides named by which way they face, because calling one of them "inside" would be
+stating something the drawing does not say.
+
+Both faces are offered to the snapper as well, along with the four corners of the band, so a
+dimension can be taken to a face — which is what a drafter dimensions to, and what the
+centreline is not. They go in through the candidate gatherer rather than through
+`elementWorldPoints`, because that also decides an element's extent, what a box selection
+catches and what a DXF is written from, and a wall is not six points wide to any of those.
+
 ### Finding a room
 
 The same walls answer a second question: what space is the pointer standing in. `model/rooms.ts`

@@ -393,3 +393,15 @@ export function roomAround(drawing: HashiraDocument, at: Point): Point[] | null 
 
     return simplified.length >= 3 ? simplified : null;
 }
+
+/**
+ * Whether a point stands in a space the walls close in.
+ *
+ * The same question `roomAround` asks and then answers with a boundary; this one only wants
+ * the yes or no. It is what tells the inside of a wall from its outside — a wall has no
+ * opinion about which of its faces is which, and the order it happened to be drawn in is not
+ * an answer. What encloses the space is.
+ */
+export function enclosedAt(drawing: HashiraDocument, at: Point): boolean {
+    return faceAround(wallGraph(drawing), at) !== null;
+}

@@ -4,6 +4,7 @@ import { midpoint, type Point } from '@/editor/geometry/vec';
 import { documentIndex } from '@/editor/model/documentIndex';
 import { elementWorldPoints, type ElementLookup } from '@/editor/model/elements';
 import type { Element, HashiraDocument } from '@/editor/model/types';
+import { documentWallJoins, wallFaces, type WallJoins } from '@/editor/model/walls';
 
 /**
  * What there is to snap to, near a point.
@@ -22,9 +23,31 @@ export interface Neighbourhood {
     midpoints: Point[];
 }
 
-function segmentsOf(element: Element, lookup: ElementLookup): Segment[] {
+function segmentsOf(element: Element, lookup: ElementLookup, joins: WallJoins): Segment[] {
     switch (element.type) {
-        case 'wall':
+        /*
+         * A wall offers its two faces as well as its centreline, because a drafter dimensions
+         * to a face: the centreline is where the wall was drawn from and the face is where the
+         * plaster stops. The faces come from the joins rather than from an offset of the
+         * centreline, so they are the mitred edges actually painted — a face that ran through
+         * the corner would put a dimension somewhere no wall is.
+         */
+        case 'wall': {
+            const [a, b] = elementWorldPoints(element, lookup);
+
+            if (a === undefined || b === undefined) return [];
+
+            const faces = wallFaces(element, joins.bands.get(element.id));
+
+            return faces === null
+                ? [{ a, b }]
+                : [
+                      { a, b },
+                      { a: faces.left.a, b: faces.left.b },
+                      { a: faces.right.a, b: faces.right.b },
+                  ];
+        }
+
         case 'line': {
             const [a, b] = elementWorldPoints(element, lookup);
 
@@ -132,6 +155,7 @@ export function gatherNear(
         drawing.layers.filter((layer) => !layer.visible).map((layer) => layer.id),
     );
 
+    const joins = documentWallJoins(drawing);
     const segments: Segment[] = [];
     const endpoints: Point[] = [];
 
@@ -146,9 +170,20 @@ export function gatherNear(
             continue;
         }
 
-        const elementSegments = segmentsOf(element, index.lookup);
-        segments.push(...elementSegments);
+        segments.push(...segmentsOf(element, index.lookup, joins));
         endpoints.push(...elementWorldPoints(element, index.lookup));
+
+        // The four corners of a wall's band, which is where its faces actually begin and end.
+        // They go in here rather than through `elementWorldPoints`, because that also decides
+        // an element's extent, what a box selection catches and what a DXF is written from —
+        // and a wall is not four points wide to any of those.
+        if (element.type === 'wall') {
+            const faces = wallFaces(element, joins.bands.get(element.id));
+
+            if (faces !== null) {
+                endpoints.push(faces.left.a, faces.left.b, faces.right.a, faces.right.b);
+            }
+        }
     }
 
     return {

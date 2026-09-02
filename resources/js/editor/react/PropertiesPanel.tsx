@@ -41,6 +41,7 @@ import {
     setWallThickness,
 } from '@/editor/model/edits';
 import { JAMB_LABEL, LEAF_OPTIONS, SIDE_LABEL } from '@/editor/model/openings';
+import { wallSides } from '@/editor/model/walls';
 import type { DisplayUnit, DoorLeaf, Element, OpeningHead } from '@/editor/model/types';
 import {
     formatAngle,
@@ -182,16 +183,19 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
             )}
 
             {element.type === 'wall' && (
-                <MeasureField
-                    label="Thickness"
-                    value={element.geometry.thickness}
-                    format={length}
-                    parse={toLength}
-                    suffix={unit}
-                    onCommit={(value) =>
-                        set(setWallThickness(element, value), 'Thickness', 'thickness')
-                    }
-                />
+                <>
+                    <MeasureField
+                        label="Thickness"
+                        value={element.geometry.thickness}
+                        format={length}
+                        parse={toLength}
+                        suffix={unit}
+                        onCommit={(value) =>
+                            set(setWallThickness(element, value), 'Thickness', 'thickness')
+                        }
+                    />
+                    <WallFaceLengths element={element} unit={unit} />
+                </>
             )}
 
             {element.type === 'rect' && (
@@ -568,6 +572,54 @@ function RadiusRows({
                 suffix="°"
                 onCommit={(value) => set(setRadiusAngle(element, value), 'Direction', 'angle')}
             />
+        </>
+    );
+}
+
+/**
+ * How long each face of a wall is, which is not how long the wall is.
+ *
+ * Where a wall meets another its band is mitred, so one face runs past the corner and the
+ * other stops short of it: the two numbers a person setting the job out measures on site are
+ * neither of them the centreline they typed in. Both are read off the joins, so they follow a
+ * neighbouring wall being moved without anything being stored.
+ *
+ * Shown rather than offered for editing, like an area. A face is a consequence of where the
+ * walls are; typing 3.05 into it would be asking the drawing to change a corner it cannot
+ * know the shape of.
+ */
+function WallFaceLengths({
+    element,
+    unit,
+}: {
+    element: Element & { type: 'wall' };
+    unit: DisplayUnit;
+}) {
+    // Read rather than subscribed to, like the room's area below: the panel above already
+    // re-renders on every document change, and a second subscription to the same thing would
+    // only be another way of hearing the same news.
+    const sides = wallSides(useDocumentStore.getState().document, element);
+
+    if (sides === null) {
+        return null;
+    }
+
+    // Inside first where the two are told apart, because that is the one a room is measured
+    // against. Otherwise in the order the geometry names them, which has no meaning to prefer.
+    const ordered =
+        sides.left.encloses && !sides.right.encloses
+            ? [sides.left, sides.right]
+            : [sides.right, sides.left];
+
+    return (
+        <>
+            {ordered.map((side) => (
+                <ReadonlyRow
+                    key={side.label}
+                    label={side.label}
+                    value={formatLength(side.face.length, unit)}
+                />
+            ))}
         </>
     );
 }

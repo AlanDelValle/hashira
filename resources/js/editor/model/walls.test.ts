@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { point } from '@/editor/geometry/vec';
 import { createWall } from '@/editor/model/factories';
-import { wallBandCorners, wallJoins } from '@/editor/model/walls';
-import type { WallElement } from '@/editor/model/types';
+import { defaultLayers, emptyDocument } from '@/editor/model/document';
+import { wallBandCorners, wallFaces, wallJoins, wallSides } from '@/editor/model/walls';
+import { SCHEMA_VERSION, type HashiraDocument, type WallElement } from '@/editor/model/types';
 
 const LAYER = 'layer_architecture';
 
@@ -145,3 +146,94 @@ describe('wall band corners', () => {
         );
     });
 });
+
+describe('the two sides of a wall', () => {
+    /*
+     * The same right-angled corner the mitre test uses. Its band is 200 mm thick, so the face
+     * on the outside of the corner runs 100 mm past the end of the centreline and the one on
+     * the inside stops 100 mm short — which is why a wall has three lengths and not one.
+     */
+    it('reads a face length off the mitre rather than off the centreline', () => {
+        const across = wall('across', [0, 0], [4000, 0]);
+        const down = wall('down', [4000, 0], [4000, 3000]);
+        const faces = wallFaces(across, wallJoins([across, down]).bands.get('across'));
+
+        expect(faces?.left.length).toBeCloseTo(3900);
+        expect(faces?.right.length).toBeCloseTo(4100);
+    });
+
+    it('leaves both faces the length of the wall where nothing joins it', () => {
+        const only = wall('only', [0, 0], [4000, 0]);
+        const faces = wallFaces(only, wallJoins([only]).bands.get('only'));
+
+        expect(faces?.left.length).toBeCloseTo(4000);
+        expect(faces?.right.length).toBeCloseTo(4000);
+    });
+
+    it('points each face out of its own side of the wall', () => {
+        const only = wall('only', [0, 0], [4000, 0]);
+        const faces = wallFaces(only, wallJoins([only]).bands.get('only'));
+
+        // Drawn west to east, and y grows downward: left is the southern side.
+        expect(faces?.left.outward.y).toBeCloseTo(1);
+        expect(faces?.right.outward.y).toBeCloseTo(-1);
+    });
+
+    /*
+     * A closed square of four walls. Which face of one of them is the inside is not a question
+     * that wall can answer — it is decided by the space the four of them close in.
+     */
+    it('calls the face a room is on the inside one', () => {
+        const room = square();
+        const sides = wallSides(drawingOf(room), room[0] as WallElement);
+
+        expect(sides?.left.encloses).toBe(true);
+        expect(sides?.left.label).toBe('Inside face');
+        expect(sides?.right.label).toBe('Outside face');
+    });
+
+    it('will not call either face inside when the wall encloses nothing', () => {
+        const alone = wall('alone', [0, 0], [4000, 0]);
+        const sides = wallSides(drawingOf([alone]), alone);
+
+        // Named by which way each one faces instead. A garden wall has no inside, and saying
+        // it does would be stating something the drawing does not.
+        expect(sides?.left.encloses).toBe(false);
+        expect(sides?.right.encloses).toBe(false);
+        expect(sides?.left.label).toBe('South face');
+        expect(sides?.right.label).toBe('North face');
+    });
+
+    it('will not call either face inside when there is a room on both', () => {
+        // A partition down the middle of the square: two rooms, and two insides.
+        const walls = [...square(), wall('split', [2000, 0], [2000, 4000])];
+        const sides = wallSides(drawingOf(walls), walls[4] as WallElement);
+
+        expect(sides?.left.encloses).toBe(true);
+        expect(sides?.right.encloses).toBe(true);
+        expect(sides?.left.label).toBe('West face');
+        expect(sides?.right.label).toBe('East face');
+    });
+});
+
+/** Four walls closing a 4 × 4 m space, drawn clockwise from the north-west corner. */
+function square(): WallElement[] {
+    return [
+        wall('north', [0, 0], [4000, 0]),
+        wall('east', [4000, 0], [4000, 4000]),
+        wall('south', [4000, 4000], [0, 4000]),
+        wall('west', [0, 4000], [0, 0]),
+    ];
+}
+
+/** The least document the enclosure walk needs: some walls on a visible layer. */
+function drawingOf(elements: WallElement[]): HashiraDocument {
+    return {
+        schemaVersion: SCHEMA_VERSION,
+        id: 'doc',
+        name: 'Test',
+        settings: emptyDocument('Test').settings,
+        layers: defaultLayers(),
+        elements,
+    };
+}

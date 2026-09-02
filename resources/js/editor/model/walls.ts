@@ -5,6 +5,7 @@ import {
     clamp,
     distance,
     dot,
+    midpoint,
     normalize,
     perpendicular,
     scale,
@@ -13,6 +14,7 @@ import {
 } from '@/editor/geometry/vec';
 
 import { wallSegment } from './elements';
+import { enclosedAt } from './rooms';
 import type { Element, HashiraDocument, WallElement } from './types';
 
 /**
@@ -474,4 +476,142 @@ export function wallBandCorners(
     const endRight = to === length ? (band?.endRight ?? length) : to;
 
     return [at(startLeft, 1), at(endLeft, 1), at(endRight, -1), at(startRight, -1)];
+}
+
+/** One side of a wall's band, once the mitres at its two ends have been taken into account. */
+export interface WallFace {
+    /** The band's edge on this side, running from the wall's `a` end towards its `b` end. */
+    a: Point;
+    b: Point;
+    length: number;
+    /** Unit vector pointing out of the wall on this side. */
+    outward: Point;
+}
+
+export interface WallFaces {
+    /** The side the centreline's perpendicular points to, which is the convention used here. */
+    left: WallFace;
+    right: WallFace;
+}
+
+/**
+ * How long each side of a wall actually is.
+ *
+ * A wall has three lengths, not one. Its centreline is what gets typed into and dragged, but
+ * where it meets another wall the band is mitred — one face runs past the corner and the other
+ * stops short of it — so a 4 m wall in a 200 mm corner has a 4.1 m face on the outside and a
+ * 3.9 m one on the inside, and those are the two a person setting the job out needs.
+ *
+ * Nothing new is worked out here. `WallBand` has held where all four corners of the band land
+ * since walls learned to mitre; until now the painter was the only thing that read it, and the
+ * lengths were thrown away as soon as the poché was filled.
+ */
+export function wallFaces(wall: WallElement, band: WallBand | undefined): WallFaces | null {
+    const corners = wallBandCorners(wall, band, 0, wallLength(wall));
+
+    const [startLeft, endLeft, endRight, startRight] = corners;
+
+    if (
+        startLeft === undefined ||
+        endLeft === undefined ||
+        endRight === undefined ||
+        startRight === undefined
+    ) {
+        return null;
+    }
+
+    const { a, b } = wallSegment(wall);
+    const outward = perpendicular(normalize(subtract(b, a)));
+
+    return {
+        left: { a: startLeft, b: endLeft, length: distance(startLeft, endLeft), outward },
+        right: {
+            a: startRight,
+            b: endRight,
+            length: distance(startRight, endRight),
+            outward: scale(outward, -1),
+        },
+    };
+}
+
+function wallLength(wall: WallElement): number {
+    const { a, b } = wallSegment(wall);
+
+    return distance(a, b);
+}
+
+/** How far past a face the test for an enclosed space is taken, in millimetres. */
+const PROBE = 1;
+
+/** Clockwise from east, because y grows downward and so do the sectors. */
+const COMPASS = [
+    'East',
+    'South-east',
+    'South',
+    'South-west',
+    'West',
+    'North-west',
+    'North',
+    'North-east',
+];
+
+export interface WallSide {
+    face: WallFace;
+    /** True when a space the walls close in lies on this side. */
+    encloses: boolean;
+    /** What to call this side of the wall. */
+    label: string;
+}
+
+/**
+ * Each side of a wall, named the way a drafter would name it.
+ *
+ * Which face is *inside* is a question about what encloses the space, not about the wall: the
+ * order `a → b` happened to be drawn in says nothing, and a wall on its own has no inside at
+ * all. So each side is probed a millimetre off its face and asked whether the walls close a
+ * space around that point — the same walk `roomAround` makes.
+ *
+ * Inside and outside are therefore only used where exactly one side answers yes. A partition
+ * with a room on either side has two insides and no outside; a garden wall has neither. Both
+ * of those get their sides named by which way they face, because naming one of them "inside"
+ * would be stating something the drawing does not say.
+ */
+export function wallSides(
+    drawing: HashiraDocument,
+    wall: WallElement,
+): { left: WallSide; right: WallSide } | null {
+    const faces = wallFaces(wall, documentWallJoins(drawing).bands.get(wall.id));
+
+    if (faces === null) {
+        return null;
+    }
+
+    const { a, b } = wallSegment(wall);
+    const centre = midpoint(a, b);
+    const reach = wall.geometry.thickness / 2 + PROBE;
+
+    const encloses = (face: WallFace): boolean =>
+        enclosedAt(drawing, add(centre, scale(face.outward, reach)));
+
+    const left = encloses(faces.left);
+    const right = encloses(faces.right);
+    const decided = left !== right;
+
+    const side = (face: WallFace, inside: boolean): WallSide => ({
+        face,
+        encloses: inside,
+        label: decided
+            ? inside
+                ? 'Inside face'
+                : 'Outside face'
+            : `${compass(face.outward)} face`,
+    });
+
+    return { left: side(faces.left, left), right: side(faces.right, right) };
+}
+
+function compass(direction: Point): string {
+    const sector = Math.round(Math.atan2(direction.y, direction.x) / (Math.PI / 4));
+
+    return COMPASS[((sector % 8) + 8) % 8] ?? 'East';
 }

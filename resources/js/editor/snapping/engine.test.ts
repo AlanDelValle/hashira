@@ -331,3 +331,53 @@ describe('the snap engine', () => {
         expect(result.point.x).toBeCloseTo(900);
     });
 });
+
+/*
+ * Dimensioning to a face is what a drafter does, and until the faces were offered here the
+ * only thing a wall put forward was the centreline it was drawn from — a line that is not on
+ * the wall at all, and is not what anybody measures on site.
+ */
+describe('snapping to a wall face', () => {
+    const wall = { ...createWall(point(0, 0), point(4000, 0), LAYER, 200), id: 'wall' };
+
+    it('catches the corner where a face begins', () => {
+        const result = snapPoint(point(12, 88), options([wall]));
+
+        expect(result.kind).toBe('endpoint');
+        expect(result.point).toEqual(point(0, 100));
+    });
+
+    it('catches the middle of a face', () => {
+        const result = snapPoint(point(2020, 88), options([wall]));
+
+        expect(result.kind).toBe('midpoint');
+        expect(result.point).toEqual(point(2000, 100));
+    });
+
+    /*
+     * Neither face ends where the centreline does once a corner is mitred: the one on the
+     * inside stops 100 mm short of it and the one on the outside runs 100 mm past. Both of
+     * those are points on the building, and x = 4000 — where the wall was drawn to — is a
+     * point on neither face.
+     */
+    it('offers the mitred face rather than an offset of the centreline', () => {
+        const down = { ...createWall(point(4000, 0), point(4000, 3000), LAYER, 200), id: 'down' };
+
+        const inside = snapPoint(point(3880, 88), options([wall, down]));
+
+        expect(inside.kind).toBe('endpoint');
+        expect(inside.point).toEqual(point(3900, 100));
+
+        const outside = snapPoint(point(4080, -88), options([wall, down]));
+
+        expect(outside.kind).toBe('endpoint');
+        expect(outside.point).toEqual(point(4100, -100));
+    });
+
+    it('still offers the centreline, which is what a wall is set out from', () => {
+        const result = snapPoint(point(18, 12), options([wall]));
+
+        expect(result.kind).toBe('endpoint');
+        expect(result.point).toEqual(point(0, 0));
+    });
+});

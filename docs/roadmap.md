@@ -268,7 +268,7 @@ What it settled, which the rest of the phase should not re-argue:
 - Organisations, teams and granular permissions
 - Self-hosting improvements: containers, backups, upgrade path
 
-### Phase 11 — Drafting depth `[ ]`
+### Phase 11 — Drafting depth `[~]`
 
 The phase about a drawing saying what it already knows. A wall has two faces and reports one
 length; a room is a shape with an area and no name; a layer holds forty elements and lists
@@ -277,7 +277,7 @@ model has already worked out, which is most of the distance between a drawing to
 drafting one. It is about drawing rather than about the platform, so it does not depend on
 Phase 10 and the two can be taken in either order.
 
-- [ ] **11.1 Openings beyond the door and the window.** Schema 8: `door.geometry` gains how
+- [x] **11.1 Openings beyond the door and the window.** Schema 8: `door.geometry` gains how
       its leaf reads — single, double, sliding, folding, overhead, gate, or none at all —
       and how its head reads, square or arched. A gate, a garage door and an arch are a leaf, a
       leaf and a head rather than three element types, because a type costs a branch in five
@@ -288,7 +288,7 @@ Phase 10 and the two can be taken in either order.
       reads a wall. Widths become host-aware while this is open — `hostedFrame` clamps an
       opening's offset to its wall and does not clamp its width, so a 3 m garage door in a
       2 m wall hangs out of both ends
-- [ ] **11.2 Which face of a wall.** No schema, because `wallJoins` already has the answer:
+- [x] **11.2 Which face of a wall.** No schema, because `wallJoins` already has the answer:
       every band is mitred to parameters along its centreline — `startLeft`, `endLeft`,
       `startRight`, `endRight` — so each face's length is a subtraction that is currently
       thrown away after painting. Which face is _inside_ is decided by what encloses it and
@@ -340,6 +340,13 @@ The order is the dependency order rather than the order the six were asked in. 1
 before 11.3 because "twelve square metres" is a question about an internal face, and 11.4
 before 11.5 because a room with a name is what a layer has to list. 11.6 depends on nothing
 and can be built beside any of them.
+
+11.1 and 11.2 are done. Walked in a browser against Herd and PostgreSQL: the seeded plan
+opening migrated from schema 7 with its door intact, all seven kinds of opening placed along
+one wall and then read back through the editor's own SVG exporter — which is where a folding
+door drawing an L rather than a fold gave itself away — and the seeded bedroom's north wall
+reporting a 3.85 m inside face against a 4.15 m outside one, then dimensioned face to face at
+3.85 m, which the centreline could not have been asked for.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 
