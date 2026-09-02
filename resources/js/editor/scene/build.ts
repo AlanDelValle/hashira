@@ -16,11 +16,12 @@ import {
     cloudBumps,
     dimensionFrame,
     dimensionStrokes,
-    doorSwing,
+    doorSwings,
     elementWorldPoints,
     hostedFrame,
     leaderFrame,
     makeLookup,
+    openingRuns,
     radiusFrame,
     type ElementLookup,
 } from '@/editor/model/elements';
@@ -604,6 +605,14 @@ function windowPrimitives(element: WindowElement, context: BuildContext): SceneP
     ];
 }
 
+/**
+ * A door, drawn as whatever it operates like.
+ *
+ * The jambs are the hole and belong to every kind. What goes in the hole comes from the two
+ * functions in `model/elements.ts` that the extent reads as well: the leaves that swing, and
+ * the straight runs everything else is drawn as. A gate swings like a door and is drawn at the
+ * fine pen, because a gate is a frame in a boundary rather than a slab in a partition.
+ */
 function doorPrimitives(element: DoorElement, context: BuildContext): ScenePrimitive[] {
     const frame = hostedFrame(element, context.lookup);
 
@@ -611,30 +620,42 @@ function doorPrimitives(element: DoorElement, context: BuildContext): ScenePrimi
         return [];
     }
 
-    const swing = doorSwing(element, frame);
-    const leafEnd = add(swing.hinge, scale(swing.openDirection, swing.radius));
+    const leafPen = pen(context.colour, element.geometry.leaf === 'gate' ? PEN.fine : PEN.normal);
+    const arcPen = pen(context.overrideColor ?? context.palette.subtle, PEN.fine);
 
-    const from = Math.atan2(swing.openDirection.y, swing.openDirection.x);
-    const to = Math.atan2(swing.towardsOtherJamb.y, swing.towardsOtherJamb.x);
+    const leaves = doorSwings(element, frame).flatMap((swing): ScenePrimitive[] => {
+        const from = Math.atan2(swing.openDirection.y, swing.openDirection.x);
+        const to = Math.atan2(swing.towardsOtherJamb.y, swing.towardsOtherJamb.x);
 
-    return [
-        ...jambs(element, context),
-        {
-            kind: 'polyline',
-            points: [swing.hinge, leafEnd],
-            closed: false,
-            stroke: pen(context.colour),
-        },
-        {
-            kind: 'arc',
-            centre: swing.hinge,
-            radius: swing.radius,
-            from,
-            to,
-            anticlockwise: (to - from + TAU) % TAU > Math.PI,
-            stroke: pen(context.overrideColor ?? context.palette.subtle, PEN.fine),
-        },
-    ];
+        return [
+            {
+                kind: 'polyline',
+                points: [swing.hinge, add(swing.hinge, scale(swing.openDirection, swing.radius))],
+                closed: false,
+                stroke: leafPen,
+            },
+            {
+                kind: 'arc',
+                centre: swing.hinge,
+                radius: swing.radius,
+                from,
+                to,
+                anticlockwise: (to - from + TAU) % TAU > Math.PI,
+                stroke: arcPen,
+            },
+        ];
+    });
+
+    const runs = openingRuns(element, frame).map((run): ScenePrimitive => ({
+        kind: 'polyline',
+        points: run.points,
+        closed: false,
+        stroke: run.dashed
+            ? { ...pen(context.colour, PEN.fine), dash: [2, 1.5] }
+            : pen(context.colour),
+    }));
+
+    return [...jambs(element, context), ...leaves, ...runs];
 }
 
 /**

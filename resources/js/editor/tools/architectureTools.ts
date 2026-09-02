@@ -2,6 +2,7 @@ import { addElements } from '@/editor/commands/command';
 import { distance, type Point } from '@/editor/geometry/vec';
 import { parameterAlongSegment } from '@/editor/geometry/segment';
 import { findAsset } from '@/editor/assets/library';
+import { leafLabel } from '@/editor/model/openings';
 import {
     createAsset,
     createDoor,
@@ -141,7 +142,7 @@ function wallUnder(
  */
 function createOpeningTool(
     id: 'door' | 'window',
-    label: string,
+    label: () => string,
     build: (hostId: string, offset: number, layerId: string) => Element,
 ): Tool {
     return {
@@ -176,7 +177,7 @@ function createOpeningTool(
             const opening = build(target.wall.id, target.offset, openingLayer(context));
 
             clearDraft();
-            runCommand(addElements([opening], label));
+            runCommand(addElements([opening], label()));
 
             const store = useEditorStore.getState();
             store.select([opening.id]);
@@ -197,15 +198,28 @@ function openingLayer(context: ToolContext): string {
         : context.activeLayerId;
 }
 
+/**
+ * One tool for every way a wall gets opened.
+ *
+ * Which kind is placed is a setting read at the moment of the click, the way a wall's
+ * thickness is — seven kinds would otherwise be seven buttons and seven keys for one act. The
+ * label the command carries is the kind's own, so the history says "Sliding" rather than
+ * "Door" seven times over.
+ */
 export function createDoorTool(): Tool {
-    return createOpeningTool('door', 'Door', (hostId, offset, layerId) =>
-        createDoor(hostId, offset, layerId),
+    return createOpeningTool(
+        'door',
+        () => leafLabel(useEditorStore.getState().doorLeaf),
+        (hostId, offset, layerId) =>
+            createDoor(hostId, offset, layerId, { leaf: useEditorStore.getState().doorLeaf }),
     );
 }
 
 export function createWindowTool(): Tool {
-    return createOpeningTool('window', 'Window', (hostId, offset, layerId) =>
-        createWindow(hostId, offset, layerId),
+    return createOpeningTool(
+        'window',
+        () => 'Window',
+        (hostId, offset, layerId) => createWindow(hostId, offset, layerId),
     );
 }
 

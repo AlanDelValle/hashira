@@ -9,7 +9,8 @@ import {
     type Point,
 } from '@/editor/geometry/vec';
 
-import type { Element } from './types';
+import { DEFAULT_LEAF_WIDTH } from './openings';
+import type { DoorLeaf, Element, OpeningHead } from './types';
 
 /**
  * Editing an element by value rather than by dragging it.
@@ -228,6 +229,37 @@ export function setDoorSwing(element: Element, swing: 'left' | 'right'): Element
 export function setDoorFlipped(element: Element, flipped: boolean): Element {
     return element.type === 'door'
         ? { ...element, geometry: { ...element.geometry, flipped } }
+        : element;
+}
+
+/**
+ * Change how an opening operates.
+ *
+ * The width comes with it, because the kinds are built at different sizes and a door that
+ * became a garage door while staying 900 mm wide is a garage door nobody can drive through.
+ * A width somebody has already typed is left alone: the size is only carried over while it is
+ * still the one the old kind arrived with.
+ */
+export function setDoorLeaf(element: Element, leaf: DoorLeaf): Element {
+    if (element.type !== 'door') {
+        return element;
+    }
+
+    const untouched = element.geometry.width === DEFAULT_LEAF_WIDTH[element.geometry.leaf];
+
+    return {
+        ...element,
+        geometry: {
+            ...element.geometry,
+            leaf,
+            width: untouched ? DEFAULT_LEAF_WIDTH[leaf] : element.geometry.width,
+        },
+    };
+}
+
+export function setOpeningHead(element: Element, head: OpeningHead): Element {
+    return element.type === 'door'
+        ? { ...element, geometry: { ...element.geometry, head } }
         : element;
 }
 

@@ -3,6 +3,7 @@ import { distance, midpoint, subtract, type Point } from '@/editor/geometry/vec'
 import type { AssetDefinition } from '@/editor/assets/library';
 
 import { newId } from './id';
+import { DEFAULT_LEAF_WIDTH } from './openings';
 import type {
     AngleElement,
     AssetElement,
@@ -12,7 +13,9 @@ import type {
     LeaderElement,
     RadiusElement,
     DoorElement,
+    DoorLeaf,
     LineElement,
+    OpeningHead,
     PolygonElement,
     RectElement,
     RoomElement,
@@ -118,7 +121,6 @@ export function createPolygon(
     };
 }
 
-export const DEFAULT_DOOR_WIDTH = 900;
 export const DEFAULT_WINDOW_WIDTH = 1200;
 
 export function createRoom(points: readonly Point[], layerId: string): RoomElement | null {
@@ -148,14 +150,24 @@ export function createDoor(
     hostId: string,
     offset: number,
     layerId: string,
-    width = DEFAULT_DOOR_WIDTH,
+    options: { leaf?: DoorLeaf; width?: number; head?: OpeningHead } = {},
 ): DoorElement {
+    const leaf = options.leaf ?? 'single';
+
     return {
         id: newId(),
         type: 'door',
         layerId,
         transform: { x: 0, y: 0, rotation: 0 },
-        geometry: { hostId, offset, width, swing: 'left', flipped: false },
+        geometry: {
+            hostId,
+            offset,
+            width: options.width ?? DEFAULT_LEAF_WIDTH[leaf],
+            swing: 'left',
+            flipped: false,
+            leaf,
+            head: options.head ?? 'square',
+        },
         metadata: metadata(),
     };
 }

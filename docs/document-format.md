@@ -1,4 +1,4 @@
-# Document format — schema version 7
+# Document format — schema version 8
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -156,23 +156,23 @@ world geometry. Renderer, snapping, hit-testing and exporters all go through it.
 
 ### 4.2 Types
 
-| `type`      | `geometry`                                  | Notes                         |
-| ----------- | ------------------------------------------- | ----------------------------- |
-| `wall`      | `{ a: Point, b: Point, thickness: number }` | thickness defaults to 150 mm  |
-| `line`      | `{ a: Point, b: Point }`                    |                               |
-| `rect`      | `{ width: number, height: number }`         | local origin at the centre    |
-| `circle`    | `{ radius: number }`                        | local origin at the centre    |
-| `polygon`   | `{ points: Point[], closed: boolean }`      |                               |
-| `room`      | `{ points: Point[] }`                       | area is derived, never stored |
-| `door`      | `{ hostId, offset, width, swing, flipped }` | hosted on a wall — §4.5       |
-| `window`    | `{ hostId, offset, width }`                 | hosted on a wall — §4.5       |
-| `text`      | `{ content, fontSize, align }`              | `fontSize` in mm at 1:1       |
-| `dimension` | `{ points, offset, fontSize }`              | the values are derived — §4.3 |
-| `angle`     | `{ vertex, from, to, radius, fontSize }`    | the value is derived — §4.4   |
-| `radius`    | `{ hostId, angle, diameter, fontSize }`     | hosted on a circle — §4.4     |
-| `leader`    | `{ points, content, fontSize }`             | a note, and a line to it      |
-| `cloud`     | `{ points, radius }`                        | a revision mark — §4.9        |
-| `underlay`  | `{ underlayId, width, height, opacity }`    | a page to trace over — §4.8   |
+| `type`      | `geometry`                                              | Notes                         |
+| ----------- | ------------------------------------------------------- | ----------------------------- |
+| `wall`      | `{ a: Point, b: Point, thickness: number }`             | thickness defaults to 150 mm  |
+| `line`      | `{ a: Point, b: Point }`                                |                               |
+| `rect`      | `{ width: number, height: number }`                     | local origin at the centre    |
+| `circle`    | `{ radius: number }`                                    | local origin at the centre    |
+| `polygon`   | `{ points: Point[], closed: boolean }`                  |                               |
+| `room`      | `{ points: Point[] }`                                   | area is derived, never stored |
+| `door`      | `{ hostId, offset, width, swing, flipped, leaf, head }` | hosted on a wall — §4.5       |
+| `window`    | `{ hostId, offset, width }`                             | hosted on a wall — §4.5       |
+| `text`      | `{ content, fontSize, align }`                          | `fontSize` in mm at 1:1       |
+| `dimension` | `{ points, offset, fontSize }`                          | the values are derived — §4.3 |
+| `angle`     | `{ vertex, from, to, radius, fontSize }`                | the value is derived — §4.4   |
+| `radius`    | `{ hostId, angle, diameter, fontSize }`                 | hosted on a circle — §4.4     |
+| `leader`    | `{ points, content, fontSize }`                         | a note, and a line to it      |
+| `cloud`     | `{ points, radius }`                                    | a revision mark — §4.9        |
+| `underlay`  | `{ underlayId, width, height, opacity }`                | a page to trace over — §4.8   |
 
 `Point` is `{ "x": number, "y": number }`.
 
@@ -268,13 +268,31 @@ Doors and windows are not free-floating rectangles. They store:
 
 - `hostId` — the `id` of a `wall` element,
 - `offset` — the distance in millimetres from the wall's `a` endpoint to the opening's centre,
-- `width` — the clear opening width.
+- `width` — the clear opening width, held to the length of the wall it is cut into.
 
 The opening's world position is derived from its host, so moving or rotating the wall moves
 the opening with it, and dragging an opening constrains it to slide along its wall. The wall
 painter subtracts every hosted opening from the wall's poché.
 
 An opening whose `hostId` no longer resolves is dropped on load, with a warning — see §6.
+
+A `door` says two more things, and between them they cover every way a wall gets opened —
+which is why a gate, a garage door and an archway are not element types of their own.
+
+`leaf` is how it **operates**: `single`, `double`, `sliding`, `folding`, `overhead`, `gate`,
+or `none` for a cased opening with nothing in it. These are ways of moving rather than things,
+so a sliding gate is `sliding`; `gate` is the one that swings, and is drawn at the fine pen
+because a gate is a frame in a boundary rather than a slab in a partition. `swing` and
+`flipped` keep their meaning where the kind has one — a double door uses both jambs and an
+overhead door neither, so the editor stops offering the choice rather than offering one that
+changes nothing.
+
+`head` is how it is closed at the top: `square` or `arch`. **An arch is not a curve in plan.**
+A plan is a section cut at about 1.5 m and the head is above it; the arch itself stands in the
+plane of the wall, so it projects onto the wall and there is nothing there to draw. What an
+arched opening gets is a dashed line across it, which is the convention for anything above the
+cut plane. The rise is deliberately not stored: nothing in a plan reads it, and this format
+does not carry numbers nothing checks. It arrives when elevations do.
 
 ### 4.6 Library blocks
 
@@ -308,7 +326,7 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
 
 ```json
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {
@@ -371,7 +389,9 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
         "offset": 1200,
         "width": 800,
         "swing": "left",
-        "flipped": false
+        "flipped": false,
+        "leaf": "single",
+        "head": "square"
       },
       "metadata": { "createdAt": "2026-08-29T12:00:05Z" }
     }

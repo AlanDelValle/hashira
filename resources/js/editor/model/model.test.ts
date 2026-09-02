@@ -6,10 +6,13 @@ import { point } from '@/editor/geometry/vec';
 import { defaultLayers, parseDocument } from './document';
 import {
     documentBounds,
+    doorSwings,
     drawnLayers,
     elementBounds,
     hitTestElement,
+    hostedFrame,
     makeLookup,
+    openingRuns,
     rotateElement,
     translateElement,
 } from './elements';
@@ -21,7 +24,13 @@ import {
     createUnderlay,
     createWall,
 } from './factories';
-import { SCHEMA_VERSION, type DoorElement, type Element, type HashiraDocument } from './types';
+import {
+    SCHEMA_VERSION,
+    type DoorElement,
+    type DoorLeaf,
+    type Element,
+    type HashiraDocument,
+} from './types';
 import { formatAngle, formatLength, formatScale, parseAngle, parseLength } from './units';
 
 const LAYER = 'layer_architecture';
@@ -251,7 +260,15 @@ describe('hosted openings', () => {
         type: 'door',
         layerId: 'layer_openings',
         transform: { x: 0, y: 0, rotation: 0 },
-        geometry: { hostId: wall.id, offset: 1000, width: 900, swing: 'left', flipped: false },
+        geometry: {
+            hostId: wall.id,
+            offset: 1000,
+            width: 900,
+            swing: 'left',
+            flipped: false,
+            leaf: 'single',
+            head: 'square',
+        },
     };
 
     const lookup = makeLookup([wall, door]);
@@ -280,7 +297,149 @@ describe('hosted openings', () => {
     it('ignores rotation, because it follows the wall', () => {
         expect(rotateElement(door, point(0, 0), toRadians(90), lookup)).toBe(door);
     });
+
+    it('is never wider than the wall it is cut into', () => {
+        // A 3 m garage door asked for in a 2 m wall. The offset has always been held to the
+        // wall; before schema 8 the width was not, and the jambs were drawn out in the open.
+        const short = createWall(point(0, 0), point(2000, 0), LAYER, 150);
+        const oversized = opening('overhead', { hostId: short.id, offset: 1000, width: 3000 });
+        const frame = hostedFrame(oversized, makeLookup([short, oversized]));
+
+        expect(frame?.halfWidth).toBe(1000);
+    });
 });
+
+/**
+ * What each kind of opening is drawn as.
+ *
+ * These read the two functions the painter and the extent share, rather than the pictures, so
+ * a symbol cannot come out of the scene builder with nothing framing it in an export.
+ */
+describe('how an opening operates', () => {
+    const wall = createWall(point(0, 0), point(4000, 0), LAYER, 150);
+
+    function frameFor(door: DoorElement) {
+        const resolved = hostedFrame(door, makeLookup([wall, door]));
+
+        if (resolved === null) {
+            throw new Error('the fixture wall should host the fixture door');
+        }
+
+        return resolved;
+    }
+
+    function door(leaf: DoorLeaf, head: 'square' | 'arch' = 'square'): DoorElement {
+        return opening(leaf, { hostId: wall.id, offset: 2000, width: 1000, head });
+    }
+
+    it('gives a single door one leaf as wide as the hole', () => {
+        const single = door('single');
+        const [leaf, ...rest] = doorSwings(single, frameFor(single));
+
+        expect(rest).toHaveLength(0);
+        expect(leaf?.radius).toBe(1000);
+    });
+
+    it('gives a double door two half leaves hinged at opposite jambs', () => {
+        const pair = door('double');
+        const leaves = doorSwings(pair, frameFor(pair));
+
+        expect(leaves).toHaveLength(2);
+        expect(leaves.every((leaf) => leaf.radius === 500)).toBe(true);
+        expect(leaves[0]?.hinge.x).toBeCloseTo(1500);
+        expect(leaves[1]?.hinge.x).toBeCloseTo(2500);
+    });
+
+    it('gives a gate a leaf, because a gate swings', () => {
+        const gate = door('gate');
+
+        expect(doorSwings(gate, frameFor(gate))).toHaveLength(1);
+    });
+
+    it.each<DoorLeaf>(['sliding', 'folding', 'overhead', 'none'])(
+        'gives a %s opening no swinging leaf at all',
+        (leaf) => {
+            const opened = door(leaf);
+
+            expect(doorSwings(opened, frameFor(opened))).toEqual([]);
+        },
+    );
+
+    it('parks a sliding panel off the wall, one opening wide', () => {
+        const sliding = door('sliding');
+        const [panel, ...rest] = openingRuns(sliding, frameFor(sliding));
+
+        expect(rest).toHaveLength(0);
+        expect(panel?.dashed).toBe(false);
+
+        const [from, to] = panel?.points ?? [];
+
+        // Off the face rather than in the hole, and as wide as the hole it came off.
+        expect(from?.y).toBeCloseTo(135);
+        expect(Math.abs((to?.x ?? 0) - (from?.x ?? 0))).toBeCloseTo(1000);
+    });
+
+    it('folds a folding door out of one jamb and back to the wall', () => {
+        const folding = door('folding');
+        const [zigzag] = openingRuns(folding, frameFor(folding));
+        const points = zigzag?.points ?? [];
+
+        expect(points).toHaveLength(3);
+
+        // Out of the hinge jamb, and back onto the wall line at the far end: the second panel
+        // runs in the track over the head. Both ends on the wall is what makes it a fold
+        // rather than an L, and half the opening is as far as a folded door reaches.
+        expect(points[0]).toEqual({ x: 1500, y: 0 });
+        expect(points[1]?.y).toBeGreaterThan(0);
+        expect(points[2]?.x).toBeCloseTo(2000);
+        expect(points[2]?.y).toBeCloseTo(0);
+    });
+
+    it('shows an overhead door closed, with its travel dashed', () => {
+        const overhead = door('overhead');
+        const runs = openingRuns(overhead, frameFor(overhead));
+
+        expect(runs).toHaveLength(3);
+        expect(runs.filter((run) => run.dashed)).toHaveLength(2);
+    });
+
+    it('draws an arch as a dashed line across the opening, never as a curve', () => {
+        const arched = door('none', 'arch');
+        const runs = openingRuns(arched, frameFor(arched));
+
+        expect(runs).toHaveLength(1);
+        expect(runs[0]?.dashed).toBe(true);
+        expect(runs[0]?.points.map((p) => p.x)).toEqual([1500, 2500]);
+    });
+
+    it('leaves a square-headed cased opening with nothing in it but its jambs', () => {
+        const cased = door('none');
+
+        expect(openingRuns(cased, frameFor(cased))).toEqual([]);
+        expect(doorSwings(cased, frameFor(cased))).toEqual([]);
+    });
+});
+
+function opening(
+    leaf: DoorLeaf,
+    geometry: { hostId: string; offset: number; width: number; head?: 'square' | 'arch' },
+): DoorElement {
+    return {
+        id: `door_${leaf}`,
+        type: 'door',
+        layerId: 'layer_openings',
+        transform: { x: 0, y: 0, rotation: 0 },
+        geometry: {
+            hostId: geometry.hostId,
+            offset: geometry.offset,
+            width: geometry.width,
+            swing: 'left',
+            flipped: false,
+            leaf,
+            head: geometry.head ?? 'square',
+        },
+    };
+}
 
 describe('parsing a document', () => {
     const blank = {

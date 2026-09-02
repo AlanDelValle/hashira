@@ -27,11 +27,13 @@ final class DocumentSchema
      * `angle`, `radius` and `leader` marks beside it; 4 added the `underlay`; 5 turned the
      * one page a drawing was printed on into a list of sheets; 6 added what a title block
      * says beyond the title, and the revision cloud; 7 added the notes printed beside the
-     * drawing. The server validates the envelope rather than the interior, so the number is
-     * all that changes here — but it has to change, or the server would refuse every document
-     * the current client writes.
+     * drawing; 8 told a door how it operates and how it is closed at the top, so that a
+     * double, sliding, folding or overhead door, a gate and a plain opening are one hosted
+     * opening rather than six element types. The server validates the envelope rather than
+     * the interior, so the number is all that changes here — but it has to change, or the
+     * server would refuse every document the current client writes.
      */
-    public const CURRENT_VERSION = 7;
+    public const CURRENT_VERSION = 8;
 
     /** A generous ceiling for a 2D plan; enough for thousands of elements. */
     public const MAX_BYTES = 8 * 1024 * 1024;

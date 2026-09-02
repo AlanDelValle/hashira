@@ -116,9 +116,17 @@ final class DemoPlan
             'width' => $width,
         ];
 
+        /*
+         * A door says how it operates and how it is closed at the top, since schema 8. Neither
+         * is optional: the seed stamps the current version, so nothing migrates it on the way
+         * in, and a door missing either field is dropped on load as a broken element — which
+         * is exactly what the dimensions here spent four schema versions doing.
+         */
         if ($type === 'door') {
             $geometry['swing'] = 'left';
             $geometry['flipped'] = false;
+            $geometry['leaf'] = 'single';
+            $geometry['head'] = 'square';
         }
 
         return self::element($type, DocumentSchema::LAYER_OPENINGS, $geometry);

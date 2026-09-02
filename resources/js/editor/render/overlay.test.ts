@@ -37,7 +37,7 @@ const WALL: Element = {
 };
 
 const DOOR: Element = {
-    ...createDoor('wall', 1000, 'layer_openings', DOOR_WIDTH),
+    ...createDoor('wall', 1000, 'layer_openings', { width: DOOR_WIDTH }),
     id: 'door',
 };
 

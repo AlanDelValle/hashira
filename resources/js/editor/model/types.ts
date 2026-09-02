@@ -28,8 +28,14 @@ import type { Point } from '@/editor/geometry/vec';
  * 7 is the sheet as a document rather than a picture: `settings.notes` is what the print says
  * in words, printed in a strip beside the drawing. A reader that predates it drops the notes
  * and saves the drawing back without them — which is the whole reason this is a number.
+ *
+ * 8 is every other way a wall gets opened. A `door` gained `leaf` — how it operates — and
+ * `head`, whether it is closed square or arched, so that a double door, a sliding door, a
+ * folding door, an overhead garage door, a gate and a plain cased opening are one hosted
+ * opening rather than six element types. An older reader would take `leaf: 'sliding'` for a
+ * door it knows how to draw and paint a swing that is not there.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -184,6 +190,25 @@ export interface RoomElement extends BaseElement {
 
 export type DoorSwing = 'left' | 'right';
 
+/**
+ * How an opening operates, which is what decides the symbol drawn in plan.
+ *
+ * These are ways of moving rather than things: a sliding gate is `sliding`, and `gate` is the
+ * one that swings — drawn lighter, because a gate is a frame in a boundary and not a slab in a
+ * partition. `none` is a cased opening with nothing in it: a doorway, an archway, a pass.
+ */
+export type DoorLeaf = 'single' | 'double' | 'sliding' | 'folding' | 'overhead' | 'gate' | 'none';
+
+/**
+ * How the opening is closed at the top.
+ *
+ * A plan is a section cut at about 1.5 m and the head is above it, so an arch is not a curve
+ * here: it is the dashed line that says something spans overhead, which is the convention for
+ * everything above the cut plane. The rise is deliberately not stored — nothing in a plan
+ * reads it, and this format does not carry numbers nothing checks. It arrives with elevations.
+ */
+export type OpeningHead = 'square' | 'arch';
+
 /** Hosted on a wall: `offset` is the distance from the wall's `a` end to the opening's centre. */
 export interface DoorElement extends BaseElement {
     type: 'door';
@@ -193,6 +218,8 @@ export interface DoorElement extends BaseElement {
         width: number;
         swing: DoorSwing;
         flipped: boolean;
+        leaf: DoorLeaf;
+        head: OpeningHead;
     };
 }
 

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "id": "demo",
   "name": "Bedroom",
   "settings": {
@@ -209,7 +209,9 @@
         "offset": 600,
         "width": 900,
         "swing": "left",
-        "flipped": false
+        "flipped": false,
+        "leaf": "single",
+        "head": "square"
       },
       "metadata": {
         "createdAt": "2026-01-01T00:00:00+00:00"

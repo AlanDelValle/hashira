@@ -314,7 +314,15 @@ describe('SVG export', () => {
         type: 'door',
         layerId: 'layer_openings',
         transform: { x: 0, y: 0, rotation: 0 },
-        geometry: { hostId: wall.id, offset: 2000, width: 900, swing: 'left', flipped: false },
+        geometry: {
+            hostId: wall.id,
+            offset: 2000,
+            width: 900,
+            swing: 'left',
+            flipped: false,
+            leaf: 'single',
+            head: 'square',
+        },
     };
 
     const scene = buildScene([wall, door], defaultLayers(), { palette: PALETTE });

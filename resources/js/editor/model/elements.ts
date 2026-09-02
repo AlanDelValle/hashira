@@ -126,12 +126,18 @@ export function hostedFrame(element: Element, lookup: ElementLookup): HostedFram
     const direction = normalize(subtract(segment.b, segment.a));
     const offset = clamp(element.geometry.offset, 0, hostLength);
 
+    // An opening cannot be wider than the wall it is cut into. The offset has always been held
+    // to the wall; the width was not, so a 3 m garage door in a 2 m wall drew its jambs and
+    // its leaf out in the open on both sides. Clamping here fixes the drawing, the extent and
+    // the hit test at once, because all three read the frame.
+    const width = Math.min(element.geometry.width, hostLength);
+
     return {
         host,
         centre: add(segment.a, scale(direction, offset)),
         direction,
         hostLength,
-        halfWidth: element.geometry.width / 2,
+        halfWidth: width / 2,
         thickness: host.geometry.thickness,
     };
 }
@@ -146,23 +152,147 @@ export interface DoorSwing {
 }
 
 /**
- * Where a door's leaf and its arc go. Shared by the painter and by the bounds, so the swing
- * that is drawn is the swing that gets framed by a zoom to fit.
+ * Where a door's leaves and their arcs go. Shared by the painter and by the bounds, so the
+ * swing that is drawn is the swing that gets framed by a zoom to fit.
+ *
+ * A single door and a gate are one leaf, hinged at the jamb `swing` names and as wide as the
+ * opening. A double door is two, each half as wide, hinged at opposite jambs and opening the
+ * same way — which is the pair of quarter circles meeting in the middle that a plan shows.
+ * Nothing else here swings: a sliding, folding or overhead door and a cased opening are drawn
+ * by their own symbols and return no leaf at all.
  */
-export function doorSwing(door: DoorElement, frame: HostedFrame): DoorSwing {
+export function doorSwings(door: DoorElement, frame: HostedFrame): DoorSwing[] {
+    const openDirection = scale(perpendicular(frame.direction), door.geometry.flipped ? -1 : 1);
+    const along = scale(frame.direction, frame.halfWidth);
+    const start = subtract(frame.centre, along);
+    const end = add(frame.centre, along);
+
+    const leaf = (hinge: Point, hingedAtStart: boolean, radius: number): DoorSwing => ({
+        hinge,
+        openDirection,
+        towardsOtherJamb: hingedAtStart ? frame.direction : negate(frame.direction),
+        radius,
+    });
+
+    switch (door.geometry.leaf) {
+        case 'single':
+        case 'gate': {
+            const hingedAtStart = door.geometry.swing === 'left';
+
+            return [leaf(hingedAtStart ? start : end, hingedAtStart, frame.halfWidth * 2)];
+        }
+
+        case 'double':
+            return [leaf(start, true, frame.halfWidth), leaf(end, false, frame.halfWidth)];
+
+        default:
+            return [];
+    }
+}
+
+/** One run of the symbol a door is drawn as, beyond its jambs and its swinging leaves. */
+export interface OpeningRun {
+    points: Point[];
+    /** Dashed: the convention for anything sitting above the plane a plan is cut at. */
+    dashed: boolean;
+}
+
+/**
+ * How far past the wall face a sliding panel is drawn, in millimetres.
+ *
+ * About what a surface-mounted panel really hangs off the wall, and chosen at the top of that
+ * range for a reason: at 30 mm the line lands a fifth of a wall thickness from the face and
+ * reads on a 1:50 print as an underline of the wall rather than as a leaf beside it.
+ */
+const PANEL_STANDOFF = 60;
+
+/** How far a bi-fold's panels turn out of the wall. Sixty degrees is what reads as folded. */
+const FOLD_ANGLE = Math.PI / 3;
+
+/**
+ * The straight runs a door is drawn as, other than the leaves that swing.
+ *
+ * Written once and read by both the painter and the extent, for the same reason `doorSwings`
+ * is: a symbol that a zoom to fit does not know about is a symbol that gets cropped out of an
+ * export. Everything here is convention rather than invention —
+ *
+ * - a **sliding** door is its panel parked open, drawn against one face of the wall and
+ *   exactly as wide as the hole it came off, running towards the jamb `swing` names,
+ * - a **folding** door is the zigzag of two panels turned out of the hinge jamb, which spans
+ *   half the opening because a folded door does not span it,
+ * - an **overhead** door is the panel closed across the wall with its tracks dashed into the
+ *   room. The tracks are drawn at the opening's own width because the door's *height*, which
+ *   is what really sets their length, is not something a plan stores,
+ * - an **arch** is a dashed line across the opening, because the head is above the cut plane
+ *   and dashed is what above the cut plane means. It is not a curve: an arch is in the plane
+ *   of the wall, so in plan it projects onto the wall itself and there is nothing to draw.
+ */
+export function openingRuns(door: DoorElement, frame: HostedFrame): OpeningRun[] {
     const width = frame.halfWidth * 2;
     const along = scale(frame.direction, frame.halfWidth);
+    const start = subtract(frame.centre, along);
+    const end = add(frame.centre, along);
+    const outward = scale(perpendicular(frame.direction), door.geometry.flipped ? -1 : 1);
+    const hingedAtStart = door.geometry.swing === 'left';
+    const runs: OpeningRun[] = [];
 
-    return {
-        hinge:
-            door.geometry.swing === 'left'
-                ? subtract(frame.centre, along)
-                : add(frame.centre, along),
-        openDirection: scale(perpendicular(frame.direction), door.geometry.flipped ? -1 : 1),
-        towardsOtherJamb:
-            door.geometry.swing === 'left' ? frame.direction : negate(frame.direction),
-        radius: width,
-    };
+    switch (door.geometry.leaf) {
+        case 'sliding': {
+            const face = scale(outward, frame.thickness / 2 + PANEL_STANDOFF);
+            const towards = hingedAtStart ? negate(frame.direction) : frame.direction;
+            const from = hingedAtStart ? start : end;
+
+            runs.push({
+                points: [add(from, face), add(add(from, scale(towards, width)), face)],
+                dashed: false,
+            });
+            break;
+        }
+
+        case 'folding': {
+            const hinge = hingedAtStart ? start : end;
+            const towards = hingedAtStart ? frame.direction : negate(frame.direction);
+            const panel = width / 2;
+            const knuckle = add(
+                hinge,
+                add(
+                    scale(towards, panel * Math.cos(FOLD_ANGLE)),
+                    scale(outward, panel * Math.sin(FOLD_ANGLE)),
+                ),
+            );
+            // The second panel comes back to the wall, because its far edge runs in the track
+            // over the head. A pair that went out and then ran parallel would be an L, and an
+            // L is not a fold.
+            const tip = add(
+                knuckle,
+                subtract(
+                    scale(towards, panel * Math.cos(FOLD_ANGLE)),
+                    scale(outward, panel * Math.sin(FOLD_ANGLE)),
+                ),
+            );
+
+            runs.push({ points: [hinge, knuckle, tip], dashed: false });
+            break;
+        }
+
+        case 'overhead': {
+            const travel = scale(outward, width);
+
+            runs.push({ points: [start, end], dashed: false });
+            runs.push({ points: [start, add(start, travel)], dashed: true });
+            runs.push({ points: [end, add(end, travel)], dashed: true });
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    if (door.geometry.head === 'arch') {
+        runs.push({ points: [start, end], dashed: true });
+    }
+
+    return runs;
 }
 
 /** The four corners of a hosted opening, in world space. */
@@ -679,14 +809,16 @@ export function elementBounds(element: Element, lookup: ElementLookup): Bounds |
                 return boundsFromPoints(corners);
             }
 
-            // The leaf and its arc are ink on the sheet, so they belong in the extent a zoom
-            // to fit has to cover.
-            const swing = doorSwing(element, frame);
-
+            // Everything the symbol draws is ink on the sheet, so all of it belongs in the
+            // extent a zoom to fit has to cover — the leaves and their arcs, and the panel a
+            // sliding door parks outside the wall.
             return boundsFromPoints([
                 ...corners,
-                add(swing.hinge, scale(swing.openDirection, swing.radius)),
-                add(swing.hinge, scale(swing.towardsOtherJamb, swing.radius)),
+                ...doorSwings(element, frame).flatMap((swing) => [
+                    add(swing.hinge, scale(swing.openDirection, swing.radius)),
+                    add(swing.hinge, scale(swing.towardsOtherJamb, swing.radius)),
+                ]),
+                ...openingRuns(element, frame).flatMap((run) => run.points),
             ]);
         }
 

@@ -2,13 +2,14 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { replaceSettings } from '@/editor/commands/command';
 
-import { fromDisplay, toDisplay } from '@/editor/model/units';
-import type { DisplayUnit, TitleBlock } from '@/editor/model/types';
+import { DEFAULT_LEAF_WIDTH, LEAF_OPTIONS } from '@/editor/model/openings';
+import { formatLength, fromDisplay, toDisplay } from '@/editor/model/units';
+import type { DisplayUnit, DoorLeaf, TitleBlock } from '@/editor/model/types';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
 import { LayersPanel } from './LayersPanel';
-import { MeasureField } from './MeasureField';
+import { ChoiceRow, MeasureField, ReadonlyRow } from './MeasureField';
 import { PropertiesPanel } from './PropertiesPanel';
 import { SheetsPanel } from './SheetsPanel';
 
@@ -24,6 +25,7 @@ export function SidePanel() {
     return (
         <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
             {tool === 'wall' && <WallSettings unit={unit} />}
+            {tool === 'door' && <OpeningSettings unit={unit} />}
             {tool === 'text' && <TextSettings unit={unit} />}
             {tool === 'dimension' && <DimensionSettings unit={unit} />}
             {tool === 'cloud' && <CloudSettings unit={unit} />}
@@ -80,6 +82,32 @@ function WallSettings({ unit }: { unit: DisplayUnit }) {
                     suffix={unit}
                     onCommit={setWallThickness}
                 />
+            </div>
+        </Section>
+    );
+}
+
+/**
+ * Shown only while the door tool is active: which way the next opening will operate.
+ *
+ * The width is not offered here on purpose. Each kind is placed at the size it is built at,
+ * and the one that matters — this garage door is 3 m, not 2.4 — is a decision about a
+ * particular opening in a particular wall, which is what the properties panel is for.
+ */
+function OpeningSettings({ unit }: { unit: DisplayUnit }) {
+    const leaf = useEditorStore((state) => state.doorLeaf);
+    const setDoorLeaf = useEditorStore((state) => state.setDoorLeaf);
+
+    return (
+        <Section title="New opening">
+            <div className="space-y-2 px-3">
+                <ChoiceRow<DoorLeaf>
+                    label="Operation"
+                    value={leaf}
+                    options={LEAF_OPTIONS}
+                    onChange={setDoorLeaf}
+                />
+                <ReadonlyRow label="Width" value={formatLength(DEFAULT_LEAF_WIDTH[leaf], unit)} />
             </div>
         </Section>
     );

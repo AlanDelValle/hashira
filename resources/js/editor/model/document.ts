@@ -103,6 +103,8 @@ export const elementSchema = z.discriminatedUnion('type', [
             width: finiteNumber.positive(),
             swing: z.enum(['left', 'right']),
             flipped: z.boolean(),
+            leaf: z.enum(['single', 'double', 'sliding', 'folding', 'overhead', 'gate', 'none']),
+            head: z.enum(['square', 'arch']),
         }),
     }),
     z.object({
@@ -428,6 +430,11 @@ function resolveSheets(raw: unknown, scale: number): Sheet[] {
  *
  * 6 → 7 added the drawing's notes, printed beside it. Again nothing already written changes
  * shape, and again an older reader would drop them on the way back out.
+ *
+ * 7 → 8 told every door how it operates and how it is closed at the top. Every door ever
+ * written is a single leaf under a square head — that is the only door the editor could draw
+ * — so the step fills both in rather than guessing, and a drawing comes forward looking
+ * exactly as it did.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -466,7 +473,29 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
         document = { ...document, schemaVersion: 7 };
     }
 
+    if (document.schemaVersion === 7) {
+        const elements = Array.isArray(document.elements) ? document.elements : [];
+
+        document = {
+            ...document,
+            schemaVersion: 8,
+            elements: elements.map((element) => operatedDoor(element)),
+        };
+    }
+
     return document;
+}
+
+/** A schema-7 door, which could only ever be a single leaf under a square head. */
+function operatedDoor(element: unknown): unknown {
+    if (!isRecord(element) || element.type !== 'door' || !isRecord(element.geometry)) {
+        return element;
+    }
+
+    return {
+        ...element,
+        geometry: { ...element.geometry, leaf: 'single', head: 'square' },
+    };
 }
 
 /** A schema-4 drawing's one page size, as the first sheet of the list that replaced it. */

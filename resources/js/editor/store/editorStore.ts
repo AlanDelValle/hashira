@@ -7,6 +7,7 @@ import {
     DEFAULT_TEXT_SIZE,
 } from '@/editor/model/factories';
 import { newId } from '@/editor/model/id';
+import type { DoorLeaf } from '@/editor/model/types';
 
 /**
  * Words being typed onto the sheet. The id gives each draft its own identity, and its own
@@ -65,6 +66,13 @@ interface EditorStore {
     snapToGrid: boolean;
     /** Thickness applied to the next wall drawn, in millimetres. */
     wallThickness: number;
+    /**
+     * How the next opening placed with the door tool operates.
+     *
+     * A tool setting rather than a tool of its own: seven kinds of door would be seven
+     * buttons and seven keys for one act, which is choosing what to cut into a wall.
+     */
+    doorLeaf: DoorLeaf;
     /** Cap height applied to the next label written, in millimetres at 1:1. */
     textSize: number;
     /** Cap height applied to the next measurement's value, in millimetres at 1:1. */
@@ -90,6 +98,7 @@ interface EditorStore {
     setActiveLayer: (layerId: string) => void;
     setActiveSheet: (sheetId: string) => void;
     setWallThickness: (thickness: number) => void;
+    setDoorLeaf: (leaf: DoorLeaf) => void;
     setTextSize: (size: number) => void;
     setDimensionSize: (size: number) => void;
     setCloudRadius: (radius: number) => void;
@@ -118,6 +127,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     sheetFrameVisible: false,
     snapToGrid: true,
     wallThickness: 150,
+    doorLeaf: 'single',
     textSize: DEFAULT_TEXT_SIZE,
     dimensionSize: DEFAULT_DIMENSION_SIZE,
     cloudRadius: DEFAULT_CLOUD_RADIUS,
@@ -157,6 +167,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
 
     setWallThickness: (wallThickness) => set({ wallThickness }),
+    setDoorLeaf: (doorLeaf) => set({ doorLeaf }),
     setTextSize: (textSize) => set({ textSize }),
     setDimensionSize: (dimensionSize) => set({ dimensionSize }),
     setCloudRadius: (cloudRadius) => set({ cloudRadius }),

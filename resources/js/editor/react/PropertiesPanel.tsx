@@ -21,8 +21,10 @@ import {
     setCircleRadius,
     setCloudRadius,
     setDoorFlipped,
+    setDoorLeaf,
     setDoorSwing,
     setLayer,
+    setOpeningHead,
     setOpeningOffset,
     setOpeningWidth,
     setPosition,
@@ -38,7 +40,8 @@ import {
     setUnderlaySize,
     setWallThickness,
 } from '@/editor/model/edits';
-import type { DisplayUnit, Element } from '@/editor/model/types';
+import { JAMB_LABEL, LEAF_OPTIONS, SIDE_LABEL } from '@/editor/model/openings';
+import type { DisplayUnit, DoorLeaf, Element, OpeningHead } from '@/editor/model/types';
 import {
     formatAngle,
     formatLength,
@@ -119,6 +122,8 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
     const length = (value: number) => formatLengthValue(value, unit);
     const toLength = (text: string) => parseLength(text, unit);
     const angle = segmentAngle(element);
+    const jambLabel = element.type === 'door' ? JAMB_LABEL[element.geometry.leaf] : undefined;
+    const sideLabel = element.type === 'door' ? SIDE_LABEL[element.geometry.leaf] : undefined;
 
     function set(next: Element, label: string, field: string) {
         apply(element, next, label, field);
@@ -300,22 +305,48 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
 
             {element.type === 'door' && (
                 <>
-                    <ChoiceRow
-                        label="Hinge"
-                        value={element.geometry.swing}
+                    <ChoiceRow<DoorLeaf>
+                        label="Operation"
+                        value={element.geometry.leaf}
+                        options={LEAF_OPTIONS}
+                        onChange={(value) => set(setDoorLeaf(element, value), 'Operation', 'leaf')}
+                    />
+                    <ChoiceRow<OpeningHead>
+                        label="Head"
+                        value={element.geometry.head}
                         options={[
-                            { value: 'left', label: 'Start' },
-                            { value: 'right', label: 'End' },
+                            { value: 'square', label: 'Square' },
+                            { value: 'arch', label: 'Arched' },
                         ]}
-                        onChange={(value) => set(setDoorSwing(element, value), 'Hinge', 'swing')}
+                        onChange={(value) => set(setOpeningHead(element, value), 'Head', 'head')}
                     />
-                    <ToggleRow
-                        label="Opens back"
-                        checked={element.geometry.flipped}
-                        onChange={(value) =>
-                            set(setDoorFlipped(element, value), 'Swing side', 'flipped')
-                        }
-                    />
+                    {/*
+                     * Which jamb and which side only mean something to an opening that works
+                     * off one. A double door uses both jambs, an overhead door neither, and a
+                     * cased opening does not move at all — so the tables in model/openings.ts
+                     * decide which of these two rows exist, rather than a panel offering a
+                     * control that changes nothing on the sheet.
+                     */}
+                    {jambLabel !== undefined && (
+                        <ChoiceRow
+                            label={jambLabel}
+                            value={element.geometry.swing}
+                            options={[
+                                { value: 'left', label: 'Start' },
+                                { value: 'right', label: 'End' },
+                            ]}
+                            onChange={(value) => set(setDoorSwing(element, value), 'Jamb', 'swing')}
+                        />
+                    )}
+                    {sideLabel !== undefined && (
+                        <ToggleRow
+                            label={sideLabel}
+                            checked={element.geometry.flipped}
+                            onChange={(value) =>
+                                set(setDoorFlipped(element, value), 'Opening side', 'flipped')
+                            }
+                        />
+                    )}
                 </>
             )}
 

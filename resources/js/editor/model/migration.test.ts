@@ -120,6 +120,16 @@ describe('opening a version 1 drawing', () => {
         expect(door?.type === 'door' && door.geometry.hostId).toBe('el_wall');
     });
 
+    it('arrives operable, having been carried the whole way to the current schema', () => {
+        const parsed = parseDocument(VERSION_1);
+        const door = parsed.ok ? parsed.document.elements[1] : undefined;
+
+        // The oldest drawing there is passes through every step, so this is the 7 -> 8 one
+        // proving it runs at the end of the chain and not only on a drawing that stopped at 7.
+        expect(door?.type === 'door' && door.geometry.leaf).toBe('single');
+        expect(door?.type === 'door' && door.geometry.head).toBe('square');
+    });
+
     it('comes back stamped with the current schema, ready to be saved again', () => {
         const parsed = parseDocument(VERSION_1);
 
@@ -401,6 +411,55 @@ describe('opening a version 6 drawing', () => {
 
         expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
         expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_6.elements.length);
+    });
+});
+
+/** A version 7 drawing: a door, back when a door was the only thing a wall could hold. */
+const VERSION_7 = {
+    ...VERSION_6,
+    schemaVersion: 7,
+    name: 'Before openings',
+    settings: {
+        ...VERSION_6.settings,
+        notes: 'All dimensions in millimetres.\nVerify on site.',
+    },
+};
+
+describe('opening a version 7 drawing', () => {
+    /*
+     * 8 told a door how it operates and how it is closed at the top. Every door ever written
+     * is a single leaf under a square head, because that is the only door the editor could
+     * draw — so the step fills both in rather than guessing, and the drawing comes forward
+     * looking exactly as it did.
+     */
+    it('finds its door a single leaf under a square head', () => {
+        const parsed = parseDocument(VERSION_7);
+        const door = parsed.ok ? parsed.document.elements[1] : undefined;
+
+        expect(door?.type === 'door' && door.geometry.leaf).toBe('single');
+        expect(door?.type === 'door' && door.geometry.head).toBe('square');
+    });
+
+    it('leaves the rest of the door alone', () => {
+        const parsed = parseDocument(VERSION_7);
+        const door = parsed.ok ? parsed.document.elements[1] : undefined;
+
+        expect(door?.type === 'door' && door.geometry.width).toBe(900);
+        expect(door?.type === 'door' && door.geometry.offset).toBe(1200);
+        expect(door?.type === 'door' && door.geometry.swing).toBe('left');
+    });
+
+    it('keeps the notes it was written beside', () => {
+        const parsed = parseDocument(VERSION_7);
+
+        expect(parsed.ok && parsed.document.settings.notes).toContain('Verify on site');
+    });
+
+    it('comes back stamped with the current schema, unchanged in every other way', () => {
+        const parsed = parseDocument(VERSION_7);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_7.elements.length);
     });
 });
 
