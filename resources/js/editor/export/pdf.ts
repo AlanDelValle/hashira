@@ -257,6 +257,7 @@ function drawPrimitive(
                   borderColor: toColor(kit, stroke.color),
                   borderWidth: strokeWidthInPoints(stroke),
                   borderLineCap: stroke.cap === 'butt' ? 0 : 1,
+                  ...strokeDashInPoints(stroke),
               };
 
     if (primitive.kind === 'circle' || primitive.kind === 'ellipse') {
@@ -300,6 +301,21 @@ function drawPrimitive(
 /** A pen is a width on the sheet; a world width is a real dimension and shrinks with the scale. */
 function strokeWidthInPoints(stroke: Stroke): number {
     return stroke.width * PT_PER_MM;
+}
+
+/**
+ * A dash pattern, in points, or nothing at all for a line with no gaps in it.
+ *
+ * Measured on the sheet like the pen weight beside it, so the page needs no scale to convert
+ * it — unlike the SVG, whose coordinates are world millimetres and which has to take the
+ * pattern up with them.
+ */
+function strokeDashInPoints(stroke: Stroke): { borderDashArray?: number[] } {
+    const dash = stroke.dash ?? null;
+
+    return dash === null || dash.length === 0
+        ? {}
+        : { borderDashArray: dash.map((mm) => mm * PT_PER_MM) };
 }
 
 /** `#rrggbb` into pdf-lib's colour, falling back to black rather than throwing on a surprise. */

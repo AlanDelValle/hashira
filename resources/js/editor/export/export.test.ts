@@ -499,6 +499,30 @@ describe('PDF export', () => {
     });
 
     /*
+     * A dashed line printed solid is a different line. The scene has carried a `dash` since
+     * the arched head and the overhead door arrived, the screen and the SVG have both drawn it
+     * all along, and the PDF quietly dropped it — so a plan whose arch said "this is above the
+     * cut plane" printed a plain line saying nothing of the kind.
+     */
+    it('prints a dashed stroke dashed', async () => {
+        const host = createWall(point(0, 0), point(6000, 0), LAYER, 150);
+        const arched = createDoor(host.id, 3000, LAYER, { head: 'arch', width: 900 });
+        const opened = buildScene([host, arched], defaultLayers(), { palette: PALETTE });
+
+        const blob = await sceneToPdf([{ sheet: sheet('A3', 'landscape', 50), layers: opened }], {
+            bounds: { minX: 0, minY: -75, maxX: 6000, maxY: 75 },
+            title: 'Arched',
+        });
+
+        /*
+         * `[ on off ] phase d` is the operator that sets a dash pattern. Every solid
+         * stroke on the page emits it empty, so what is asserted is a pattern with
+         * lengths in it: 2 mm and 1.5 mm of sheet, in points.
+         */
+        expect(pdfOperators(await blob.arrayBuffer())).toMatch(/\[[\d.]+ [\d.]+\] \d+ d/);
+    });
+
+    /*
      * Without this, a sheet placed over part of a plan prints the rest of the plan across its
      * own margins and straight through the title block, because a page only clips at its own
      * edge and the frame is well inside that.
