@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { point } from '@/editor/geometry/vec';
 import { blockFromSelection } from '@/editor/assets/fromSelection';
-import { ASSET_LIBRARY, findAsset, forgetAsset, registerAssets } from '@/editor/assets/library';
+import {
+    ASSET_CATEGORIES,
+    ASSET_LIBRARY,
+    findAsset,
+    forgetAsset,
+    registerAssets,
+    type AssetPrimitive,
+} from '@/editor/assets/library';
 import { importSvg } from '@/editor/assets/svgImport';
 import { makeLookup } from '@/editor/model/elements';
 import { createAsset, createCircle, createDimension, createRect } from '@/editor/model/factories';
@@ -164,5 +171,109 @@ describe('blocks somebody made', () => {
         forgetAsset('mine');
 
         expect(findAsset('mine')).toBeUndefined();
+    });
+});
+
+/**
+ * The library, held to its own rules.
+ *
+ * Thirty-nine blocks could be read through; a hundred and nine cannot, and the mistakes that
+ * matter are the dull ones — a coordinate typed in millimetres instead of box space, a name
+ * pasted over an id already in use, a category that does not exist and therefore a shelf that
+ * never appears. None of those break a build and all of them are invisible until somebody goes
+ * looking for a block that is not where it should be.
+ */
+describe('the blocks that ship with the editor', () => {
+    const KNOWN_LAYERS = ['layer_architecture', 'layer_furniture', 'layer_annotations'];
+
+    /** Every coordinate a primitive puts in the box, whatever kind it is. */
+    function coordinates(primitive: AssetPrimitive): number[] {
+        switch (primitive.kind) {
+            case 'rect':
+                return [
+                    primitive.x,
+                    primitive.y,
+                    primitive.x + primitive.w,
+                    primitive.y + primitive.h,
+                ];
+            case 'line':
+                return [primitive.x1, primitive.y1, primitive.x2, primitive.y2];
+            case 'polyline':
+                return [...primitive.points];
+            case 'ellipse':
+                return [
+                    primitive.cx - primitive.rx,
+                    primitive.cy - primitive.ry,
+                    primitive.cx + primitive.rx,
+                    primitive.cy + primitive.ry,
+                ];
+            case 'arc': {
+                // The arc itself, not the whole circle it is struck from: a quarter arc taken
+                // out of a corner of the box stays inside it, and a bounding circle would call
+                // that a mistake. Sixteen steps is far finer than the tenth being checked.
+                const steps = 16;
+                const along: number[] = [];
+
+                for (let step = 0; step <= steps; step++) {
+                    const angle = primitive.from + ((primitive.to - primitive.from) * step) / steps;
+
+                    along.push(primitive.cx + Math.cos(angle) * primitive.r);
+                    along.push(primitive.cy + Math.sin(angle) * primitive.r);
+                }
+
+                return along;
+            }
+        }
+    }
+
+    it('gives every block an id of its own', () => {
+        const ids = ASSET_LIBRARY.map((asset) => asset.id);
+
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('files every block on a shelf that exists', () => {
+        const shelves = new Set(ASSET_CATEGORIES.map((entry) => entry.id));
+        const orphans = ASSET_LIBRARY.filter((asset) => !shelves.has(asset.category));
+
+        expect(orphans.map((asset) => asset.id)).toEqual([]);
+    });
+
+    it('leaves no shelf empty, because an empty one is a heading and nothing else', () => {
+        const used = new Set(ASSET_LIBRARY.map((asset) => asset.category));
+        const bare = ASSET_CATEGORIES.filter((entry) => !used.has(entry.id));
+
+        expect(bare.map((entry) => entry.id)).toEqual([]);
+    });
+
+    it('puts every block on a layer a new drawing actually has', () => {
+        const stray = ASSET_LIBRARY.filter((asset) => !KNOWN_LAYERS.includes(asset.layerId));
+
+        expect(stray.map((asset) => asset.id)).toEqual([]);
+    });
+
+    it('gives every block a real size and something to draw', () => {
+        for (const asset of ASSET_LIBRARY) {
+            expect(asset.width, asset.id).toBeGreaterThan(0);
+            expect(asset.height, asset.id).toBeGreaterThan(0);
+            expect(asset.name.length, asset.id).toBeGreaterThan(0);
+            expect(asset.draw.length, asset.id).toBeGreaterThan(0);
+        }
+    });
+
+    /*
+     * Held to the box within a tenth rather than exactly. A mark may lean a little past its own
+     * size on purpose — the north point's circle does — and the thing worth catching is not the
+     * overhang but a coordinate that was never in box space at all: a 500 that should have been
+     * a 0.5, or a stray minus.
+     */
+    it('draws every block in the box it is placed in', () => {
+        for (const asset of ASSET_LIBRARY) {
+            for (const value of asset.draw.flatMap(coordinates)) {
+                expect(Number.isFinite(value), asset.id).toBe(true);
+                expect(value, asset.id).toBeGreaterThanOrEqual(-0.1);
+                expect(value, asset.id).toBeLessThanOrEqual(1.1);
+            }
+        }
     });
 });

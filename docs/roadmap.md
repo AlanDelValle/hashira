@@ -328,13 +328,19 @@ Phase 10 and the two can be taken in either order.
       also the only way several hundred rows stay usable. The panel finally does what §3 of
       the document format says it does, too: create, rename, recolour, reorder and delete a
       layer, offering to move its contents before it empties one
-- [ ] **11.6 A library somebody can furnish a house from.** No schema — a block is an id and a
+- [x] **11.6 A library somebody can furnish a house from.** No schema — a block is an id and a
       size, and §4.6 already says what an unknown one draws. Thirty-nine blocks in eight
-      categories become about a hundred and twenty in fourteen: Office, Garage, Garden,
-      Laundry and Pool, plus the services symbols and the circulation pieces that turn up the
-      moment a whole house is drawn, at real sizes rather than plausible ones. `LibraryPanel`
-      gets its own comment corrected on the way past: it advertises sixty-odd blocks in seven
-      categories, and has never once been right
+      categories became a hundred and nine in thirteen: Office, Garage, Garden, Laundry and
+      Pool, the circulation pieces that turn up the moment a whole house is drawn, and the rest
+      of the kitchen and the bathroom — at the sizes those things are really built at rather
+      than at plausible ones. A test now holds the shelf to its own rules, because a hundred
+      blocks cannot be read through and the mistakes that matter are dull: an id used twice, a
+      category that does not exist, a coordinate typed in millimetres instead of box space.
+      `LibraryPanel` got its own comment corrected on the way past — it advertised sixty-odd
+      blocks in seven categories and had never once been right. **The services symbols are not
+      here.** Electrical and plumbing marks are a standardised set, and half-remembered ones
+      are worse than none: they want a pass against the standard itself and a legend to print
+      beside them, which is its own piece of work rather than a corner of this one
 
 The order is the dependency order rather than the order the six were asked in. 11.2 comes
 before 11.3 because "twelve square metres" is a question about an internal face, and 11.4
@@ -349,6 +355,12 @@ reporting a 3.85 m inside face against a 4.15 m outside one, then dimensioned fa
 3.85 m, which the centreline could not have been asked for, and twelve square metres typed
 into a panel, dragged into 3.50 × 3.50 and committed as four walls that the room tool then
 measured at 12.25 m² — the number that was drawn rather than the one that was asked for.
+
+11.6 is done too, and was looked at rather than tested: every block put on a contact sheet
+through the editor's own SVG exporter and read. That caught eight drawings a passing suite
+would not have — a filing cabinet with eight drawers, a hedge that read as three pots in a
+box, and an extractor hood drawn with the same square and cross as the lift four blocks
+below it.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 

@@ -24,8 +24,13 @@ import { NewBlockDialog } from './NewBlockDialog';
  * — so they are searched together and placed the same way, and only the ones you made can be
  * thrown away.
  *
- * Searching matters more than it looks: sixty-odd blocks in seven categories is more than a
- * panel this wide can show at once, and scrolling for a bidet is not drafting.
+ * Searching matters more than it looks: a hundred-odd blocks across thirteen categories is far
+ * more than a panel this wide can show at once, and scrolling for a bidet is not drafting.
+ *
+ * The counts in that sentence were wrong for most of the library's life — it claimed sixty-odd
+ * in seven when there were thirty-nine in eight — which is what a number written into prose
+ * does. There is nothing to keep it honest but somebody noticing, so it says "a hundred-odd"
+ * and the shelves below do the counting.
  */
 export function LibraryPanel() {
     const unit = useDocumentStore((state) => state.document.settings.unit);
