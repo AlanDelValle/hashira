@@ -33,8 +33,6 @@ const styleSchema = z
     .object({
         stroke: z.string().optional(),
         fill: z.string().nullable().optional(),
-        strokeWidth: finiteNumber.positive().optional(),
-        dash: z.array(finiteNumber.nonnegative()).nullable().optional(),
         hatch: z
             .enum([
                 'existing',
@@ -52,6 +50,19 @@ const styleSchema = z
                 'stone',
                 'stone-view',
                 'floor-fill',
+            ])
+            .nullable()
+            .optional(),
+        lineType: z
+            .enum([
+                'continuous-extra-wide',
+                'continuous-wide',
+                'continuous-narrow',
+                'dashed-narrow',
+                'dash-dot-narrow',
+                'dash-dot-extra-wide',
+                'dash-double-dot-narrow',
+                'long-dash-dot-narrow',
             ])
             .nullable()
             .optional(),
@@ -461,6 +472,14 @@ function resolveSheets(raw: unknown, scale: number): Sheet[] {
  * wall already was. The version is a version because of what an older reader would do on the
  * way back out: drop the field, and hand back a demolition plan with nothing marked for
  * demolition.
+ *
+ * 9 → 10 added the line type a shape is drawn with, and took away the two fields it replaces.
+ * Nothing already written changes shape and nothing gains a type, because a shape with none is
+ * drawn contínua larga, which is what every line, rectangle, polygon and circle already was.
+ * It is a version for the same reason as the hatch: an older reader drops the field, and hands
+ * back a plan whose hidden edges, centre lines and projections overhead are plain continuous
+ * lines again. `style.strokeWidth` and `style.dash` needed no step of their own — nothing ever
+ * wrote either, so nothing has one, and an unknown key is dropped at validation regardless.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -511,6 +530,10 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
 
     if (document.schemaVersion === 8) {
         document = { ...document, schemaVersion: 9 };
+    }
+
+    if (document.schemaVersion === 9) {
+        document = { ...document, schemaVersion: 10 };
     }
 
     return document;

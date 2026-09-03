@@ -30,11 +30,13 @@ final class DocumentSchema
      * drawing; 8 told a door how it operates and how it is closed at the top, so that a
      * double, sliding, folding or overhead door, a gate and a plain opening are one hosted
      * opening rather than six element types; 9 added the hatch a shape is filled with, which
-     * is how a drawing says existing, to be demolished or to be built. The server validates
-     * the envelope rather than the interior, so the number is all that changes here — but it
-     * has to change, or the server would refuse every document the current client writes.
+     * is how a drawing says existing, to be demolished or to be built; 10 added the line type
+     * a shape is drawn with, so that a run can be a hidden edge, a centre line or a projection
+     * overhead rather than only a solid stroke. The server validates the envelope rather than
+     * the interior, so the number is all that changes here — but it has to change, or the
+     * server would refuse every document the current client writes.
      */
-    public const CURRENT_VERSION = 9;
+    public const CURRENT_VERSION = 10;
 
     /** A generous ceiling for a 2D plan; enough for thousands of elements. */
     public const MAX_BYTES = 8 * 1024 * 1024;

@@ -464,6 +464,35 @@ describe('parsing a document', () => {
         expect(result.document.layers).toHaveLength(5);
     });
 
+    /*
+     * `style.strokeWidth` and `style.dash` were in the format from version 1 and were never
+     * written or read by anything; version 10 takes them out, because `lineType` is what they
+     * were reaching for and a raw width is exactly what naming a convention exists to prevent.
+     * They needed no migration — an unknown key is dropped at validation — and this is the
+     * assertion that the door stays shut rather than that it happened to be shut once.
+     */
+    it('drops a width or a dash somebody puts on an element by hand', () => {
+        const result = parseDocument({
+            ...blank,
+            schemaVersion: SCHEMA_VERSION,
+            elements: [
+                {
+                    id: 'el_line',
+                    type: 'line',
+                    layerId: 'layer_architecture',
+                    transform: { x: 0, y: 0, rotation: 0 },
+                    geometry: { a: { x: 0, y: 0 }, b: { x: 1000, y: 0 } },
+                    style: { stroke: '#000000', strokeWidth: 0.35, dash: [2, 1] },
+                },
+            ],
+        });
+
+        const style = result.ok ? result.document.elements[0]?.style : undefined;
+
+        expect(result.ok && result.dropped).toEqual([]);
+        expect(style).toEqual({ stroke: '#000000' });
+    });
+
     it('gives a drawing with no readable sheet a page to print on', () => {
         const result = parseDocument({
             ...blank,

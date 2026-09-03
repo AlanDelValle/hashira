@@ -508,6 +508,58 @@ describe('opening a version 8 drawing', () => {
     });
 });
 
+/** A version 9 drawing: a wall marked for demolition, and no way of saying what a line means. */
+const VERSION_9 = {
+    ...VERSION_8,
+    schemaVersion: 9,
+    name: 'Before line types',
+    elements: VERSION_8.elements.map((element) =>
+        element.type === 'wall' ? { ...element, style: { hatch: 'demolish' } } : element,
+    ),
+};
+
+describe('opening a version 9 drawing', () => {
+    /*
+     * 10 added the line type a shape is drawn with. Nothing already written changes shape and
+     * nothing gains a type, because a shape with none is drawn contínua larga — which is what
+     * every line, rectangle, polygon and circle already was. It is a version because of what
+     * an older reader would do on the way back out: drop the field, and hand back a plan whose
+     * hidden edges, centre lines and projections overhead are plain continuous lines again.
+     */
+    it('comes forward with no line named, because none could be', () => {
+        const parsed = parseDocument(VERSION_9);
+        const typed = parsed.ok
+            ? parsed.document.elements.filter(
+                  (element) =>
+                      element.style?.lineType !== undefined && element.style.lineType !== null,
+              )
+            : [];
+
+        expect(parsed.ok).toBe(true);
+        expect(typed).toEqual([]);
+    });
+
+    it('keeps the hatch it was written with', () => {
+        const parsed = parseDocument(VERSION_9);
+        const wall = parsed.ok ? parsed.document.elements[0] : undefined;
+
+        expect(wall?.style?.hatch).toBe('demolish');
+    });
+
+    it('keeps every element it was written with', () => {
+        const parsed = parseDocument(VERSION_9);
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_9.elements.length);
+    });
+
+    it('comes back stamped with the current schema', () => {
+        const parsed = parseDocument(VERSION_9);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+    });
+});
+
 describe('a drawing from a newer Hashira', () => {
     it('is refused outright rather than opened with pieces missing', () => {
         const parsed = parseDocument({ ...VERSION_1, schemaVersion: SCHEMA_VERSION + 1 });

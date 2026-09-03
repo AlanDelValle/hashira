@@ -1,4 +1,4 @@
-# Document format — schema version 9
+# Document format — schema version 10
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -313,12 +313,16 @@ rectangle, because a block someone placed still occupies that space.
 ### 4.7 Style
 
 ```jsonc
-{ "stroke": "#1F2328", "fill": null, "strokeWidth": 0.35, "dash": null, "hatch": "demolish" }
+{ "stroke": "#1F2328", "fill": null, "hatch": "demolish", "lineType": "dashed-narrow" }
 ```
 
-All fields are optional; anything absent falls back to the layer, then to the document
-theme. `strokeWidth` is in millimetres _on the printed sheet_ (a 0.35 mm pen), not in world
-millimetres — so line weights stay constant as you zoom and match the plotted output.
+All fields are optional; anything absent falls back to the layer, then to the document theme.
+
+`strokeWidth` and `dash` used to be here and are gone as of version 10. They were in the
+format from version 1 and nothing ever wrote one or read one, so no document carries either —
+and `lineType` is what they were reaching for. A raw width is precisely what naming a
+convention exists to prevent, so they are not coming back: put either on an element by hand
+and validation drops it.
 
 `hatch` names one of the conventions of NBR 6492 — what a shape is made of, or what is about
 to happen to it. It belongs to the style rather than to any one element type because what
@@ -349,13 +353,38 @@ on an A3 whether the plan goes out at 1:50 or at 1:100.
 Absent means the shape is filled the way it always was — a wall solid, a room tinted — so a
 drawing written before schema 9 looks identical after it.
 
+`lineType` names one of the line types of NBR 8403 — how a line reads, rather than what a
+shape is made of. It is offered on the four shapes somebody draws for their own sake: `line`,
+`rect`, `polygon` and `circle`. A wall, an opening, a room and a dimension ignore it, because
+what those mean is decided by what they are.
+
+| Group       | `lineType`                                                        |
+| ----------- | ----------------------------------------------------------------- |
+| Continuous  | `continuous-extra-wide` · `continuous-wide` · `continuous-narrow` |
+| Interrupted | `dashed-narrow` · `dash-dot-narrow` · `dash-dot-extra-wide`       |
+|             | `dash-double-dot-narrow` · `long-dash-dot-narrow`                 |
+
+The same three rules apply, for the same reasons. **Only the name is stored** — the pattern and
+the weight live in `model/lineTypes.ts`, because a dashed line somebody has re-spaced is no
+longer the line anybody reads. **The weight comes with the type**, since the standard names a
+line once: _tracejada estreita_ is one convention, not a pattern crossed with a width, and the
+three widths are group 0,25 of the standard's table — 0.13, 0.25 and 0.50 mm. **It is measured
+on the sheet**, so a centre line dashes the same at 1:50 and at 1:100.
+
+Absent means _contínua larga_, which is what a line, a rectangle, a polygon and a circle were
+always drawn as — so a drawing written before schema 10 looks identical after it.
+
+The standard's ninth line type is not here. Contínua com zigue-zague is the break line, and it
+is a block in the library rather than a style: the run itself deviates, so it was never a dash
+pattern.
+
 ---
 
 ## 5. A minimal but complete document
 
 ```json
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {
@@ -453,15 +482,18 @@ runtime contract and the compile-time contract cannot drift apart.
 
 ### 6.1 History
 
-| Version | Change                                                                                                                                                                                                                                                                                                                                            |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1       | The original format.                                                                                                                                                                                                                                                                                                                              |
-| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                                                                                                                                                                              |
-| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one.                                                                                                                                                      |
-| 4       | Added the `underlay`: a page to trace over. Nothing already written changes shape, so the step restamps the version — but a reader that predates the type would drop every underlay in a drawing and save it back without them.                                                                                                                   |
-| 5       | `settings.sheet` — one page size, framing whatever there was — became `settings.sheets`, a list of pages each with its own size, scale and view of the drawing. The one page becomes the first of the list, carrying the drawing's own scale, so a plan opens onto exactly the page it was already printed on.                                    |
-| 7       | Added `settings.notes` — what the sheet says in words, printed beside the drawing, one note to a line. Nothing already written changes shape, so the step restamps the version; a reader that predates it would drop the notes and save the drawing back without them.                                                                            |
-| 6       | Added `settings.titleBlock` — what a print says beyond the title — and the `cloud` element, the mark that says which part of a drawing changed. Nothing already written changes shape, so the step restamps the version; a reader that predates either would drop every cloud and every title-block field and save the drawing back without them. |
+| Version | Change                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1       | The original format.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 2       | Added the `dimension` element; nothing already written changes shape, so the step handed drawings forward unchanged.                                                                                                                                                                                                                                                                                                                            |
+| 3       | A dimension became a run of `points` rather than a pair `a`/`b`, and `angle`, `radius` and `leader` joined it. Every dimension ever written has exactly two points, which is a chain of one.                                                                                                                                                                                                                                                    |
+| 4       | Added the `underlay`: a page to trace over. Nothing already written changes shape, so the step restamps the version — but a reader that predates the type would drop every underlay in a drawing and save it back without them.                                                                                                                                                                                                                 |
+| 5       | `settings.sheet` — one page size, framing whatever there was — became `settings.sheets`, a list of pages each with its own size, scale and view of the drawing. The one page becomes the first of the list, carrying the drawing's own scale, so a plan opens onto exactly the page it was already printed on.                                                                                                                                  |
+| 6       | Added `settings.titleBlock` — what a print says beyond the title — and the `cloud` element, the mark that says which part of a drawing changed. Nothing already written changes shape, so the step restamps the version; a reader that predates either would drop every cloud and every title-block field and save the drawing back without them.                                                                                               |
+| 7       | Added `settings.notes` — what the sheet says in words, printed beside the drawing, one note to a line. Nothing already written changes shape, so the step restamps the version; a reader that predates it would drop the notes and save the drawing back without them.                                                                                                                                                                          |
+| 8       | Told every door how it operates and how it is closed at the top: `leaf` and `head`, so that a double, sliding, folding or overhead door, a gate and a plain cased opening are one hosted opening rather than six element types. Every door ever written is a single leaf under a square head, which is what the step fills in rather than guessing.                                                                                             |
+| 9       | Added `style.hatch` — what a shape is made of, or what is about to happen to it. Nothing already written changes shape and no drawing gains a hatch, since a wall with none is a wall filled solid. A reader that predates it drops the field and hands back a demolition plan with nothing marked for demolition.                                                                                                                              |
+| 10      | Added `style.lineType` — how a line reads, on the four shapes somebody draws for their own sake. Nothing already written changes shape: absent means contínua larga, which is what a line, a rectangle, a polygon and a circle were always drawn as. A reader that predates it returns every hidden edge and centre line as a plain continuous line. Also removed `style.strokeWidth` and `style.dash`, which nothing had ever written or read. |
 
 ---
 

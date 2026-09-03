@@ -476,11 +476,22 @@ Writing that geometry five times would guarantee five slightly different answers
 PDF cannot disagree with what was on screen.
 
 The distinction the scene carries that matters most is between a **line** and an **area**. A
-stroke is always a plotted pen weight — 0.25 mm on the finished sheet — so it stays a constant
-thickness on screen however far you zoom, and prints at 0.25 mm whatever the drawing's scale.
-Each output converts that its own way; nothing else has to think about it. Anything with a
-real dimension is an area: a wall's poché is 150 mm across because the wall is, so it is
-filled rather than stroked and gets smaller as you zoom out, the way the wall does.
+stroke is always a plotted pen weight — millimetres on the finished sheet — so it stays a
+constant thickness on screen however far you zoom, and prints at that width whatever the
+drawing's scale. Each output converts that its own way; nothing else has to think about it.
+Anything with a real dimension is an area: a wall's poché is 150 mm across because the wall
+is, so it is filled rather than stroked and gets smaller as you zoom out, the way the wall
+does.
+
+Which weight, and whether the stroke has gaps in it, is decided two ways. What the editor
+draws for its own reasons — a wall, an opening, a room, a dimension — is drawn at the weights
+`scene/types.ts` holds, because what those mean is already decided by what they are. The four
+shapes somebody draws for their own sake — a line, a rectangle, a polygon and a circle — take
+theirs from a **line type**: one of the eight conventions of NBR 8403 in `model/lineTypes.ts`,
+each of them a dash pattern and a weight together, since the standard names a line once.
+Naming none is _contínua larga_, which is what all four were always drawn as. A dash is
+measured on the sheet like the pen weight beside it, so a centre line reads the same at 1:50
+and at 1:100.
 
 It was a fat stroke until walls learned to meet each other. A stroke has two ends and they are
 square, which is fine until two walls turn a corner and the outside of it is a notch neither

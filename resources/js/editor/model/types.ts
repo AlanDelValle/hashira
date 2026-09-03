@@ -39,8 +39,20 @@ import type { Point } from '@/editor/geometry/vec';
  * the conventions a drawing is read by — existing masonry, masonry to be demolished, masonry
  * to build, concrete, steel, earth. An older reader drops the field and saves the drawing back
  * without it, which turns a demolition plan into a plan of a building that is staying up.
+ *
+ * 10 is what a line means: `style.lineType` names one of the conventions of NBR 8403, so that
+ * a run drawn with the line, rectangle, polygon or circle tool can be a hidden edge, a centre
+ * line, an axis or a projection overhead rather than only a solid stroke. An older reader
+ * drops the field and saves the drawing back without it, which returns every one of those as
+ * a plain continuous line — the mark and its meaning both gone.
+ *
+ * 10 also *removes* two fields. `style.strokeWidth` and `style.dash` had been here since
+ * version 1 and no part of the editor ever wrote one or read one, so no document in the world
+ * carries either; `lineType` is what they were reaching for, and a raw width is the thing it
+ * exists to stop anybody storing. Nothing had to be migrated — an unknown key is dropped at
+ * validation, which is what always happened to these two anyway.
  */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -168,14 +180,38 @@ export type HatchPattern =
     | 'stone-view'
     | 'floor-fill';
 
+/**
+ * How a line reads, as NBR 8403 names them: eight conventions, each one a pattern and a
+ * weight together rather than either on its own.
+ *
+ * See `model/lineTypes.ts` for what each one draws. Only the name is stored, for the reason a
+ * hatch stores only its own: a dashed line somebody has re-spaced is no longer the line
+ * anybody reads.
+ *
+ * The ninth of the standard's line types is missing on purpose. Contínua com zigue-zague is
+ * the break line, and it is already in the block library as `break-line` — the run itself
+ * deviates, so it was never a dash pattern to begin with.
+ */
+export type LineType =
+    | 'continuous-extra-wide'
+    | 'continuous-wide'
+    | 'continuous-narrow'
+    | 'dashed-narrow'
+    | 'dash-dot-narrow'
+    | 'dash-dot-extra-wide'
+    | 'dash-double-dot-narrow'
+    | 'long-dash-dot-narrow';
+
 export interface ElementStyle {
     stroke?: string;
     fill?: string | null;
-    /** Pen weight in millimetres on the printed sheet, not in world millimetres. */
-    strokeWidth?: number;
-    dash?: number[] | null;
     /** Absent means the shape is filled the way it always was: a wall solid, a room tinted. */
     hatch?: HatchPattern | null;
+    /**
+     * Absent means _contínua larga_, which is what a line, a rectangle, a polygon and a circle
+     * have always been drawn as — so no drawing written before this existed is restyled by it.
+     */
+    lineType?: LineType | null;
 }
 
 export interface ElementMetadata {

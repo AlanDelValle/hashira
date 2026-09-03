@@ -27,6 +27,7 @@ import {
     type ElementLookup,
 } from '@/editor/model/elements';
 import { findHatch } from '@/editor/model/hatches';
+import { DEFAULT_LINE_TYPE, findLineType, LINE_WEIGHTS } from '@/editor/model/lineTypes';
 import { formatAngle, formatLength } from '@/editor/model/units';
 import { wallBandCorners, wallJoins, type WallJoins } from '@/editor/model/walls';
 import type {
@@ -45,7 +46,14 @@ import type {
     WindowElement,
 } from '@/editor/model/types';
 
-import { PEN, pen, type ScenePalette, type SceneLayer, type ScenePrimitive } from './types';
+import {
+    PEN,
+    pen,
+    type ScenePalette,
+    type SceneLayer,
+    type ScenePrimitive,
+    type Stroke,
+} from './types';
 
 /**
  * Turning a document into primitives.
@@ -244,7 +252,7 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                     kind: 'polyline',
                     points: elementWorldPoints(element, context.lookup),
                     closed: false,
-                    stroke: pen(context.colour),
+                    stroke: shapeStroke(element, context),
                 },
             ];
 
@@ -256,7 +264,7 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                     kind: 'polyline',
                     points: ring,
                     closed: true,
-                    stroke: pen(context.colour),
+                    stroke: shapeStroke(element, context),
                     fill: hatchFill(hatchOf(element), element.style?.fill ?? null, context),
                 },
                 ...closedHatch(element, [ring], context),
@@ -288,7 +296,7 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                     kind: 'polyline',
                     points: ring,
                     closed: shut,
-                    stroke: pen(context.colour),
+                    stroke: shapeStroke(element, context),
                     fill: shut
                         ? hatchFill(hatchOf(element), element.style?.fill ?? null, context)
                         : null,
@@ -321,7 +329,7 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                     kind: 'circle',
                     centre,
                     radius: element.geometry.radius,
-                    stroke: pen(context.colour),
+                    stroke: shapeStroke(element, context),
                     fill: hatchFill(hatchOf(element), element.style?.fill ?? null, context),
                 },
                 ...closedHatch(element, [ringOfCircle(centre, element.geometry.radius)], context),
@@ -631,6 +639,30 @@ function hatchPrimitives(
 /** The hatch a closed shape carries, and the fill it is left with underneath it. */
 function hatchOf(element: Element): HatchPattern | null {
     return element.style?.hatch ?? null;
+}
+
+/**
+ * The stroke a shape somebody drew for its own sake is painted with.
+ *
+ * Its line type if it names one, and _contínua larga_ if it does not — which is exactly what a
+ * line, a rectangle, a polygon and a circle were drawn as before there was a type to name, so
+ * nothing already on a drawing moves. The weight arrives with the pattern rather than beside
+ * it, because the standard names a line once: `tracejada estreita` is one convention and not a
+ * dash crossed with a width.
+ *
+ * A wall, an opening, a room and a dimension are deliberately not asked. What those mean is
+ * decided by what they are, and the weights the editor draws them at say so already.
+ */
+function shapeStroke(element: Element, context: BuildContext): Stroke {
+    const definition = findLineType(element.style?.lineType ?? DEFAULT_LINE_TYPE);
+
+    if (definition === undefined) {
+        return pen(context.colour);
+    }
+
+    const stroke = pen(context.colour, LINE_WEIGHTS[definition.weight]);
+
+    return definition.dash === null ? stroke : { ...stroke, dash: definition.dash };
 }
 
 /**

@@ -462,12 +462,15 @@ tool, and this is the type it wants. The same goes for a trajectory, a centre li
 projection of a balcony, an eave or a canopy: the editor cannot know that a run means one of
 those, and the person drawing it does.
 
-- [ ] **12.1 The eight types, named.** Schema 10: `style.lineType` names one of them, and
+- [x] **12.1 The eight types, named.** Schema 10: `style.lineType` names one of them, and
       `model/lineTypes.ts` sits beside `model/hatches.ts` holding what each one draws — the
       dash pattern in millimetres on the sheet, and the weight, because _tracejada estreita_ is
       one thing in the standard rather than a type and a width chosen separately. Only the name
-      is stored. `Stroke` already carries a `dash` and a `width` to all five outputs, so the
-      screen, the PNG, the SVG and the PDF need no new code
+      is stored, and the scene resolves it for the four shapes and for nothing else. `Stroke`
+      has carried a `dash` since the arched head arrived, so the screen, the PNG and the SVG
+      needed no new code — but **the PDF exporter had never read it**, and had been printing
+      every dashed line solid since Phase 11.1. Fixed first and on its own, because it is a bug
+      in what the editor already drew rather than part of this
 - [ ] **12.2 Choosing one.** A picker in the properties panel next to the hatch picker, gated
       to `line`, `rect`, `polygon` and `circle` the way `HATCHABLE` gates the other one — a
       second list rather than the same one, since a wall and a room are hatched here and never
@@ -508,10 +511,17 @@ Decisions taken before the phase starts, so they are not re-argued halfway throu
 - **A line type is notation and scales on the sheet.** The split 11.4 made, applied again:
   every dash and every gap is in millimetres of paper, so a centre line reads the same at 1:50
   and at 1:100, and the weight it is drawn with was already measured that way.
-- **The DXF carries the type and not the weight.** R12 has no lineweight — Phase 8 settled that
-  a pen weight stays behind — but it does have linetypes, and the exporter already names
-  `CONTINUOUS` on every layer without ever writing an `LTYPE` table. A dashed centre line is
-  the one part of this that can travel, and that table is the whole cost of sending it.
+- **The DXF carries neither the type nor the weight.** R12 does have linetypes — the exporter
+  already names `CONTINUOUS` on every layer — so writing an `LTYPE` table looked like the one
+  part of this that could travel. It is not, and the reason is the same one Phase 8 gave for
+  leaving pen weights behind: **a DXF has no paper**. A dash is measured on the sheet, so
+  turning 3 mm into drawing units needs a plot scale, and the plot scale is exactly the
+  decision the person receiving the file makes. Baking 1:50 into an `LTYPE` makes the file
+  wrong for anybody who plots it at 1:100, and wrong quietly. Carrying the pattern while
+  dropping the weight would also give a drawing that is neither what was on screen nor plain
+  geometry. So a dashed line exports as the run it is, on its layer, at full size, and whoever
+  opens it assigns a linetype at the scale they are actually plotting — the same arrival job as
+  hatching a wall's poché.
 
 ### Only after all of the above
 
