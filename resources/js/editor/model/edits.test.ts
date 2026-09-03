@@ -6,12 +6,13 @@ import { distance, point } from '@/editor/geometry/vec';
 import { elementWorldPoints, makeLookup } from './elements';
 import {
     segmentAngle,
+    setLineType,
     setPosition,
     setSegmentAngle,
     setSegmentLength,
     setWallThickness,
 } from './edits';
-import { createWall } from './factories';
+import { createLine, createWall } from './factories';
 import { defaultLayers } from './document';
 import type { HashiraDocument } from './types';
 
@@ -121,5 +122,36 @@ describe('editing by value', () => {
         expect(moved.transform.x).toBe(5000);
         expect(moved.transform.y).toBe(2000);
         expect(moved.geometry).toEqual(wall.geometry);
+    });
+});
+
+describe('naming how a line reads', () => {
+    const line = () => createLine(point(0, 0), point(3000, 0), LAYER);
+
+    it('writes the one that is chosen', () => {
+        expect(setLineType(line(), 'dash-dot-narrow').style?.lineType).toBe('dash-dot-narrow');
+    });
+
+    /*
+     * Contínua larga is what these shapes are drawn as anyway, so writing it down would fill a
+     * drawing with a field that says exactly what its absence already said — and would make
+     * two documents that draw identically compare as different in a version diff.
+     */
+    it('stores the default by taking the field away again', () => {
+        const named = setLineType(line(), 'dashed-narrow');
+        const back = setLineType(named, 'continuous-wide');
+
+        expect(back.style?.lineType).toBeUndefined();
+        expect(back.style).toBeUndefined();
+    });
+
+    it('leaves the rest of the style alone either way', () => {
+        const hatched = { ...line(), style: { hatch: 'concrete' as const } };
+
+        expect(setLineType(hatched, 'dashed-narrow').style).toEqual({
+            hatch: 'concrete',
+            lineType: 'dashed-narrow',
+        });
+        expect(setLineType(hatched, 'continuous-wide').style).toEqual({ hatch: 'concrete' });
     });
 });

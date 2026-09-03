@@ -25,6 +25,7 @@ import {
     setDoorSwing,
     setHatch,
     setLayer,
+    setLineType,
     setOpeningHead,
     setOpeningOffset,
     setOpeningWidth,
@@ -42,6 +43,7 @@ import {
     setWallThickness,
 } from '@/editor/model/edits';
 import { HATCH_OPTIONS } from '@/editor/model/hatches';
+import { DEFAULT_LINE_TYPE, LINE_TYPE_OPTIONS } from '@/editor/model/lineTypes';
 import { JAMB_LABEL, LEAF_OPTIONS, SIDE_LABEL } from '@/editor/model/openings';
 import { wallSides } from '@/editor/model/walls';
 import type {
@@ -49,6 +51,7 @@ import type {
     DoorLeaf,
     Element,
     HatchPattern,
+    LineType,
     OpeningHead,
 } from '@/editor/model/types';
 import {
@@ -69,6 +72,15 @@ import { ChoiceRow, MeasureField, ReadonlyRow, ToggleRow } from './MeasureField'
  * inside to fill, and an opening is a hole rather than a shape.
  */
 const HATCHABLE: Element['type'][] = ['wall', 'room', 'rect', 'polygon', 'circle'];
+
+/**
+ * The element types a line type means anything on: the ones somebody draws for their own sake.
+ *
+ * Not the same list as the one above, and deliberately not merged with it. A wall and a room
+ * are hatched and never re-lined — what those mean is decided by what they are — and a line
+ * has no inside to fill.
+ */
+const LINE_TYPED: Element['type'][] = ['line', 'rect', 'polygon', 'circle'];
 
 /**
  * The properties of what is selected, as values you can type into.
@@ -195,6 +207,15 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                         onCommit={(value) => set(setSegmentAngle(element, value), 'Angle', 'angle')}
                     />
                 </>
+            )}
+
+            {LINE_TYPED.includes(element.type) && (
+                <ChoiceRow<LineType>
+                    label="Line"
+                    value={element.style?.lineType ?? DEFAULT_LINE_TYPE}
+                    options={LINE_TYPE_OPTIONS}
+                    onChange={(value) => set(setLineType(element, value), 'Line type', 'lineType')}
+                />
             )}
 
             {HATCHABLE.includes(element.type) && (

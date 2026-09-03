@@ -471,12 +471,16 @@ those, and the person drawing it does.
       needed no new code — but **the PDF exporter had never read it**, and had been printing
       every dashed line solid since Phase 11.1. Fixed first and on its own, because it is a bug
       in what the editor already drew rather than part of this
-- [ ] **12.2 Choosing one.** A picker in the properties panel next to the hatch picker, gated
+- [x] **12.2 Choosing one.** A picker in the properties panel next to the hatch picker, gated
       to `line`, `rect`, `polygon` and `circle` the way `HATCHABLE` gates the other one — a
       second list rather than the same one, since a wall and a room are hatched here and never
       re-lined, and a line has no inside to fill. Written through a command, so it undoes like
-      everything else. The tool carries the last one chosen into the next run, the way the wall
-      tool carries a thickness — a centre line is rarely drawn alone
+      everything else. And a second one in the side panel _before_ the shape is drawn, kept for
+      the next one the way the wall tool keeps a thickness, because a centre line is rarely
+      drawn alone. It goes onto the rubber band as well as the committed shape: choosing the
+      convention is only useful if you can see it before letting go. Choosing contínua larga
+      takes the field off rather than writing it, so a drawing never fills up with a field
+      saying what its own absence already said
 - [ ] **12.3 A legend of both.** Parked in 11.4 and unblocked here. The strip beside the
       drawing lists the layers; what a drawing is actually read by is its patterns and its
       lines. One legend rather than two, because the reader is asking the same question of both

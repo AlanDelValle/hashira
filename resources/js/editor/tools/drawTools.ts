@@ -16,6 +16,7 @@ import {
     createPolygon,
     createRect,
 } from '@/editor/model/factories';
+import { setLineType } from '@/editor/model/edits';
 import type { Element } from '@/editor/model/types';
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand } from '@/editor/store/documentStore';
@@ -37,6 +38,19 @@ const ANGLE_SNAP = toRadians(15);
 
 /** Anything smaller than this in world millimetres is a stray click, not a shape. */
 const MINIMUM_SIZE = 1;
+
+/**
+ * The shape, drawn as the line type the tool is set to.
+ *
+ * Applied to the preview as well as to the committed element, because they come out of the
+ * same factory: a centre line rubber-bands as a centre line, which is the only way to see
+ * before letting go that the right one is selected.
+ */
+function typed<T extends Element | null>(element: T): T {
+    return element === null
+        ? element
+        : (setLineType(element, useEditorStore.getState().lineType) as T);
+}
 
 function constrainToAngle(origin: Point, target: Point): Point {
     const angle = snapAngle(angleBetween(origin, target), ANGLE_SNAP);
@@ -120,7 +134,7 @@ function createDragTool(id: 'line' | 'rect' | 'circle', label: string, build: Dr
 
 export function createLineTool(): Tool {
     return createDragTool('line', 'Line', (origin, current, layerId) =>
-        createLine(origin, current, layerId),
+        typed(createLine(origin, current, layerId)),
     );
 }
 
@@ -133,7 +147,7 @@ export function createRectTool(): Tool {
             return null;
         }
 
-        return createRect(origin, current, layerId);
+        return typed(createRect(origin, current, layerId));
     });
 }
 
@@ -141,7 +155,7 @@ export function createCircleTool(): Tool {
     return createDragTool('circle', 'Circle', (origin, current, layerId) => {
         const radius = distance(origin, current);
 
-        return radius < MINIMUM_SIZE ? null : createCircle(origin, radius, layerId);
+        return radius < MINIMUM_SIZE ? null : typed(createCircle(origin, radius, layerId));
     });
 }
 
@@ -157,7 +171,7 @@ export function createPolygonTool(): Tool {
 
         interaction.draftPoints = vertices;
         previewOne(
-            points.length >= 2 ? createPolygon(points, closed, context.activeLayerId) : null,
+            points.length >= 2 ? typed(createPolygon(points, closed, context.activeLayerId)) : null,
         );
 
         requestRepaint();
@@ -165,7 +179,9 @@ export function createPolygonTool(): Tool {
 
     function commit(context: ToolContext, closed: boolean): void {
         const element =
-            vertices.length >= 2 ? createPolygon(vertices, closed, context.activeLayerId) : null;
+            vertices.length >= 2
+                ? typed(createPolygon(vertices, closed, context.activeLayerId))
+                : null;
 
         vertices = [];
         clearDraft();

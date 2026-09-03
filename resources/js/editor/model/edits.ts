@@ -9,8 +9,9 @@ import {
     type Point,
 } from '@/editor/geometry/vec';
 
+import { DEFAULT_LINE_TYPE } from './lineTypes';
 import { DEFAULT_LEAF_WIDTH } from './openings';
-import type { DoorLeaf, Element, HatchPattern, OpeningHead } from './types';
+import type { DoorLeaf, Element, HatchPattern, LineType, OpeningHead } from './types';
 
 /**
  * Editing an element by value rather than by dragging it.
@@ -199,6 +200,27 @@ export function setAssetMirrored(element: Element, mirrored: boolean): Element {
  * always was — a wall solid, a room tinted. Stored as an absent field rather than a null one,
  * so a drawing nobody has marked up carries nothing about hatching at all.
  */
+/**
+ * How a line reads, in the conventions of NBR 8403.
+ *
+ * The default is stored by being absent, the way 'none' takes a hatch off: contínua larga is
+ * what these shapes are drawn as anyway, so writing it down would fill a drawing with a field
+ * that says what its absence already said.
+ */
+export function setLineType(element: Element, lineType: LineType): Element {
+    const style = { ...element.style };
+
+    if (lineType === DEFAULT_LINE_TYPE) {
+        delete style.lineType;
+    } else {
+        style.lineType = lineType;
+    }
+
+    return Object.keys(style).length === 0
+        ? { ...element, style: undefined }
+        : { ...element, style };
+}
+
 export function setHatch(element: Element, pattern: HatchPattern | 'none'): Element {
     const style = { ...element.style };
 

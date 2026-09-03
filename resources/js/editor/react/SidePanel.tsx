@@ -2,9 +2,10 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { replaceSettings } from '@/editor/commands/command';
 
+import { LINE_TYPE_OPTIONS } from '@/editor/model/lineTypes';
 import { DEFAULT_LEAF_WIDTH, LEAF_OPTIONS } from '@/editor/model/openings';
 import { formatLength, fromDisplay, toDisplay } from '@/editor/model/units';
-import type { DisplayUnit, DoorLeaf, TitleBlock } from '@/editor/model/types';
+import type { DisplayUnit, DoorLeaf, LineType, TitleBlock } from '@/editor/model/types';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
@@ -24,6 +25,7 @@ export function SidePanel() {
 
     return (
         <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
+            {SHAPE_TOOLS.includes(tool) && <ShapeSettings />}
             {tool === 'wall' && <WallSettings unit={unit} />}
             {tool === 'door' && <OpeningSettings unit={unit} />}
             {tool === 'area' && <RoomAreaSettings unit={unit} />}
@@ -58,6 +60,34 @@ export function SidePanel() {
                 </div>
             </Section>
         </aside>
+    );
+}
+
+/** The four tools that draw a shape for its own sake, and so offer a line type. */
+const SHAPE_TOOLS = ['line', 'rect', 'circle', 'polygon'];
+
+/**
+ * Shown while one of the four shape tools is active: how the next run will read.
+ *
+ * Offered before the shape is drawn rather than only after it, because the rubber band is
+ * drawn with it: choosing "dash-dot" here means the centre line looks like one while it is
+ * being placed. The properties panel changes one that has already landed.
+ */
+function ShapeSettings() {
+    const lineType = useEditorStore((state) => state.lineType);
+    const setLineType = useEditorStore((state) => state.setLineType);
+
+    return (
+        <Section title="New shape">
+            <div className="px-3">
+                <ChoiceRow<LineType>
+                    label="Line"
+                    value={lineType}
+                    options={LINE_TYPE_OPTIONS}
+                    onChange={setLineType}
+                />
+            </div>
+        </Section>
     );
 }
 

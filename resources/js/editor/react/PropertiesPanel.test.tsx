@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { point } from '@/editor/geometry/vec';
 import { emptyDocument } from '@/editor/model/document';
-import { createWall } from '@/editor/model/factories';
-import type { Element, HashiraDocument, WallElement } from '@/editor/model/types';
+import { createLine, createWall } from '@/editor/model/factories';
+import type { Element, HashiraDocument, LineElement, WallElement } from '@/editor/model/types';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
@@ -230,5 +230,61 @@ describe('the properties panel', () => {
 
         expect(currentWall().layerId).toBe('layer_annotations');
         expect(history.getState().canUndo).toBe(true);
+    });
+
+    /*
+     * The line type is offered on the four shapes somebody draws for their own sake, and on
+     * nothing else. A wall means what it means because it is a wall.
+     */
+    it('does not offer a line type on a wall', () => {
+        render(<PropertiesPanel />);
+
+        expect(screen.queryByLabelText('Line')).not.toBeInTheDocument();
+    });
+});
+
+describe('naming how a line reads, from the panel', () => {
+    function line(): LineElement {
+        return { ...createLine(point(0, 0), point(3000, 0), LAYER), id: 'l1' };
+    }
+
+    function currentLine(): LineElement {
+        const element = useDocumentStore.getState().document.elements[0];
+
+        if (element?.type !== 'line') {
+            throw new Error('expected the line to still be there');
+        }
+
+        return element;
+    }
+
+    beforeEach(() => {
+        open([line()], ['l1']);
+    });
+
+    it('shows contínua larga for a line nobody has named', () => {
+        render(<PropertiesPanel />);
+
+        expect(screen.getByLabelText('Line')).toHaveValue('continuous-wide');
+    });
+
+    it('names one, through a command, so it undoes', async () => {
+        const user = userEvent.setup();
+
+        render(<PropertiesPanel />);
+        await user.selectOptions(screen.getByLabelText('Line'), 'dash-dot-narrow');
+
+        expect(currentLine().style?.lineType).toBe('dash-dot-narrow');
+        expect(history.getState().canUndo).toBe(true);
+    });
+
+    it('takes the field away again when the default is chosen back', async () => {
+        const user = userEvent.setup();
+
+        render(<PropertiesPanel />);
+        await user.selectOptions(screen.getByLabelText('Line'), 'dashed-narrow');
+        await user.selectOptions(screen.getByLabelText('Line'), 'continuous-wide');
+
+        expect(currentLine().style?.lineType).toBeUndefined();
     });
 });

@@ -138,6 +138,13 @@ drawing cannot differ from what lands in the document.
 Line, rectangle and circle are press–drag–release. The polygon collects clicks; clicking its
 first vertex closes the ring, Enter or a double click finishes it open, Escape throws it away.
 
+All four carry a **line type** — one of the eight conventions of NBR 8403 — chosen in the side
+panel before the shape is drawn and kept for the next one, the way the wall tool keeps a
+thickness. It goes onto the preview as well as the committed shape, which is the only way to
+see before letting go that the right convention is selected: a centre line rubber-bands as a
+centre line. Choosing _contínua larga_ writes nothing, because that is what these shapes are
+drawn as anyway. §15 has what each type is and why the weight comes with it.
+
 The text tool is the one that does almost nothing itself. A click decides _where_ the label
 goes and the words are typed into a real input the chrome floats over that point, because a
 canvas has no caret, no selection and no input method — and a tool that cannot take an input
@@ -321,6 +328,13 @@ re-centring the local origin so rotation still pivots on the middle.
 Every field commits through a command with a coalesce key of `field:elementId`, so an edit made
 by typing undoes exactly like one made by dragging, and correcting a number twice in a row is
 one history entry rather than two.
+
+Two of the panel's rows are gated to the element types they mean something on, and the two
+lists are not the same list. A **hatch** is offered on what encloses an area — a wall, a room,
+a rectangle, a polygon, a circle — because a line has no inside to fill. A **line type** is
+offered on the four shapes somebody draws for their own sake — a line, a rectangle, a polygon,
+a circle — because a wall, an opening, a room and a dimension already mean what they mean by
+being what they are.
 
 ## 10. The block library
 

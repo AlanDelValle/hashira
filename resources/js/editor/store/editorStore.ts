@@ -10,7 +10,8 @@ import { newId } from '@/editor/model/id';
 
 /** Twelve square metres: a small bedroom, and a number somebody would actually type. */
 const DEFAULT_TARGET_AREA = 12_000_000;
-import type { DoorLeaf } from '@/editor/model/types';
+import { DEFAULT_LINE_TYPE } from '@/editor/model/lineTypes';
+import type { DoorLeaf, LineType } from '@/editor/model/types';
 
 /**
  * Words being typed onto the sheet. The id gives each draft its own identity, and its own
@@ -71,6 +72,14 @@ interface EditorStore {
     /** Thickness applied to the next wall drawn, in millimetres. */
     wallThickness: number;
     /**
+     * How the next line, rectangle, polygon or circle reads.
+     *
+     * Carried from one shape to the next, like the wall thickness: a centre line is almost
+     * never drawn on its own, and having to reach for the properties panel after every run is
+     * how somebody ends up drawing them all continuous and fixing it later.
+     */
+    lineType: LineType;
+    /**
      * The area the next room drawn from one has to have, in square millimetres.
      *
      * A request rather than a record: it decides the size of the four walls the area tool
@@ -110,6 +119,7 @@ interface EditorStore {
     setActiveLayer: (layerId: string) => void;
     setActiveSheet: (sheetId: string) => void;
     setWallThickness: (thickness: number) => void;
+    setLineType: (lineType: LineType) => void;
     setTargetArea: (area: number) => void;
     setDoorLeaf: (leaf: DoorLeaf) => void;
     setTextSize: (size: number) => void;
@@ -140,6 +150,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     sheetFrameVisible: false,
     snapToGrid: true,
     wallThickness: 150,
+    lineType: DEFAULT_LINE_TYPE,
     targetArea: DEFAULT_TARGET_AREA,
     doorLeaf: 'single',
     textSize: DEFAULT_TEXT_SIZE,
@@ -181,6 +192,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
 
     setWallThickness: (wallThickness) => set({ wallThickness }),
+    setLineType: (lineType) => set({ lineType }),
     setTargetArea: (targetArea) => set({ targetArea }),
     setDoorLeaf: (doorLeaf) => set({ doorLeaf }),
     setTextSize: (textSize) => set({ textSize }),
