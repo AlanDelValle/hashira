@@ -8,7 +8,7 @@ import type { DisplayUnit, DoorLeaf, TitleBlock } from '@/editor/model/types';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
-import { LayersPanel } from './LayersPanel';
+import { SceneTree } from './SceneTree';
 import { ChoiceRow, MeasureField, ReadonlyRow } from './MeasureField';
 import { PropertiesPanel } from './PropertiesPanel';
 import { SheetsPanel } from './SheetsPanel';
@@ -36,7 +36,7 @@ export function SidePanel() {
             </Section>
 
             <Section title="Layers" inset>
-                <LayersPanel />
+                <SceneTree />
             </Section>
 
             <Section title="Sheets" inset>

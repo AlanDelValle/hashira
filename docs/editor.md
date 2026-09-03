@@ -154,7 +154,7 @@ faces of the walls rather than their centrelines — so a corner between a 250 m
 and a 100 mm partition is where those two faces actually meet. Where nothing encloses the
 pointer there is nothing to accept, and clicks fall back to placing a ring by hand: a
 courtyard, a zone, a room whose fourth wall has not been drawn yet. How the walls are turned
-into spaces is in §18.
+into spaces is in §19.
 
 The area tool is the other way round: it is told an area and left to find a size. Type twelve
 square metres, put a corner down, and the rectangle that follows the pointer holds those twelve
@@ -304,7 +304,7 @@ of the selection would drag it across the sheet.
 
 Left to the pointer, a wall dragged up against another stops a few millimetres out: close
 enough to look joined at any sensible zoom, far enough that the two are still two walls. Their
-bands stay square and overlap at the corner instead of mitring into it (§18), and the room they
+bands stay square and overlap at the corner instead of mitring into it (§19), and the room they
 enclose is not the room it looks like.
 
 Up to eight elements every point of every one of them is offered. Past that a drag is arranging
@@ -358,14 +358,42 @@ definitions a drawing refers to alongside it, filtered to the owner's own blocks
 still does not resolve is not dropped: its footprint is drawn as a dashed rectangle, because a
 block somebody placed still occupies that space.
 
-## 11. Grid
+## 11. The scene tree
+
+The layers panel lists what is standing on each layer, and it is how somebody finds the label
+that ended up behind a block.
+
+**An element names itself.** Nothing in the format holds a name for one, and adding a field for
+it would be a name that can go stale — the same reasoning that keeps a dimension from storing
+its value. So `model/naming.ts` works one out: a text by its own words, a wall by how long it
+is, a door by how it opens and how wide, a block by the block, a room by the area it measures.
+A name somebody _types_ goes to `metadata.label`, a field that has been in the format since
+version 1 and that nothing read until this panel; clearing it hands the row back to the
+derived one.
+
+**Hovering a row writes to `interaction` and asks for a repaint.** That is rule 5, and it is
+also the only way a list this long stays usable: highlighting through React state would make
+running a pointer down two hundred rows two hundred renders of the whole panel.
+
+Layers are shut until they are opened, which is the whole of the performance story — several
+hundred rows are rendered only when somebody asks for them, and the count on the layer says how
+many that would be first. A layer nobody opens costs one row.
+
+The panel also finally does what §3 of the document format has always said it does: create,
+rename, recolour, reorder and delete a layer. Every one of those is in the document, so every
+one is a command and undoes. Deleting a layer with something on it offers to move the contents
+first, and the move and the deletion go into **one** command — an undo landing between them
+would leave a layer gone and its contents somewhere nobody put them. The last layer never goes,
+because every element in the format names the layer it belongs to.
+
+## 12. Grid
 
 The document's grid size is what snapping uses. The grid that is _drawn_ is the first multiple
 of it (×1, ×2, ×5, by decade) still at least nine pixels apart, so zooming out thins the lines
 out instead of turning them into a grey wash. Major lines every fifth minor one, and the drawing
 origin is marked so absolute coordinates have something to refer to.
 
-## 12. Saving
+## 13. Saving
 
 `persistence/autosave.ts` watches the document store and is shaped by four rules:
 
@@ -386,7 +414,7 @@ saying the save failed with one saying everything is fine.
 `Ctrl/Cmd + S` flushes immediately, and leaving the page with unsaved work asks for
 confirmation.
 
-## 13. Versions
+## 14. Versions
 
 Autosave keeps the latest work; a version is a point someone chose to come back to. Creating
 one flushes first, so the snapshot is of what is on screen rather than whatever the server
@@ -430,7 +458,7 @@ Hidden layers are drawn on that surface, unlike anywhere else in the editor. It 
 of two documents rather than a drawing, and one that leaves half of a version out is not a
 comparison — while a mark over geometry nobody can see would be worse than either.
 
-## 14. One drawing, five outputs
+## 15. One drawing, five outputs
 
 `scene/build.ts` turns the document into primitives — polylines, circles, ellipses, arcs and
 text, in world millimetres. It is the only place that knows what a wall with a door in it looks
@@ -457,7 +485,7 @@ filled rather than stroked and gets smaller as you zoom out, the way the wall do
 It was a fat stroke until walls learned to meet each other. A stroke has two ends and they are
 square, which is fine until two walls turn a corner and the outside of it is a notch neither
 of them reaches into. Mitring says where each face of each band really stops, and that shape
-is a quadrilateral, not a line — see §18.
+is a quadrilateral, not a line — see §19.
 
 Four of those outputs are pictures. DXF is not, and that changes what faithful means. It is
 still written from the scene, so a wall leaves as the shape a wall is drawn as — an outline
@@ -470,7 +498,7 @@ Hidden layers are absent from the scene, so hiding a layer hides it in an export
 openings come only from openings on visible layers, which is why hiding _Openings_ gives solid
 walls rather than walls full of holes with nothing in them.
 
-## 15. Export
+## 16. Export
 
 SVG is written in world millimetres with `width` and `height` set to the drawing divided by its
 scale, so a 1:50 file opens at a fiftieth of the building anywhere. Layers survive as groups.
@@ -508,7 +536,7 @@ text's own baseline. Along the page's x axis it is the same direction only while
 horizontal, which is why vertical dimensions were the only thing in the drawing that came out
 of the PDF sitting beside their line instead of on it.
 
-## 16. Reach
+## 17. Reach
 
 The chrome is keyboard-operable throughout. The tool rail follows the ARIA toolbar pattern —
 one tab stop, arrow keys within it — the canvas is focusable and shows a focus ring when it is
@@ -521,7 +549,7 @@ than they were first drawn.
 Below the `lg` breakpoint the editor is not merely hidden — it is not mounted, so a phone does
 not start a render loop for a canvas nobody can draw on.
 
-## 17. Tracing over a PDF
+## 18. Tracing over a PDF
 
 A survey arrives as a PDF far more often than as anything a drafting tool can open, and the
 useful thing to do with it is to draw on top of it. Importing one lists its pages with their
@@ -549,7 +577,7 @@ that reloaded per frame would be a request per frame. One that has not arrived y
 outline; one nothing is known about — which is what a share link sees — is nothing at all,
 since an outline would advertise a document that is not being given.
 
-## 18. Where walls meet
+## 19. Where walls meet
 
 A wall is a band as wide as it is thick. Two of them turning a corner, drawn as two bands with
 square ends, overlap on the inside of the corner and leave a square notch on the outside that
@@ -667,7 +695,7 @@ all three need the same answer; without that, panning across a large plan would 
 corner three times a frame. While something is being dragged the previewed positions are what
 the mitres have to follow, so they are worked out again — but only then.
 
-## 19. What is not here yet
+## 20. What is not here yet
 
 Anything with a second person in it: presence, cursors, live co-editing, comments. Comparing
 two versions of a drawing is the one part of that phase already here, and it is the part that

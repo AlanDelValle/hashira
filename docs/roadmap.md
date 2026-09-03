@@ -268,7 +268,7 @@ What it settled, which the rest of the phase should not re-argue:
 - Organisations, teams and granular permissions
 - Self-hosting improvements: containers, backups, upgrade path
 
-### Phase 11 — Drafting depth `[~]`
+### Phase 11 — Drafting depth `[x]`
 
 The phase about a drawing saying what it already knows. A wall has two faces and reports one
 length; a room is a shape with an area and no name; a layer holds forty elements and lists
@@ -320,7 +320,7 @@ Phase 10 and the two can be taken in either order.
       per shape, coarsened rather than flooded past that, and dropped on screen below about two
       pixels of spacing. Walls are grouped by their layer _and_ their hatch, so a run coming
       down is never merged into the run staying up
-- [ ] **11.5 The layers panel as a scene tree.** No schema: `metadata.label` has been in the
+- [x] **11.5 The layers panel as a scene tree.** No schema: `metadata.label` has been in the
       format since version 1 and nothing has ever read it. A layer expands into what is on it,
       each element names itself — a text by its content, a room by its name and area, a wall
       by its length, a block by the block — and a name somebody types goes to that field
@@ -375,6 +375,19 @@ elevation** follow an edge rather than fill an area, which is a different mechan
 wait. And a **legend of the patterns a drawing uses** is not printed beside it yet: the strip
 already lists the layers, and materials belong there too, but that is a change to what a sheet
 says rather than to what a shape is.
+
+11.5 finishes the phase, and it is the one that answers the request the whole of Phase 11
+started from: a label reading "Bedroom" on the canvas now appears under Annotations in the
+panel, which is where somebody goes looking for it. Walked in the editor on the seeded plan —
+the four walls listed by their lengths, the blocks by the blocks, "Bedroom" under Annotations;
+hovering a row highlighting it on the drawing and clicking it selecting it; a layer renamed,
+recoloured and added; and Furniture offering to move its three elements to Architecture before
+going, both halves undoing in one press.
+
+Two things per-element that are **not** here, and the reason is the same for both. Hiding and
+locking stay on the layer — see the decisions above — and there is no drag between layers in
+the tree, because the properties panel already moves an element to another layer and a second
+way to do one thing is a second way to keep working.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 
