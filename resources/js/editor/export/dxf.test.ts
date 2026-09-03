@@ -9,7 +9,12 @@ import { pen, type SceneLayer, type ScenePalette } from '@/editor/scene/types';
 
 import { layerNames, nearestAci, sceneToDxf } from './dxf';
 
-const PALETTE: ScenePalette = { ink: '#17191d', subtle: '#5f636b', roomFill: '#f2f5fc' };
+const PALETTE: ScenePalette = {
+    ink: '#17191d',
+    subtle: '#5f636b',
+    roomFill: '#f2f5fc',
+    sheet: '#ffffff',
+};
 const BOUNDS = { minX: 0, minY: -75, maxX: 6000, maxY: 75 };
 
 /**

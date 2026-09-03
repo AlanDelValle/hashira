@@ -74,7 +74,12 @@ function overlay(ctx: CanvasRenderingContext2D): OverlayContext {
     return {
         ctx,
         theme: THEME,
-        palette: { ink: THEME.ink, subtle: THEME.inkSubtle, roomFill: THEME.accentSoft },
+        palette: {
+            ink: THEME.ink,
+            subtle: THEME.inkSubtle,
+            roomFill: THEME.accentSoft,
+            sheet: THEME.sheet,
+        },
         layers: defaultLayers(),
         // The whole drawing, the way the renderer passes it: what is highlighted is a
         // fragment of the document, and it still has to be able to find the rest.

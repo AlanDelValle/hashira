@@ -210,6 +210,10 @@ export class CanvasRenderer {
                 palette,
                 unit: drawing.settings.unit,
                 joins,
+                scale: drawing.settings.scale,
+                // Two pixels' worth of world, so a hatch too fine to resolve is not drawn at
+                // all: below that it is a grey rectangle that says nothing and costs a frame.
+                minimumHatchSpacing: 2 / viewport.zoom,
             }),
             { px },
         );
@@ -286,6 +290,7 @@ export class CanvasRenderer {
             ink: this.theme.ink,
             subtle: this.theme.inkSubtle,
             roomFill: this.theme.accentSoft,
+            sheet: this.theme.sheet,
         };
     }
 

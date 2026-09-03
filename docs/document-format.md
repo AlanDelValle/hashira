@@ -1,4 +1,4 @@
-# Document format — schema version 8
+# Document format — schema version 9
 
 The document is the single source of truth for a drawing. It is plain JSON: no functions,
 no class instances, no references to DOM or React. It is what the API stores in
@@ -15,7 +15,7 @@ Two rules make everything else predictable:
 
 ```jsonc
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "id": "01JBQ8...", // ULID, stable for the life of the drawing
   "name": "Ground floor",
   "settings": {/* §2 */},
@@ -313,12 +313,41 @@ rectangle, because a block someone placed still occupies that space.
 ### 4.7 Style
 
 ```jsonc
-{ "stroke": "#1F2328", "fill": null, "strokeWidth": 0.35, "dash": null }
+{ "stroke": "#1F2328", "fill": null, "strokeWidth": 0.35, "dash": null, "hatch": "demolish" }
 ```
 
 All fields are optional; anything absent falls back to the layer, then to the document
 theme. `strokeWidth` is in millimetres _on the printed sheet_ (a 0.35 mm pen), not in world
 millimetres — so line weights stay constant as you zoom and match the plotted output.
+
+`hatch` names one of the conventions of NBR 6492 — what a shape is made of, or what is about
+to happen to it. It belongs to the style rather than to any one element type because what
+these mostly say things about is masonry: the first three are what a renovation drawing turns
+on, and they mark walls.
+
+| Group      | `hatch`                                                                           |
+| ---------- | --------------------------------------------------------------------------------- |
+| Renovation | `existing` · `demolish` · `new`                                                   |
+| Materials  | `concrete` · `concrete-view` · `mortar` · `steel` · `rubber` · `wood` · `plywood` |
+| Ground     | `earth` · `fill` · `stone` · `stone-view` · `floor-fill`                          |
+
+Three rules decide the rest of it.
+
+**Only the name is stored.** A hatch is a convention, and a concrete hatch somebody has
+re-angled is no longer the mark anybody reads — so the spacing and the angle live in
+`model/hatches.ts` with the pattern, not in the drawing.
+
+**A hatch is geometry.** It is clipped lines, specks and veins in the scene every output
+consumes, never a fill pattern. A `CanvasPattern`, an SVG `<pattern>`, a PDF tile and nothing
+at all in R12 would be four implementations of one drawing, which is what a single scene
+exists to prevent.
+
+**It is measured on the sheet.** Every spacing is in millimetres of paper, like a pen weight
+and unlike a wall: none of these represents a real size, so a concrete wall speckles the same
+on an A3 whether the plan goes out at 1:50 or at 1:100.
+
+Absent means the shape is filled the way it always was — a wall solid, a room tinted — so a
+drawing written before schema 9 looks identical after it.
 
 ---
 
@@ -326,7 +355,7 @@ millimetres — so line weights stay constant as you zoom and match the plotted 
 
 ```json
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "id": "01JBQ8ZK4T0000000000000000",
   "name": "Studio",
   "settings": {

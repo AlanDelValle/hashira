@@ -188,6 +188,7 @@ export class ReviewSurface {
                 ink: this.theme.ink,
                 subtle: this.theme.inkSubtle,
                 roomFill: this.theme.accentSoft,
+                sheet: this.theme.sheet,
             },
             unit: drawing.settings.unit,
             joins: wallJoins(drawing.elements),

@@ -10,7 +10,12 @@ import type { AssetElement } from '@/editor/model/types';
 import { buildScene } from './build';
 import type { ScenePalette, ScenePrimitive } from './types';
 
-const PALETTE: ScenePalette = { ink: '#17191d', subtle: '#5f636b', roomFill: '#f2f5fc' };
+const PALETTE: ScenePalette = {
+    ink: '#17191d',
+    subtle: '#5f636b',
+    roomFill: '#f2f5fc',
+    sheet: '#ffffff',
+};
 
 function primitivesOf(element: AssetElement): ScenePrimitive[] {
     return buildScene([element], defaultLayers(), { palette: PALETTE }).flatMap(

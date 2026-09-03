@@ -108,4 +108,9 @@ export interface ScenePalette {
     ink: string;
     subtle: string;
     roomFill: string;
+    /**
+     * The paper. A hatch has to be read against something, so a shape that carries one keeps
+     * the sheet behind it rather than whatever tint it would otherwise have had.
+     */
+    sheet: string;
 }

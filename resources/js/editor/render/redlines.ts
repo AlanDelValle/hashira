@@ -90,7 +90,7 @@ function mark(
     }
 
     const scene = buildScene(elements, document.layers, {
-        palette: { ink: colour, subtle: colour, roomFill: TRANSPARENT },
+        palette: { ink: colour, subtle: colour, roomFill: TRANSPARENT, sheet: TRANSPARENT },
         unit: document.settings.unit,
         overrideColor: colour,
         lookup: makeLookup(document.elements),

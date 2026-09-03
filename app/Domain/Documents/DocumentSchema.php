@@ -29,11 +29,12 @@ final class DocumentSchema
      * says beyond the title, and the revision cloud; 7 added the notes printed beside the
      * drawing; 8 told a door how it operates and how it is closed at the top, so that a
      * double, sliding, folding or overhead door, a gate and a plain opening are one hosted
-     * opening rather than six element types. The server validates the envelope rather than
-     * the interior, so the number is all that changes here — but it has to change, or the
-     * server would refuse every document the current client writes.
+     * opening rather than six element types; 9 added the hatch a shape is filled with, which
+     * is how a drawing says existing, to be demolished or to be built. The server validates
+     * the envelope rather than the interior, so the number is all that changes here — but it
+     * has to change, or the server would refuse every document the current client writes.
      */
-    public const CURRENT_VERSION = 8;
+    public const CURRENT_VERSION = 9;
 
     /** A generous ceiling for a 2D plan; enough for thousands of elements. */
     public const MAX_BYTES = 8 * 1024 * 1024;

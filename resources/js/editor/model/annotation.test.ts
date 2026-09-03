@@ -217,7 +217,7 @@ describe('a page to trace over', () => {
      */
     it('is not in the scene at all, so no export can contain it', () => {
         const scene = buildScene([page], defaultLayers(), {
-            palette: { ink: '#000', subtle: '#666', roomFill: '#eee' },
+            palette: { ink: '#000', subtle: '#666', roomFill: '#eee', sheet: '#fff' },
         });
 
         expect(scene).toEqual([]);
@@ -309,7 +309,7 @@ describe('a revision cloud', () => {
      */
     it('draws as bumps and never as the outline underneath them', () => {
         const [layer] = buildScene([cloud()], defaultLayers(), {
-            palette: { ink: '#000', subtle: '#555', roomFill: '#eee' },
+            palette: { ink: '#000', subtle: '#555', roomFill: '#eee', sheet: '#fff' },
         });
 
         expect(layer?.primitives.every((primitive) => primitive.kind === 'arc')).toBe(true);

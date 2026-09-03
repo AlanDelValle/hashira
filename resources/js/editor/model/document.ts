@@ -35,6 +35,26 @@ const styleSchema = z
         fill: z.string().nullable().optional(),
         strokeWidth: finiteNumber.positive().optional(),
         dash: z.array(finiteNumber.nonnegative()).nullable().optional(),
+        hatch: z
+            .enum([
+                'existing',
+                'demolish',
+                'new',
+                'concrete',
+                'concrete-view',
+                'mortar',
+                'steel',
+                'rubber',
+                'wood',
+                'plywood',
+                'earth',
+                'fill',
+                'stone',
+                'stone-view',
+                'floor-fill',
+            ])
+            .nullable()
+            .optional(),
     })
     .optional();
 
@@ -435,6 +455,12 @@ function resolveSheets(raw: unknown, scale: number): Sheet[] {
  * written is a single leaf under a square head — that is the only door the editor could draw
  * — so the step fills both in rather than guessing, and a drawing comes forward looking
  * exactly as it did.
+ *
+ * 8 → 9 added the hatch a shape is filled with. Nothing already written changes shape and no
+ * drawing gains a hatch, because a wall with none is a wall filled solid, which is what every
+ * wall already was. The version is a version because of what an older reader would do on the
+ * way back out: drop the field, and hand back a demolition plan with nothing marked for
+ * demolition.
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
     let document = raw;
@@ -481,6 +507,10 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
             schemaVersion: 8,
             elements: elements.map((element) => operatedDoor(element)),
         };
+    }
+
+    if (document.schemaVersion === 8) {
+        document = { ...document, schemaVersion: 9 };
     }
 
     return document;

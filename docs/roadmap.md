@@ -306,19 +306,20 @@ Phase 10 and the two can be taken in either order.
       a thickness outside it — which is why 11.2 comes first. Nothing records that an area was
       asked for: four walls are what gets created, and the area shown afterwards is measured
       off them, so rounding to the grid step reports what was drawn instead of what was wanted
-- [ ] **11.4 The room as a named, hatched space.** Schema 9: a room gains a `name` and can
-      draw its own stamp — the name, and the area measured off its own geometry like every
-      other value on a sheet. The text tool is untouched and stays exactly what it is, for
-      everything that is not the name of a room; what changes is that a room no longer needs
-      one. The sample plan's "Bedroom" is a `text` sitting over a `room` that has never heard
-      of it, so moving the room leaves the name behind. Hatching arrives with it — the
-      material conventions a plan is read by, taken from NBR 6492 rather than invented:
-      concrete, blockwork, earth, sand, timber, tile, grass, water. Each is clipped to the
-      room by a scanline in `geometry/hatch.ts` and comes out as polylines, so no output needs
-      a line of code for it. It is cached per version of the document like the joins and the
-      index are, capped in segments per room, and dropped on screen below about two pixels of
-      spacing — a hatch nobody can resolve is a grey rectangle that costs a frame. The legend
-      printed beside the drawing gains the patterns the drawing really uses
+- [x] **11.4 What a shape is made of.** Schema 9: `style.hatch` names one of the conventions
+      of NBR 6492 — the three a renovation turns on (existing masonry, masonry to demolish,
+      masonry to build) and the twelve that say what a thing is made of. It belongs to the
+      **style of any closed shape** rather than to a room, because what these mostly mark is
+      masonry: a wall, a room, a rectangle, a polygon or a circle can carry one, and the room
+      tool and the text tool are untouched. Only the name is stored — a concrete hatch somebody
+      has re-angled is no longer the mark anybody reads — and every spacing is in millimetres
+      on the sheet, like a pen weight, because none of these represents a real size. Clipped by
+      a scanline in `geometry/hatch.ts` and emitted as polylines and specks, so no output needs
+      a line of code for it; a stipple is pseudo-random from a seed the element gives it, so it
+      cannot shimmer as the drawing pans or come out differently in the PDF. Capped in segments
+      per shape, coarsened rather than flooded past that, and dropped on screen below about two
+      pixels of spacing. Walls are grouped by their layer _and_ their hatch, so a run coming
+      down is never merged into the run staying up
 - [ ] **11.5 The layers panel as a scene tree.** No schema: `metadata.label` has been in the
       format since version 1 and nothing has ever read it. A layer expands into what is on it,
       each element names itself — a text by its content, a room by its name and area, a wall
@@ -361,6 +362,19 @@ through the editor's own SVG exporter and read. That caught eight drawings a pas
 would not have — a filing cabinet with eight drawers, a hedge that read as three pots in a
 box, and an extractor hood drawn with the same square and cross as the lift four blocks
 below it.
+
+11.4 went the same way. Every pattern was drawn as a swatch and held against the NBR sheets
+it comes from, which caught three: concrete in elevation dense enough to read as timber, and
+stone in section drawn dead parallel and therefore the same mark as made ground. Then walked
+in the editor, on the seeded bedroom — one wall marked to demolish and drawn open beside the
+three staying solid, one marked to build and hatched at 45°, and the door still cutting the
+hatched one at its jamb.
+
+Two things it deliberately does not do. The **zigzag of insulation and the comb of a slope in
+elevation** follow an edge rather than fill an area, which is a different mechanism, so they
+wait. And a **legend of the patterns a drawing uses** is not printed beside it yet: the strip
+already lists the layers, and materials belong there too, but that is a change to what a sheet
+says rather than to what a shape is.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 

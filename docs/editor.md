@@ -600,6 +600,44 @@ centreline is not. They go in through the candidate gatherer rather than through
 `elementWorldPoints`, because that also decides an element's extent, what a box selection
 catches and what a DXF is written from, and a wall is not six points wide to any of those.
 
+### Filling a shape
+
+A hatch is what a drawing says a thing is made of, or what is about to happen to it, and it is
+**geometry rather than a fill pattern**. The alternative is a `CanvasPattern` on screen, an SVG
+`<pattern>`, a tiling pattern in the PDF and nothing at all in the DXF — four implementations
+of one drawing, which guarantees four slightly different drawings and is the thing a single
+scene exists to prevent. R12 has no `HATCH` either. Clipped lines are what all five readers
+draw identically, and what a hatch explodes to on arrival anywhere else.
+
+`geometry/hatch.ts` does the clipping and knows nothing about pens, scale or zoom. Lines are
+scanned in the hatch's own frame — the rings turned so the lines run flat, every straddling
+edge contributing a crossing, the crossings paired off along it — which is even-odd, and why
+it takes rings rather than a polygon: a shape with a hole comes out with the hole empty. The
+lattice sits on half multiples of the spacing and is anchored to the origin rather than to
+each shape, so a run of walls shares one set of lines instead of reading as several hatches
+butted together, and no line lands along an edge it would only thicken.
+
+A stipple is a jittered grid, and its jitter is **pseudo-random from a seed the element gives
+it**. That is not a detail: a concrete wall that speckles differently every frame shimmers as
+the drawing pans, and one that speckles differently in the PDF than it did on screen is not
+the drawing anybody looked at.
+
+Spacings are in millimetres **on the sheet**, like a pen weight — none of these patterns
+represents a real size, so the scale converts them at build time and a wall speckles the same
+on an A3 at 1:50 as at 1:100. On screen a hatch finer than about two pixels is not drawn at
+all, because below that it is a grey rectangle that costs a frame and says nothing; paper has
+no zoom, so an exporter culls nothing. Past a ceiling of segments per shape the spacing is
+doubled until it fits, which is something a person can see and correct rather than a freeze
+they cannot.
+
+Walls are grouped by their layer **and** by what fills them. They are merged into one filled
+shape so that two fills sharing an edge do not leave a seam at every mitre — but merging a run
+coming down with a run staying up would say they were the same masonry, which is the one thing
+a renovation drawing exists to distinguish. The cost of that is visible: a hatched run shows
+the mitre between one wall and the next, because merging the boundary needs a polygon union
+nothing else here has any call for, and a joint line is a smaller wrong than a hatch with no
+edge round it.
+
 ### Finding a room
 
 The same walls answer a second question: what space is the pointer standing in. `model/rooms.ts`

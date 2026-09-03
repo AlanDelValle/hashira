@@ -34,8 +34,13 @@ import type { Point } from '@/editor/geometry/vec';
  * folding door, an overhead garage door, a gate and a plain cased opening are one hosted
  * opening rather than six element types. An older reader would take `leaf: 'sliding'` for a
  * door it knows how to draw and paint a swing that is not there.
+ *
+ * 9 is what a shape is made of, or what is going to happen to it: `style.hatch` names one of
+ * the conventions a drawing is read by — existing masonry, masonry to be demolished, masonry
+ * to build, concrete, steel, earth. An older reader drops the field and saves the drawing back
+ * without it, which turns a demolition plan into a plan of a building that is staying up.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export type DisplayUnit = 'mm' | 'cm' | 'm';
 
@@ -136,12 +141,41 @@ export interface Transform {
     rotation: number;
 }
 
+/**
+ * How a closed shape is filled, in the conventions of NBR 6492.
+ *
+ * A property of the shape rather than of a room, because what these say things about is
+ * mostly masonry: the first three are the ones a renovation drawing turns on, and they mark
+ * walls. Any closed element can carry one — a wall, a room, a rectangle, a polygon, a circle.
+ *
+ * See `model/hatches.ts` for what each one draws. Only the name is stored: a hatch is a
+ * convention, and a concrete hatch somebody has re-angled is no longer the mark anybody reads.
+ */
+export type HatchPattern =
+    | 'existing'
+    | 'demolish'
+    | 'new'
+    | 'concrete'
+    | 'concrete-view'
+    | 'mortar'
+    | 'steel'
+    | 'rubber'
+    | 'wood'
+    | 'plywood'
+    | 'earth'
+    | 'fill'
+    | 'stone'
+    | 'stone-view'
+    | 'floor-fill';
+
 export interface ElementStyle {
     stroke?: string;
     fill?: string | null;
     /** Pen weight in millimetres on the printed sheet, not in world millimetres. */
     strokeWidth?: number;
     dash?: number[] | null;
+    /** Absent means the shape is filled the way it always was: a wall solid, a room tinted. */
+    hatch?: HatchPattern | null;
 }
 
 export interface ElementMetadata {

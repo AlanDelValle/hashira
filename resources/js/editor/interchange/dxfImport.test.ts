@@ -12,7 +12,12 @@ import type { ScenePalette } from '@/editor/scene/types';
 
 import { dxfElements, readDxf, type DxfDrawing } from './dxfImport';
 
-const PALETTE: ScenePalette = { ink: '#17191d', subtle: '#5f636b', roomFill: '#f2f5fc' };
+const PALETTE: ScenePalette = {
+    ink: '#17191d',
+    subtle: '#5f636b',
+    roomFill: '#f2f5fc',
+    sheet: '#ffffff',
+};
 
 /** A DXF written the way a file is: a code on one line, its value on the next. */
 function dxf(...pairs: (string | number)[]): string {

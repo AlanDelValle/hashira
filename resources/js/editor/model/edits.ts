@@ -10,7 +10,7 @@ import {
 } from '@/editor/geometry/vec';
 
 import { DEFAULT_LEAF_WIDTH } from './openings';
-import type { DoorLeaf, Element, OpeningHead } from './types';
+import type { DoorLeaf, Element, HatchPattern, OpeningHead } from './types';
 
 /**
  * Editing an element by value rather than by dragging it.
@@ -190,6 +190,27 @@ export function setAssetMirrored(element: Element, mirrored: boolean): Element {
     return element.type === 'asset'
         ? { ...element, geometry: { ...element.geometry, mirrored } }
         : element;
+}
+
+/**
+ * What a closed shape is filled with, in the conventions of NBR 6492.
+ *
+ * 'none' takes the hatch off rather than setting one, and leaves the shape filled the way it
+ * always was — a wall solid, a room tinted. Stored as an absent field rather than a null one,
+ * so a drawing nobody has marked up carries nothing about hatching at all.
+ */
+export function setHatch(element: Element, pattern: HatchPattern | 'none'): Element {
+    const style = { ...element.style };
+
+    if (pattern === 'none') {
+        delete style.hatch;
+    } else {
+        style.hatch = pattern;
+    }
+
+    return Object.keys(style).length === 0
+        ? { ...element, style: undefined }
+        : { ...element, style };
 }
 
 export function setOpeningWidth(element: Element, width: number): Element {

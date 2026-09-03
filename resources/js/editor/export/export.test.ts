@@ -33,7 +33,12 @@ import { sceneToSvg } from './svg';
 
 const LAYER = 'layer_architecture';
 
-const PALETTE: ScenePalette = { ink: '#17191d', subtle: '#5f636b', roomFill: '#f2f5fc' };
+const PALETTE: ScenePalette = {
+    ink: '#17191d',
+    subtle: '#5f636b',
+    roomFill: '#f2f5fc',
+    sheet: '#ffffff',
+};
 
 describe('path data', () => {
     it('writes a polyline, closing it only when asked', () => {

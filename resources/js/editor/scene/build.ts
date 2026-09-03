@@ -1,5 +1,6 @@
 import { findAsset, type AssetPrimitive } from '@/editor/assets/library';
 import { TAU } from '@/editor/geometry/angle';
+import { clipLines, scatter, seedFrom, wander } from '@/editor/geometry/hatch';
 import { signedPolygonArea } from '@/editor/geometry/polygon';
 import {
     add,
@@ -25,6 +26,7 @@ import {
     radiusFrame,
     type ElementLookup,
 } from '@/editor/model/elements';
+import { findHatch } from '@/editor/model/hatches';
 import { formatAngle, formatLength } from '@/editor/model/units';
 import { wallBandCorners, wallJoins, type WallJoins } from '@/editor/model/walls';
 import type {
@@ -34,6 +36,7 @@ import type {
     DisplayUnit,
     DoorElement,
     Element,
+    HatchPattern,
     HostedElement,
     Layer,
     LeaderElement,
@@ -62,6 +65,23 @@ export interface SceneOptions {
     overrideColor?: string;
     /** Hidden means hidden, in export as much as on screen. */
     includeHidden?: boolean;
+    /**
+     * The denominator of the plotted scale: 50 means 1:50.
+     *
+     * A hatch is specified in millimetres on the sheet, like a pen weight, and has to be drawn
+     * in world millimetres like everything else in a scene — so this is the one number that
+     * converts between them. Left out, a drawing hatches as though it were plotted at 1:50.
+     */
+    scale?: number;
+    /**
+     * World millimetres below which a hatch is not drawn at all.
+     *
+     * A screen concern rather than a drawing one: at a spacing under a pixel or two a hatch is
+     * a grey rectangle that costs a frame and says nothing, so the renderer passes what a
+     * couple of pixels are worth at the current zoom. An exporter passes nothing, because
+     * paper has no zoom.
+     */
+    minimumHatchSpacing?: number;
     /**
      * Where the walls meet, when the caller has already worked it out.
      *
@@ -122,17 +142,23 @@ export function buildScene(
     const joins =
         options.joins ?? wallJoins(elements.filter((element) => visible.has(element.layerId)));
 
-    // Every wall on a layer is filled as one shape, so they are gathered first and the whole
-    // lot is emitted where the first of them appears.
-    const wallsByLayer = new Map<string, WallElement[]>();
+    /*
+     * Walls are filled as one shape rather than one per wall, because two fills sharing an
+     * edge each cover half the pixels along it and leave a seam at every mitre. What they are
+     * grouped by is the layer *and* what fills them: a run marked for demolition cannot be
+     * merged into the run that is staying up, or the drawing would say they were the same
+     * masonry.
+     */
+    const wallsByGroup = new Map<string, WallElement[]>();
 
     for (const element of elements) {
         if (element.type !== 'wall' || !visible.has(element.layerId)) continue;
 
-        const existing = wallsByLayer.get(element.layerId);
+        const key = wallGroup(element);
+        const existing = wallsByGroup.get(key);
 
         if (existing === undefined) {
-            wallsByLayer.set(element.layerId, [element]);
+            wallsByGroup.set(key, [element]);
         } else {
             existing.push(element);
         }
@@ -149,21 +175,23 @@ export function buildScene(
             ordered.find((layer) => layer.id === element.layerId)?.color ??
             options.palette.ink;
 
-        if (element.type === 'wall' && wallsDrawn.has(element.layerId)) continue;
+        if (element.type === 'wall' && wallsDrawn.has(wallGroup(element))) continue;
 
         if (element.type === 'wall') {
-            wallsDrawn.add(element.layerId);
+            wallsDrawn.add(wallGroup(element));
         }
 
         const primitives = primitivesFor(element, {
             lookup,
             openings,
             joins,
-            wallsOnLayer: (layerId) => wallsByLayer.get(layerId) ?? [],
+            wallsInGroup: (key) => wallsByGroup.get(key) ?? [],
             colour,
             palette: options.palette,
             overrideColor: options.overrideColor,
             unit: options.unit ?? 'm',
+            scale: options.scale ?? 50,
+            hatchFloor: options.minimumHatchSpacing ?? 0,
         });
 
         if (primitives.length === 0) continue;
@@ -188,18 +216,27 @@ interface BuildContext {
     lookup: ElementLookup;
     openings: Map<string, HostedElement[]>;
     joins: WallJoins;
-    /** Every wall being painted on one layer, because they are filled as a single shape. */
-    wallsOnLayer: (layerId: string) => readonly WallElement[];
+    /** Every wall painted as one shape: those sharing a layer and a fill. */
+    wallsInGroup: (key: string) => readonly WallElement[];
     colour: string;
     palette: ScenePalette;
     overrideColor?: string | undefined;
     unit: DisplayUnit;
+    /** The denominator of the plotted scale, which turns a sheet spacing into a world one. */
+    scale: number;
+    /** World millimetres below which a hatch is not worth drawing. */
+    hatchFloor: number;
+}
+
+/** A wall is painted with the walls that share its layer and its fill, and with no others. */
+function wallGroup(wall: WallElement): string {
+    return `${wall.layerId}\u0000${wall.style?.hatch ?? ''}`;
 }
 
 function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[] {
     switch (element.type) {
         case 'wall':
-            return wallArea(context.wallsOnLayer(element.layerId), context);
+            return wallArea(context.wallsInGroup(wallGroup(element)), context);
 
         case 'line':
             return [
@@ -211,16 +248,20 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                 },
             ];
 
-        case 'rect':
+        case 'rect': {
+            const ring = elementWorldPoints(element, context.lookup);
+
             return [
                 {
                     kind: 'polyline',
-                    points: elementWorldPoints(element, context.lookup),
+                    points: ring,
                     closed: true,
                     stroke: pen(context.colour),
-                    fill: element.style?.fill ?? null,
+                    fill: hatchFill(hatchOf(element), element.style?.fill ?? null, context),
                 },
+                ...closedHatch(element, [ring], context),
             ];
+        }
 
         case 'cloud':
             /*
@@ -238,38 +279,54 @@ function primitivesFor(element: Element, context: BuildContext): ScenePrimitive[
                 stroke: pen(context.colour),
             }));
 
-        case 'polygon':
-            return [
-                {
-                    kind: 'polyline',
-                    points: elementWorldPoints(element, context.lookup),
-                    closed: element.geometry.closed,
-                    stroke: pen(context.colour),
-                    fill: element.geometry.closed ? (element.style?.fill ?? null) : null,
-                },
-            ];
+        case 'polygon': {
+            const ring = elementWorldPoints(element, context.lookup);
+            const shut = element.geometry.closed;
 
-        case 'room':
             return [
                 {
                     kind: 'polyline',
-                    points: elementWorldPoints(element, context.lookup),
+                    points: ring,
+                    closed: shut,
+                    stroke: pen(context.colour),
+                    fill: shut
+                        ? hatchFill(hatchOf(element), element.style?.fill ?? null, context)
+                        : null,
+                },
+                // An open run encloses nothing, so there is nothing for a hatch to be inside.
+                ...(shut ? closedHatch(element, [ring], context) : []),
+            ];
+        }
+
+        case 'room': {
+            const ring = elementWorldPoints(element, context.lookup);
+
+            return [
+                {
+                    kind: 'polyline',
+                    points: ring,
                     closed: true,
                     stroke: pen(context.colour),
-                    fill: context.palette.roomFill,
+                    fill: hatchFill(hatchOf(element), context.palette.roomFill, context),
                 },
+                ...closedHatch(element, [ring], context),
             ];
+        }
 
-        case 'circle':
+        case 'circle': {
+            const centre = { x: element.transform.x, y: element.transform.y };
+
             return [
                 {
                     kind: 'circle',
-                    centre: { x: element.transform.x, y: element.transform.y },
+                    centre,
                     radius: element.geometry.radius,
                     stroke: pen(context.colour),
-                    fill: element.style?.fill ?? null,
+                    fill: hatchFill(hatchOf(element), element.style?.fill ?? null, context),
                 },
+                ...closedHatch(element, [ringOfCircle(centre, element.geometry.radius)], context),
             ];
+        }
 
         case 'text':
             return [
@@ -469,6 +526,140 @@ function leaderPrimitives(element: LeaderElement, context: BuildContext): SceneP
 }
 
 /**
+ * How many segments or specks one shape's hatch is allowed to cost.
+ *
+ * A wall at a sensible spacing is a few dozen. A site plan at the same spacing is tens of
+ * thousands, and a drawing that stops responding is worse than one hatched coarser than asked
+ * for — so past this the spacing is doubled until it fits, which is a thing the person can see
+ * and correct rather than a freeze they cannot.
+ */
+const HATCH_LIMIT = 1500;
+
+/**
+ * What a hatch draws inside a shape.
+ *
+ * Geometry, never a fill pattern — see `geometry/hatch.ts` for why. The spacing arrives in
+ * millimetres on the sheet, like a pen weight, and is multiplied up by the plotted scale here:
+ * a concrete wall speckles the same on an A3 whether the plan goes out at 1:50 or at 1:100.
+ *
+ * The seed is the caller's, and it is what makes a stipple hold still. Everything scattered is
+ * pseudo-random from it, so the same shape speckles identically on screen, in the PNG and in
+ * the PDF, and does not shimmer as the drawing is panned.
+ */
+function hatchPrimitives(
+    rings: readonly Point[][],
+    pattern: HatchPattern,
+    context: BuildContext,
+    seed: number,
+): ScenePrimitive[] {
+    const hatch = findHatch(pattern);
+
+    if (hatch === undefined || hatch.kind === 'solid' || hatch.kind === 'empty') {
+        return [];
+    }
+
+    let spacing = hatch.spacing * context.scale;
+
+    if (spacing <= 0 || spacing < context.hatchFloor) {
+        return [];
+    }
+
+    let width = 0;
+    let height = 0;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const ring of rings) {
+        for (const at of ring) {
+            minX = Math.min(minX, at.x);
+            minY = Math.min(minY, at.y);
+            maxX = Math.max(maxX, at.x);
+            maxY = Math.max(maxY, at.y);
+        }
+    }
+
+    if (!Number.isFinite(minX)) {
+        return [];
+    }
+
+    width = maxX - minX;
+    height = maxY - minY;
+
+    // Coarsened before anything is generated rather than after, so a big shape never builds the
+    // hundred thousand segments it would have taken to find out they were too many.
+    const cost = () =>
+        hatch.kind === 'scatter'
+            ? (width * height) / (spacing * spacing)
+            : (width + height) / spacing;
+
+    for (let step = 0; step < 8 && cost() > HATCH_LIMIT; step++) {
+        spacing *= 2;
+    }
+
+    const stroke = pen(context.colour, PEN.fine);
+
+    if (hatch.kind === 'scatter') {
+        const radius = (hatch.dot ?? 0.1) * context.scale;
+
+        return scatter(rings, spacing, HATCH_LIMIT, seed).map((at): ScenePrimitive => ({
+            kind: 'circle',
+            centre: at,
+            radius,
+            stroke: null,
+            fill: context.colour,
+        }));
+    }
+
+    const runs = clipLines(rings, hatch.angle, spacing, HATCH_LIMIT);
+
+    if (hatch.kind === 'veins') {
+        return wander(runs, spacing * (hatch.wander ?? 0.4), seed).map(
+            (points): ScenePrimitive => ({ kind: 'polyline', points, closed: false, stroke }),
+        );
+    }
+
+    return runs.map((run): ScenePrimitive => ({
+        kind: 'polyline',
+        points: [run.a, run.b],
+        closed: false,
+        stroke,
+    }));
+}
+
+/** The hatch a closed shape carries, and the fill it is left with underneath it. */
+function hatchOf(element: Element): HatchPattern | null {
+    return element.style?.hatch ?? null;
+}
+
+/**
+ * What fills a closed shape once its hatch has had its say.
+ *
+ * `demolish` is drawn open, which is the convention: masonry coming out is left white so that
+ * what is staying reads solid beside it. Everything else that is not plain solid keeps the
+ * paper behind it, because a hatch has to be read against something and a room's tint under a
+ * concrete stipple is two marks fighting.
+ */
+function hatchFill(
+    pattern: HatchPattern | null,
+    fallback: string | null,
+    context: BuildContext,
+): string | null {
+    if (pattern === null) {
+        return fallback;
+    }
+
+    const hatch = findHatch(pattern);
+
+    if (hatch === undefined || hatch.kind === 'solid') {
+        return hatch?.kind === 'solid' ? context.colour : fallback;
+    }
+
+    return hatch.kind === 'empty' ? null : context.palette.sheet;
+}
+
+/**
  * The poché of a run of walls: one filled shape, however many walls it took.
  *
  * Each wall contributes a band, and the bands are filled together rather than one at a time
@@ -477,12 +668,33 @@ function leaderPrimitives(element: LeaderElement, context: BuildContext): SceneP
  */
 function wallArea(walls: readonly WallElement[], context: BuildContext): ScenePrimitive[] {
     const rings = walls.flatMap((wall) => wallRings(wall, context));
+    const first = walls[0];
 
-    if (rings.length === 0) {
+    if (rings.length === 0 || first === undefined) {
         return [];
     }
 
-    return [{ kind: 'area', rings, fill: context.colour, stroke: null }];
+    const pattern = hatchOf(first);
+    const hatch = pattern === null ? undefined : findHatch(pattern);
+
+    // Solid is what a wall has always been, and what "existing masonry" means, so it is still
+    // one filled shape with no outline: the wall *is* the black.
+    if (hatch === undefined || hatch.kind === 'solid') {
+        return [{ kind: 'area', rings, fill: context.colour, stroke: null }];
+    }
+
+    /*
+     * Anything else is an outlined band with the pattern inside it. The outline comes from
+     * stroking the same rings, which means a run of walls shows the mitre between one and the
+     * next — merging them into one boundary needs a polygon union this has no call for
+     * anywhere else, and a joint line is a smaller wrong than a hatch with no edge round it.
+     */
+    return [
+        { kind: 'area', rings, fill: context.palette.sheet, stroke: pen(context.colour) },
+        ...(pattern === null
+            ? []
+            : hatchPrimitives(rings, pattern, context, seedFrom(wallGroup(first)))),
+    ];
 }
 
 /**
@@ -542,6 +754,34 @@ function wallRings(wall: WallElement, context: BuildContext): Point[][] {
         ...solid.map(([from, to]) => wallBandCorners(wall, band, from, to)),
         ...(context.joins.patches.get(wall.id) ?? []),
     ].map(sameWinding);
+}
+
+/** The hatch inside one closed element, seeded from the element so it never shimmers. */
+function closedHatch(
+    element: Element,
+    rings: readonly Point[][],
+    context: BuildContext,
+): ScenePrimitive[] {
+    const pattern = hatchOf(element);
+
+    return pattern === null ? [] : hatchPrimitives(rings, pattern, context, seedFrom(element.id));
+}
+
+/** A circle as a ring, because a hatch is clipped to edges and a circle has none. */
+function ringOfCircle(centre: Point, radius: number): Point[] {
+    const steps = 64;
+    const ring: Point[] = [];
+
+    for (let step = 0; step < steps; step++) {
+        const angle = (step / steps) * TAU;
+
+        ring.push({
+            x: centre.x + Math.cos(angle) * radius,
+            y: centre.y + Math.sin(angle) * radius,
+        });
+    }
+
+    return ring;
 }
 
 /**

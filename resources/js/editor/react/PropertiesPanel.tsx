@@ -23,6 +23,7 @@ import {
     setDoorFlipped,
     setDoorLeaf,
     setDoorSwing,
+    setHatch,
     setLayer,
     setOpeningHead,
     setOpeningOffset,
@@ -40,9 +41,16 @@ import {
     setUnderlaySize,
     setWallThickness,
 } from '@/editor/model/edits';
+import { HATCH_OPTIONS } from '@/editor/model/hatches';
 import { JAMB_LABEL, LEAF_OPTIONS, SIDE_LABEL } from '@/editor/model/openings';
 import { wallSides } from '@/editor/model/walls';
-import type { DisplayUnit, DoorLeaf, Element, OpeningHead } from '@/editor/model/types';
+import type {
+    DisplayUnit,
+    DoorLeaf,
+    Element,
+    HatchPattern,
+    OpeningHead,
+} from '@/editor/model/types';
 import {
     formatAngle,
     formatArea,
@@ -55,6 +63,12 @@ import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
 import { ChoiceRow, MeasureField, ReadonlyRow, ToggleRow } from './MeasureField';
+
+/**
+ * The element types a hatch means anything on: the ones that enclose an area. A line has no
+ * inside to fill, and an opening is a hole rather than a shape.
+ */
+const HATCHABLE: Element['type'][] = ['wall', 'room', 'rect', 'polygon', 'circle'];
 
 /**
  * The properties of what is selected, as values you can type into.
@@ -181,6 +195,15 @@ function ElementProperties({ element, unit, layers, apply }: ElementPropertiesPr
                         onCommit={(value) => set(setSegmentAngle(element, value), 'Angle', 'angle')}
                     />
                 </>
+            )}
+
+            {HATCHABLE.includes(element.type) && (
+                <ChoiceRow<HatchPattern | 'none'>
+                    label="Hatch"
+                    value={element.style?.hatch ?? 'none'}
+                    options={HATCH_OPTIONS}
+                    onChange={(value) => set(setHatch(element, value), 'Hatch', 'hatch')}
+                />
             )}
 
             {element.type === 'wall' && (

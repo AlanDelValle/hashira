@@ -28,6 +28,7 @@ const EXPORT_PALETTE: ScenePalette = {
     ink: '#17191d',
     subtle: '#5f636b',
     roomFill: '#f2f5fc',
+    sheet: '#ffffff',
 };
 
 const PAPER = '#ffffff';
@@ -140,6 +141,9 @@ function sceneFor(document: HashiraDocument): SceneLayer[] {
     return buildScene(document.elements, document.layers, {
         palette: EXPORT_PALETTE,
         unit: document.settings.unit,
+        // A hatch is specified on the sheet, so what it comes to in the world depends on the
+        // ratio it is plotted at. Paper has no zoom, which is why nothing is culled here.
+        scale: document.settings.scale,
     });
 }
 

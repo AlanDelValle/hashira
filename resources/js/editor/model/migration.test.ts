@@ -463,6 +463,51 @@ describe('opening a version 7 drawing', () => {
     });
 });
 
+/** A version 8 drawing: every way of opening a wall, and no way of saying what one is made of. */
+const VERSION_8 = {
+    ...VERSION_7,
+    schemaVersion: 8,
+    name: 'Before hatching',
+    elements: VERSION_7.elements.map((element) =>
+        element.type === 'door'
+            ? { ...element, geometry: { ...element.geometry, leaf: 'single', head: 'square' } }
+            : element,
+    ),
+};
+
+describe('opening a version 8 drawing', () => {
+    /*
+     * 9 added the hatch a shape is filled with. Nothing already written changes shape and no
+     * drawing gains a hatch — a wall with none is a wall filled solid, which is what every wall
+     * already was. It is a version because of what an older reader would do on the way back
+     * out: drop the field, and hand back a demolition plan with nothing marked for demolition.
+     */
+    it('comes forward with nothing hatched, because nothing was', () => {
+        const parsed = parseDocument(VERSION_8);
+        const hatched = parsed.ok
+            ? parsed.document.elements.filter(
+                  (element) => element.style?.hatch !== undefined && element.style.hatch !== null,
+              )
+            : [];
+
+        expect(parsed.ok).toBe(true);
+        expect(hatched).toEqual([]);
+    });
+
+    it('keeps every element it was written with', () => {
+        const parsed = parseDocument(VERSION_8);
+
+        expect(parsed.ok && parsed.dropped).toEqual([]);
+        expect(parsed.ok && parsed.document.elements).toHaveLength(VERSION_8.elements.length);
+    });
+
+    it('comes back stamped with the current schema', () => {
+        const parsed = parseDocument(VERSION_8);
+
+        expect(parsed.ok && parsed.document.schemaVersion).toBe(SCHEMA_VERSION);
+    });
+});
+
 describe('a drawing from a newer Hashira', () => {
     it('is refused outright rather than opened with pieces missing', () => {
         const parsed = parseDocument({ ...VERSION_1, schemaVersion: SCHEMA_VERSION + 1 });
