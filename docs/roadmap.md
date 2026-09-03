@@ -299,7 +299,7 @@ Phase 10 and the two can be taken in either order.
       and the two face midpoints join the snap candidates, so a dimension can at last be taken
       to a face — through a source the snap collector reads rather than through
       `elementWorldPoints`, which also feeds bounds, box select and DXF
-- [ ] **11.3 A room drawn from its area.** No schema. A target area is typed the way a wall's
+- [x] **11.3 A room drawn from its area.** No schema. A target area is typed the way a wall's
       thickness is typed, and the rubber rectangle holds that area while the drag changes its
       proportion: 12 m² is 3.00 × 4.00 or 2.40 × 5.00, read off the status bar from the same
       preview the tool commits. The target is the internal face, so the centrelines fall half
@@ -341,12 +341,14 @@ before 11.3 because "twelve square metres" is a question about an internal face,
 before 11.5 because a room with a name is what a layer has to list. 11.6 depends on nothing
 and can be built beside any of them.
 
-11.1 and 11.2 are done. Walked in a browser against Herd and PostgreSQL: the seeded plan
+11.1, 11.2 and 11.3 are done. Walked in a browser against Herd and PostgreSQL: the seeded plan
 opening migrated from schema 7 with its door intact, all seven kinds of opening placed along
 one wall and then read back through the editor's own SVG exporter — which is where a folding
-door drawing an L rather than a fold gave itself away — and the seeded bedroom's north wall
+door drawing an L rather than a fold gave itself away — the seeded bedroom's north wall
 reporting a 3.85 m inside face against a 4.15 m outside one, then dimensioned face to face at
-3.85 m, which the centreline could not have been asked for.
+3.85 m, which the centreline could not have been asked for, and twelve square metres typed
+into a panel, dragged into 3.50 × 3.50 and committed as four walls that the room tool then
+measured at 12.25 m² — the number that was drawn rather than the one that was asked for.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 

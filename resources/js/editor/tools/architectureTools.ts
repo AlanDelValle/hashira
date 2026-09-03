@@ -17,7 +17,7 @@ import type { Element, WallElement } from '@/editor/model/types';
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
-import { interaction } from '@/editor/store/interaction';
+import { interaction, previewOne } from '@/editor/store/interaction';
 
 import type { Tool, ToolContext, ToolEvent } from './types';
 
@@ -33,7 +33,7 @@ import type { Tool, ToolContext, ToolEvent } from './types';
 const MINIMUM_LENGTH = 1;
 
 function clearDraft(): void {
-    interaction.preview = null;
+    previewOne(null);
     interaction.draftPoints = [];
     requestRepaint();
 }
@@ -81,7 +81,7 @@ export function createWallTool(): Tool {
                 return;
             }
 
-            interaction.preview =
+            previewOne(
                 distance(start, event.world) < MINIMUM_LENGTH
                     ? null
                     : createWall(
@@ -89,7 +89,8 @@ export function createWallTool(): Tool {
                           event.world,
                           context.activeLayerId,
                           useEditorStore.getState().wallThickness,
-                      );
+                      ),
+            );
 
             requestRepaint();
         },
@@ -159,10 +160,11 @@ function createOpeningTool(
                 requestRepaint();
             }
 
-            interaction.preview =
+            previewOne(
                 target === null
                     ? null
-                    : build(target.wall.id, target.offset, openingLayer(context));
+                    : build(target.wall.id, target.offset, openingLayer(context)),
+            );
 
             requestRepaint();
         },
@@ -290,8 +292,7 @@ export function createRoomTool(): Tool {
                 // in is a question about where it is, and a snap could pull it through a wall
                 // into the room next door.
                 found = roomAround(context.drawing, event.rawWorld);
-                interaction.preview =
-                    found === null ? null : createRoom(found, context.activeLayerId);
+                previewOne(found === null ? null : createRoom(found, context.activeLayerId));
 
                 requestRepaint();
 
@@ -299,8 +300,7 @@ export function createRoomTool(): Tool {
             }
 
             const points = [...vertices, event.world];
-            interaction.preview =
-                points.length >= 3 ? createRoom(points, context.activeLayerId) : null;
+            previewOne(points.length >= 3 ? createRoom(points, context.activeLayerId) : null);
 
             requestRepaint();
         },
@@ -336,8 +336,7 @@ export function createAssetTool(): Tool {
         onPointerMove(event) {
             const definition = findAsset(useEditorStore.getState().pendingAssetId ?? '');
 
-            interaction.preview =
-                definition === undefined ? null : createAsset(definition, event.world);
+            previewOne(definition === undefined ? null : createAsset(definition, event.world));
 
             requestRepaint();
         },

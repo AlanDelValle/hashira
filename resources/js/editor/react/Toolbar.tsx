@@ -9,6 +9,7 @@ import {
     Minus,
     MousePointer2,
     Pentagon,
+    Proportions,
     Sofa,
     Ruler,
     Square,
@@ -28,6 +29,7 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     door: DoorOpen,
     window: AppWindow,
     room: SquareDashed,
+    area: Proportions,
     line: Minus,
     rect: Square,
     circle: Circle,
@@ -44,7 +46,7 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
 /** Grouped the way the work goes: pick, build the space, draw, then say what it is. */
 const GROUPS: ToolId[][] = [
     ['select'],
-    ['wall', 'door', 'window', 'room'],
+    ['wall', 'door', 'window', 'room', 'area'],
     ['line', 'rect', 'circle', 'polygon'],
     ['dimension', 'angle', 'radius'],
     ['text', 'leader', 'cloud'],

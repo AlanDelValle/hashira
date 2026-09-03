@@ -45,6 +45,7 @@ import { wallSides } from '@/editor/model/walls';
 import type { DisplayUnit, DoorLeaf, Element, OpeningHead } from '@/editor/model/types';
 import {
     formatAngle,
+    formatArea,
     formatLength,
     formatLengthValue,
     parseAngle,
@@ -627,14 +628,7 @@ function WallFaceLengths({
 function RoomArea({ element, unit }: { element: Element & { type: 'room' }; unit: DisplayUnit }) {
     const drawing = useDocumentStore.getState().document;
     const points = elementWorldPoints(element, makeLookup(drawing.elements));
-    const squareMillimetres = polygonArea(points);
-
-    const value =
-        unit === 'm'
-            ? `${(squareMillimetres / 1_000_000).toFixed(2)} m²`
-            : `${formatLength(Math.sqrt(squareMillimetres), unit)}²`;
-
-    return <ReadonlyRow label="Area" value={value} />;
+    return <ReadonlyRow label="Area" value={formatArea(polygonArea(points), unit)} />;
 }
 
 function TextRow({

@@ -22,6 +22,7 @@ import {
     createWallTool,
     createWindowTool,
 } from '@/editor/tools/architectureTools';
+import { createAreaTool } from '@/editor/tools/areaTool';
 import {
     createCircleTool,
     createLineTool,
@@ -86,6 +87,7 @@ export class InputController {
             door: createDoorTool(),
             window: createWindowTool(),
             room: createRoomTool(),
+            area: createAreaTool(),
             line: createLineTool(),
             rect: createRectTool(),
             circle: createCircleTool(),

@@ -25,6 +25,7 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
     { id: 'door', label: 'Door', key: 'D' },
     { id: 'window', label: 'Window', key: 'N' },
     { id: 'room', label: 'Room', key: 'O' },
+    { id: 'area', label: 'Room by area', key: 'Q' },
     { id: 'line', label: 'Line', key: 'L' },
     { id: 'rect', label: 'Rectangle', key: 'R' },
     { id: 'circle', label: 'Circle', key: 'C' },

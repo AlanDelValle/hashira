@@ -156,6 +156,25 @@ pointer there is nothing to accept, and clicks fall back to placing a ring by ha
 courtyard, a zone, a room whose fourth wall has not been drawn yet. How the walls are turned
 into spaces is in §18.
 
+The area tool is the other way round: it is told an area and left to find a size. Type twelve
+square metres, put a corner down, and the rectangle that follows the pointer holds those twelve
+metres while its proportion changes — dragging further out along the same ray does nothing at
+all, which is how a locked area says so without a word of interface. A second click puts four
+walls round it.
+
+The area asked for is the _inside_, because that is the floor somebody walks on and what an
+area is ever asked for in, so the wall centrelines fall half a thickness outside the rectangle.
+The proportion is read off the raw pointer rather than the snapped one — a grid line 20 mm away
+is not a request for a differently shaped room — while the corner the room starts from is
+snapped like any other click, because that is the point that wants to land on something.
+
+Nothing records that an area was asked for. Four walls are what gets created, and the area the
+room has is measured off them afterwards like every other value on the sheet. That matters most
+where the grid rounds: 3.464 m square is exactly twelve metres and nobody builds it, 3.50 by
+3.40 is 11.90 and somebody does — so the sides are rounded to the grid step and the status bar
+says what that came to _before_ the click, rather than the request being quietly kept and
+reported back.
+
 The dimension tool takes three clicks, because a dimension is three decisions: what to
 measure from, what to measure to, and which side of it the value is written on. The first two
 go through the ordinary snap engine — endpoints and intersections are exactly what anyone

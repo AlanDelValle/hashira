@@ -1,11 +1,17 @@
 import { sheetAside, type LegendEntry } from '@/editor/export/sheet';
 import { documentIndex } from '@/editor/model/documentIndex';
 import { resolveSheet } from '@/editor/model/sheets';
+import { boundsFromPoints, boundsHeight, boundsWidth } from '@/editor/geometry/bbox';
 import { documentWallJoins, wallJoins } from '@/editor/model/walls';
 import { segmentAngle } from '@/editor/model/edits';
-import { drawnLayers, elementLength, type ElementLookup } from '@/editor/model/elements';
-import type { DisplayUnit, Element, HashiraDocument } from '@/editor/model/types';
-import { formatAngle, formatLength } from '@/editor/model/units';
+import {
+    drawnLayers,
+    elementLength,
+    wallSegment,
+    type ElementLookup,
+} from '@/editor/model/elements';
+import type { DisplayUnit, Element, HashiraDocument, WallElement } from '@/editor/model/types';
+import { formatAngle, formatArea, formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
 import { useDocumentStore } from '@/editor/store/documentStore';
@@ -261,8 +267,8 @@ export class CanvasRenderer {
             paintMarquee(overlay, interaction.marquee);
         }
 
-        if (interaction.preview !== null) {
-            paintPreview(overlay, interaction.preview, interaction.draftPoints);
+        for (const element of interaction.preview) {
+            paintPreview(overlay, element, interaction.draftPoints);
         }
 
         // The grid catches every pointer move, so its marker is drawn only while a tool is
@@ -311,22 +317,72 @@ export class CanvasRenderer {
  * here — so it cannot disagree with what lands in the drawing, and it is blank for the tools
  * whose preview has no length to state.
  */
-function draftReadout(preview: Element | null, unit: DisplayUnit): string {
-    if (preview === null) {
+function draftReadout(preview: readonly Element[], unit: DisplayUnit): string {
+    const [only] = preview;
+
+    if (only === undefined) {
         return '';
     }
 
-    const length = elementLength(preview);
+    if (preview.length > 1) {
+        return enclosureReadout(preview, unit);
+    }
+
+    const length = elementLength(only);
 
     if (length === null) {
         return '';
     }
 
-    const angle = segmentAngle(preview);
+    const angle = segmentAngle(only);
 
     // The same two numbers the properties panel names, in the same units and to the same
     // precision, because they are about to describe the same wall.
     return angle === null
         ? formatLength(length, unit)
         : `${formatLength(length, unit)}   ${formatAngle(angle, 1)}`;
+}
+
+/**
+ * What a run of walls being drawn closes in.
+ *
+ * A tool that places several elements at once is placing a space, not a shape, and the numbers
+ * that decide the click are the ones for the space: how wide and deep it is, and its area. So
+ * the walls' centrelines are measured and pulled in by a thickness, which is the inside of the
+ * run — the same face `wallSides` reports and the same one the target area was asked about.
+ *
+ * Measured off the elements the tool is about to commit, like every other draft readout, so it
+ * cannot state a room the drawing is not about to get.
+ */
+function enclosureReadout(preview: readonly Element[], unit: DisplayUnit): string {
+    const walls = preview.filter((element): element is WallElement => element.type === 'wall');
+    const first = walls[0];
+
+    if (first === undefined) {
+        return '';
+    }
+
+    const bounds = boundsFromPoints(
+        walls.flatMap((wall) => {
+            const { a, b } = wallSegment(wall);
+
+            return [a, b];
+        }),
+    );
+
+    if (bounds === null) {
+        return '';
+    }
+
+    const width = boundsWidth(bounds) - first.geometry.thickness;
+    const height = boundsHeight(bounds) - first.geometry.thickness;
+
+    if (width <= 0 || height <= 0) {
+        return '';
+    }
+
+    return `${formatLength(width, unit)} × ${formatLength(height, unit)}   ${formatArea(
+        width * height,
+        unit,
+    )}`;
 }

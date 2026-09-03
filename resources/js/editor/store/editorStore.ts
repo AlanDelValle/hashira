@@ -7,6 +7,9 @@ import {
     DEFAULT_TEXT_SIZE,
 } from '@/editor/model/factories';
 import { newId } from '@/editor/model/id';
+
+/** Twelve square metres: a small bedroom, and a number somebody would actually type. */
+const DEFAULT_TARGET_AREA = 12_000_000;
 import type { DoorLeaf } from '@/editor/model/types';
 
 /**
@@ -29,6 +32,7 @@ export type ToolId =
     | 'door'
     | 'window'
     | 'room'
+    | 'area'
     | 'line'
     | 'rect'
     | 'circle'
@@ -67,6 +71,14 @@ interface EditorStore {
     /** Thickness applied to the next wall drawn, in millimetres. */
     wallThickness: number;
     /**
+     * The area the next room drawn from one has to have, in square millimetres.
+     *
+     * A request rather than a record: it decides the size of the four walls the area tool
+     * places and is then forgotten, because what the drawing holds afterwards is the walls,
+     * and the area it really has is measured off them.
+     */
+    targetArea: number;
+    /**
      * How the next opening placed with the door tool operates.
      *
      * A tool setting rather than a tool of its own: seven kinds of door would be seven
@@ -98,6 +110,7 @@ interface EditorStore {
     setActiveLayer: (layerId: string) => void;
     setActiveSheet: (sheetId: string) => void;
     setWallThickness: (thickness: number) => void;
+    setTargetArea: (area: number) => void;
     setDoorLeaf: (leaf: DoorLeaf) => void;
     setTextSize: (size: number) => void;
     setDimensionSize: (size: number) => void;
@@ -127,6 +140,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     sheetFrameVisible: false,
     snapToGrid: true,
     wallThickness: 150,
+    targetArea: DEFAULT_TARGET_AREA,
     doorLeaf: 'single',
     textSize: DEFAULT_TEXT_SIZE,
     dimensionSize: DEFAULT_DIMENSION_SIZE,
@@ -167,6 +181,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
 
     setWallThickness: (wallThickness) => set({ wallThickness }),
+    setTargetArea: (targetArea) => set({ targetArea }),
     setDoorLeaf: (doorLeaf) => set({ doorLeaf }),
     setTextSize: (textSize) => set({ textSize }),
     setDimensionSize: (dimensionSize) => set({ dimensionSize }),

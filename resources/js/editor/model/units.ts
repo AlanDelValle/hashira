@@ -98,3 +98,16 @@ export function parseAngle(input: string): number | null {
 export function formatScale(scale: number): string {
     return `1:${Math.round(scale)}`;
 }
+
+/**
+ * An area, in the drawing's display unit.
+ *
+ * Metres get square metres, which is what a room is quoted in. The other two units have no
+ * square anybody says out loud — nobody asks for a 120,000 cm² kitchen — so those are written
+ * as the side of the square instead, which at least stays a length a person can picture.
+ */
+export function formatArea(squareMillimetres: number, unit: DisplayUnit): string {
+    return unit === 'm'
+        ? `${(squareMillimetres / 1_000_000).toFixed(2)} m²`
+        : `${formatLength(Math.sqrt(Math.max(squareMillimetres, 0)), unit)}²`;
+}

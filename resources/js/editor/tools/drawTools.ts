@@ -20,7 +20,7 @@ import type { Element } from '@/editor/model/types';
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
-import { interaction } from '@/editor/store/interaction';
+import { interaction, previewOne } from '@/editor/store/interaction';
 
 import type { Tool, ToolContext, ToolEvent } from './types';
 
@@ -54,7 +54,7 @@ function finish(ids: string[]): void {
 }
 
 function clearDraft(): void {
-    interaction.preview = null;
+    previewOne(null);
     interaction.draftPoints = [];
     requestRepaint();
 }
@@ -73,7 +73,7 @@ function createDragTool(id: 'line' | 'rect' | 'circle', label: string, build: Dr
         const target =
             id === 'line' && event.shift ? constrainToAngle(origin, event.world) : event.world;
 
-        interaction.preview = build(origin, target, context.activeLayerId);
+        previewOne(build(origin, target, context.activeLayerId));
         requestRepaint();
     }
 
@@ -83,7 +83,7 @@ function createDragTool(id: 'line' | 'rect' | 'circle', label: string, build: Dr
 
         onPointerDown(event) {
             origin = event.world;
-            interaction.preview = null;
+            previewOne(null);
         },
 
         onPointerMove(event, context) {
@@ -97,13 +97,13 @@ function createDragTool(id: 'line' | 'rect' | 'circle', label: string, build: Dr
 
             update(event, context);
 
-            const element = interaction.preview;
+            const [element] = interaction.preview;
             const start = origin;
 
             origin = null;
             clearDraft();
 
-            if (element === null || distance(start, event.world) < MINIMUM_SIZE) {
+            if (element === undefined || distance(start, event.world) < MINIMUM_SIZE) {
                 return;
             }
 
@@ -156,8 +156,9 @@ export function createPolygonTool(): Tool {
         const points = cursor === null ? vertices : [...vertices, cursor];
 
         interaction.draftPoints = vertices;
-        interaction.preview =
-            points.length >= 2 ? createPolygon(points, closed, context.activeLayerId) : null;
+        previewOne(
+            points.length >= 2 ? createPolygon(points, closed, context.activeLayerId) : null,
+        );
 
         requestRepaint();
     }
@@ -245,8 +246,9 @@ export function createCloudTool(): Tool {
         const points = cursor === null ? vertices : [...vertices, cursor];
 
         interaction.draftPoints = vertices;
-        interaction.preview =
-            points.length >= 3 ? createCloud(points, context.activeLayerId, radius()) : null;
+        previewOne(
+            points.length >= 3 ? createCloud(points, context.activeLayerId, radius()) : null,
+        );
 
         requestRepaint();
     }

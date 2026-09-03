@@ -26,6 +26,7 @@ export function SidePanel() {
         <aside aria-label="Drawing" className="bg-surface h-full overflow-y-auto">
             {tool === 'wall' && <WallSettings unit={unit} />}
             {tool === 'door' && <OpeningSettings unit={unit} />}
+            {tool === 'area' && <RoomAreaSettings unit={unit} />}
             {tool === 'text' && <TextSettings unit={unit} />}
             {tool === 'dimension' && <DimensionSettings unit={unit} />}
             {tool === 'cloud' && <CloudSettings unit={unit} />}
@@ -60,28 +61,39 @@ export function SidePanel() {
     );
 }
 
-/** Shown only while the wall tool is active: the thickness the next wall will be drawn at. */
-function WallSettings({ unit }: { unit: DisplayUnit }) {
+/**
+ * The thickness the next wall is drawn at.
+ *
+ * One value, offered wherever walls are about to be drawn — by the wall tool and by the area
+ * tool, which puts four of them round a room. A setting reachable only from a tool you are not
+ * using is a setting people change by accident and then wonder about.
+ */
+function ThicknessField({ unit }: { unit: DisplayUnit }) {
     const thickness = useEditorStore((state) => state.wallThickness);
     const setWallThickness = useEditorStore((state) => state.setWallThickness);
 
     return (
+        <MeasureField
+            label="Thickness"
+            value={thickness}
+            format={(value) => String(Math.round(toDisplay(value, unit) * 1000) / 1000)}
+            parse={(text) => {
+                const parsed = Number(text.replace(',', '.'));
+
+                return Number.isFinite(parsed) && parsed > 0 ? fromDisplay(parsed, unit) : null;
+            }}
+            suffix={unit}
+            onCommit={setWallThickness}
+        />
+    );
+}
+
+/** Shown only while the wall tool is active: the thickness the next wall will be drawn at. */
+function WallSettings({ unit }: { unit: DisplayUnit }) {
+    return (
         <Section title="New wall">
             <div className="px-3">
-                <MeasureField
-                    label="Thickness"
-                    value={thickness}
-                    format={(value) => String(Math.round(toDisplay(value, unit) * 1000) / 1000)}
-                    parse={(text) => {
-                        const parsed = Number(text.replace(',', '.'));
-
-                        return Number.isFinite(parsed) && parsed > 0
-                            ? fromDisplay(parsed, unit)
-                            : null;
-                    }}
-                    suffix={unit}
-                    onCommit={setWallThickness}
-                />
+                <ThicknessField unit={unit} />
             </div>
         </Section>
     );
@@ -108,6 +120,49 @@ function OpeningSettings({ unit }: { unit: DisplayUnit }) {
                     onChange={setDoorLeaf}
                 />
                 <ReadonlyRow label="Width" value={formatLength(DEFAULT_LEAF_WIDTH[leaf], unit)} />
+            </div>
+        </Section>
+    );
+}
+
+/**
+ * Shown only while the area tool is active: the area the next room has to have.
+ *
+ * Typed before the room is placed rather than corrected afterwards, for the reason every one
+ * of these panels exists: the number decides where the click goes, so it has to be on screen
+ * before the click. What it decides is the *inside* of the room — the floor somebody walks on,
+ * which is what an area is asked for in — and the walls are put round it at the thickness
+ * below, which is the same one the wall tool draws at.
+ */
+function RoomAreaSettings({ unit }: { unit: DisplayUnit }) {
+    const area = useEditorStore((state) => state.targetArea);
+    const setTargetArea = useEditorStore((state) => state.setTargetArea);
+
+    // Square millimetres are what the document holds; nobody types those. The factor is the
+    // display unit squared, so a metre drawing reads and writes square metres.
+    const factor = unit === 'm' ? 1_000_000 : unit === 'cm' ? 100 : 1;
+
+    return (
+        <Section title="New room">
+            <div className="space-y-2 px-3">
+                <MeasureField
+                    label="Area"
+                    value={area}
+                    format={(value) => String(Math.round((value / factor) * 100) / 100)}
+                    parse={(text) => {
+                        const parsed = Number(text.replace(',', '.'));
+
+                        return Number.isFinite(parsed) && parsed > 0 ? parsed * factor : null;
+                    }}
+                    suffix={`${unit}²`}
+                    onCommit={setTargetArea}
+                />
+                {/*
+                 * The same thickness the wall tool sets, because it is the same next wall —
+                 * and it belongs here rather than a tool away, since it is what decides how far
+                 * outside the area the four centrelines land.
+                 */}
+                <ThicknessField unit={unit} />
             </div>
         </Section>
     );

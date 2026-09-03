@@ -2,7 +2,7 @@ import { addElements } from '@/editor/commands/command';
 import { distance, type Point } from '@/editor/geometry/vec';
 import { createLeader, createText } from '@/editor/model/factories';
 import { requestRepaint } from '@/editor/render/frame';
-import { interaction } from '@/editor/store/interaction';
+import { interaction, previewOne } from '@/editor/store/interaction';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
@@ -54,7 +54,7 @@ export function createLeaderTool(): Tool {
 
     function clearDraft(): void {
         points = [];
-        interaction.preview = null;
+        previewOne(null);
         interaction.draftPoints = [];
         requestRepaint();
     }

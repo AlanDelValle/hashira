@@ -15,7 +15,7 @@ import type { CircleElement, DimensionElement, HashiraDocument } from '@/editor/
 import { requestRepaint } from '@/editor/render/frame';
 import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
-import { interaction } from '@/editor/store/interaction';
+import { interaction, previewOne } from '@/editor/store/interaction';
 
 import type { Tool, ToolContext, ToolEvent } from './types';
 
@@ -32,7 +32,7 @@ import type { Tool, ToolContext, ToolEvent } from './types';
 const empty = makeLookup([]);
 
 function clearDraft(): void {
-    interaction.preview = null;
+    previewOne(null);
     interaction.draftPoints = [];
     requestRepaint();
 }
@@ -111,7 +111,7 @@ export function createDimensionTool(): Tool {
         }
 
         if (preview) {
-            interaction.preview = extended;
+            previewOne(extended);
             requestRepaint();
 
             return;
@@ -146,7 +146,7 @@ export function createDimensionTool(): Tool {
                 return;
             }
 
-            interaction.preview = build(offsetTowards(from, to, event.world), context);
+            previewOne(build(offsetTowards(from, to, event.world), context));
         },
 
         onPointerDown(event, context) {
@@ -170,7 +170,7 @@ export function createDimensionTool(): Tool {
                 }
 
                 to = event.world;
-                interaction.preview = build(0, context);
+                previewOne(build(0, context));
 
                 return;
             }
@@ -259,7 +259,7 @@ export function createAngleTool(): Tool {
                 return;
             }
 
-            interaction.preview = build(event.world, context);
+            previewOne(build(event.world, context));
             requestRepaint();
         },
 
@@ -344,7 +344,7 @@ export function createRadiusTool(): Tool {
                 interaction.hoveredId = hovered;
             }
 
-            interaction.preview = build(event, context);
+            previewOne(build(event, context));
             requestRepaint();
         },
 

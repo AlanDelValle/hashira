@@ -50,10 +50,12 @@ export interface InteractionState {
     /** Vertices committed so far by a multi-click tool, in world space. */
     draftPoints: Point[];
     /**
-     * The shape currently being drawn, as a real element. Building it with the same factory
-     * the commit uses means the preview cannot look different from the result.
+     * What the active tool would commit if the pointer stopped here, as real elements. Built
+     * with the same factories the commit uses, so the preview cannot look different from the
+     * result — and a list rather than one shape, because a tool may commit more than one:
+     * a room drawn from its area is four walls.
      */
-    preview: Element | null;
+    preview: Element[];
     /**
      * What caught the pointer last, so the overlay can say why it moved. Grid snaps are not
      * recorded: they happen on every move, and a marker that is always on says nothing.
@@ -70,7 +72,7 @@ export const interaction: InteractionState = {
     marquee: null,
     drag: null,
     draftPoints: [],
-    preview: null,
+    preview: [],
     snap: null,
     panning: false,
 };
@@ -80,7 +82,12 @@ export function resetInteraction(): void {
     interaction.marquee = null;
     interaction.drag = null;
     interaction.draftPoints = [];
-    interaction.preview = null;
+    interaction.preview = [];
     interaction.snap = null;
     interaction.panning = false;
+}
+
+/** Show a single shape, or nothing. Most tools draw one thing at a time. */
+export function previewOne(element: Element | null): void {
+    interaction.preview = element === null ? [] : [element];
 }
