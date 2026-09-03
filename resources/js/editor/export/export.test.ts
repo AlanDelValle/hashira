@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { toRadians } from '@/editor/geometry/angle';
 import { point } from '@/editor/geometry/vec';
@@ -39,6 +39,25 @@ const PALETTE: ScenePalette = {
     roomFill: '#f2f5fc',
     sheet: '#ffffff',
 };
+
+/*
+ * pdf-lib is loaded once, up front, off any single test's clock.
+ *
+ * `sceneToPdf` imports it at the moment somebody exports, which is the right call for the
+ * bundle and the wrong one for a test run: whichever test asks for a PDF first pays to load
+ * 139 modules on top of its own work, inside its own five-second budget. Warm and idle that
+ * is 150ms of library against 30ms of actual PDF; on a cold first run, with those files
+ * untouched by anything else in the toolchain and every worker starting at once, it was
+ * measured at 5.4 seconds. The test that then failed was the one that happened to be first,
+ * not the one that was wrong — and it passed on the retry, because a retry is always warm.
+ *
+ * Doing it here rather than inside the PDF block also means no future reordering can hand the
+ * bill to a different test. The hook is timed for the cold case; the tests are timed for the
+ * work they actually do.
+ */
+beforeAll(async () => {
+    await import('pdf-lib');
+}, 30_000);
 
 describe('path data', () => {
     it('writes a polyline, closing it only when asked', () => {

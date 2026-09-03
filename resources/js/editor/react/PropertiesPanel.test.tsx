@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { point } from '@/editor/geometry/vec';
 import { emptyDocument } from '@/editor/model/document';
@@ -121,20 +121,32 @@ describe('the properties panel', () => {
         expect(currentWall().geometry.thickness).toBe(150);
     });
 
-    it('merges consecutive edits to one field into a single undo step', async () => {
+    /*
+     * The panel's half of the merging promise, which is the half it decides: consecutive edits
+     * to one field all carry the same coalesce key, so the history is able to fold them.
+     *
+     * Whether two commands carrying that key actually do fold is the history's rule, and it is
+     * a rule about elapsed time — `history.test.ts` proves it against an injected clock, which
+     * is the only way to prove it. Asserting it from out here meant asserting that three rounds
+     * of simulated typing land inside the 600ms window: true on an idle machine, with about
+     * 190ms of the window used per edit, and false the moment one of them ran three times slow.
+     * Neither outcome said anything about this panel.
+     */
+    it('tags consecutive edits to one field with the same coalesce key, so they merge', async () => {
         render(<PropertiesPanel />);
+
+        const executed = vi.spyOn(history, 'execute');
 
         await typeInto('Thickness', '0.2');
         await typeInto('Thickness', '0.3');
         await typeInto('Thickness', '0.4');
 
         expect(currentWall().geometry.thickness).toBe(400);
-
-        // One press, and the wall is back where the edit began — not two thirds of the way.
-        history.undo();
-
-        expect(currentWall().geometry.thickness).toBe(150);
-        expect(history.getState().canUndo).toBe(false);
+        expect(executed.mock.calls.map(([command]) => command.coalesceKey)).toEqual([
+            'thickness:w1',
+            'thickness:w1',
+            'thickness:w1',
+        ]);
     });
 
     it('keeps edits to different fields as separate undo steps', async () => {
