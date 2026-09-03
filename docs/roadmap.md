@@ -425,6 +425,94 @@ Decisions taken before the phase starts, so they are not re-argued halfway throu
   layout, no suggestion, no second room. The scope discipline in AGENTS.md is not relaxed by a
   tool that happens to take a number as input.
 
+### Phase 12 — The line as notation `[ ]`
+
+The counterpart to 11.4, one step over. A hatch says what a shape is made of; a line says what
+it _is_ — visible or hidden, a centre, an axis, a trajectory, something overhead. NBR 8403
+fixes both halves of that: nine line types, of which eight are a line here and the ninth is
+already a block, and a **line group** that sets three widths at once rather than one at a time,
+because what carries the meaning is the ratio between them rather than any single number.
+
+| Group | Extralarga | Larga | Estreita |
+| ----- | ---------- | ----- | -------- |
+| 0,25  | 0,50       | 0,25  | 0,13     |
+| 0,35  | 0,70       | 0,35  | 0,18     |
+| 0,50  | 1,00       | 0,50  | 0,25     |
+| 0,70  | 1,40       | 0,70  | 0,35     |
+| 1,00  | 2,00       | 1,00  | 0,50     |
+
+**The scope is the four tools that draw a shape for its own sake: line, rectangle, polygon and
+circle.** How a wall, an opening, a room, a dimension or a hatch is drawn does not change, and
+neither do their weights. That is the whole difference between this phase and a restyling of
+the drawing: the standard is offered to the person drafting, on the elements they draft with,
+rather than applied over the top of elements the editor draws for reasons of its own. A wall is
+an area mitred at its joins and stroked at one weight, which is what Phase 7 settled, and it
+stays that.
+
+Almost nothing moves on screen, because the default already _is_ the standard. All four are
+drawn today at 0.25 mm solid — exactly _contínua larga_ of group 0,25, whose other two weights
+the code is already holding as `PEN.normal` and `PEN.heavy`. An existing drawing gains a name
+for what it was doing and seven alternatives beside it, and `hatchFill` keeps deciding the
+inside of a closed one.
+
+That scope also rescues the type that has nowhere to land when the editor is the one choosing.
+_Traço e ponto extralarga_ marks the ends and the changes of direction of a section plane, and
+the editor has no section plane — but somebody drawing that marking draws it with the line
+tool, and this is the type it wants. The same goes for a trajectory, a centre line and the
+projection of a balcony, an eave or a canopy: the editor cannot know that a run means one of
+those, and the person drawing it does.
+
+- [ ] **12.1 The eight types, named.** Schema 10: `style.lineType` names one of them, and
+      `model/lineTypes.ts` sits beside `model/hatches.ts` holding what each one draws — the
+      dash pattern in millimetres on the sheet, and the weight, because _tracejada estreita_ is
+      one thing in the standard rather than a type and a width chosen separately. Only the name
+      is stored. `Stroke` already carries a `dash` and a `width` to all five outputs, so the
+      screen, the PNG, the SVG and the PDF need no new code
+- [ ] **12.2 Choosing one.** A picker in the properties panel next to the hatch picker, gated
+      to `line`, `rect`, `polygon` and `circle` the way `HATCHABLE` gates the other one — a
+      second list rather than the same one, since a wall and a room are hatched here and never
+      re-lined, and a line has no inside to fill. Written through a command, so it undoes like
+      everything else. The tool carries the last one chosen into the next run, the way the wall
+      tool carries a thickness — a centre line is rarely drawn alone
+- [ ] **12.3 A legend of both.** Parked in 11.4 and unblocked here. The strip beside the
+      drawing lists the layers; what a drawing is actually read by is its patterns and its
+      lines. One legend rather than two, because the reader is asking the same question of both
+
+The eight are a dash pattern and arrive together. The ninth, **contínua com zigue-zague
+estreita**, is not one of them and is not missing either: it already exists as the `break-line`
+block on the annotation shelf, from Phase 8.5. It was never a dash pattern to begin with — the
+run itself deviates, which is generated geometry like the revision cloud's bumps — and a
+convention the library already draws does not need a second way to be drawn.
+
+The dead fields go with this. `style.strokeWidth` and `style.dash` have been in the format
+since version 1, validated by zod, and are written by nothing and read by nothing — `§4.7` of
+[document-format.md](document-format.md) documents the first as though it worked. `lineType` is
+what they were reaching for, and 12.1 is where they are either read or removed.
+
+Decisions taken before the phase starts, so they are not re-argued halfway through:
+
+- **Only the name is stored**, exactly as in 11.4. A dashed line somebody has re-spaced is no
+  longer the line anybody reads, and a document holding `[2, 1.5]` has recorded a habit rather
+  than a convention.
+- **The weight rides with the type.** The standard names a line once — _tracejada estreita_,
+  _traço e ponto extralarga_ — so the picker offers eight conventions and not a type crossed
+  with three widths. It is also the answer to not needing every thickness: the drawing uses the
+  weights its types call for and never asks for a number.
+- **The group is 0,25 and is not a setting.** It is the row today's weights already sit on, so
+  choosing it moves nothing. A group in `settings` would only mean something if it reached the
+  weights a wall and a dimension are drawn at, which is the thing this phase is deliberately
+  not doing.
+- **An absent `lineType` is _contínua larga_.** Not a further state and not a migration: it is
+  what all four already draw, so no existing drawing is restyled and no element has to be
+  rewritten in order to keep looking like itself.
+- **A line type is notation and scales on the sheet.** The split 11.4 made, applied again:
+  every dash and every gap is in millimetres of paper, so a centre line reads the same at 1:50
+  and at 1:100, and the weight it is drawn with was already measured that way.
+- **The DXF carries the type and not the weight.** R12 has no lineweight — Phase 8 settled that
+  a pen weight stays behind — but it does have linetypes, and the exporter already names
+  `CONTINUOUS` on every layer without ever writing an `LTYPE` table. A dashed centre line is
+  the one part of this that can travel, and that table is the whole cost of sending it.
+
 ### Only after all of the above
 
 **Project and drawing templates.** Started Phase 8 and taken back out of it, because the
