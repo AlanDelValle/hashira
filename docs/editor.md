@@ -222,6 +222,11 @@ decoration: the server resolves a mention by matching a roster name in the text,
 to put an exact name where somebody would otherwise spell it and wonder why nothing happened.
 The client highlights what the server hands back and parses nothing.
 
+A remote cursor arrives at pointer rate and is **not** React state: it lands in a plain map
+that the render loop reads, the same bargain a drag makes, so somebody else moving their mouse
+costs zero renders. Who is _here_ changes rarely and does live in a store, because a strip of
+names is React. See `presence/presence.ts` for why the two travel differently.
+
 Somebody who may comment but not edit never sees this page. They get `pages/ReviewPage.tsx` —
 the surface §14 built to look at a version on, given a click that means something. That was the
 choice over handing them the editor with its tools removed, which would have meant teaching the
@@ -760,9 +765,9 @@ the mitres have to follow, so they are worked out again — but only then.
 ## 20. What is not here yet
 
 Anything that happens between two people at the same time: presence, cursors, live
-co-editing. What is here of that phase is the part that needs nobody watching — comparing two
-versions of a drawing, roles and the membership a link grants, and **comments**: a pin dropped
-at a point in the drawing, a conversation under it, mentions, resolving, and a surface of its
-own for somebody who may comment but not edit. What a mention still does not do is reach
-anybody who is not looking: delivering one is the same problem as delivering presence, and it
-waits for the same socket. See [roadmap.md](roadmap.md).
+co-editing. What is here is everything but the shared edit: comparing two versions,
+roles and the membership a link grants, comments with mentions, and **presence** — who else has
+this drawing open, and where their pointer is. What is missing is an operation log, so a
+drawing is still saved whole against a revision and the second person to save gets a conflict.
+A mention still reaches nobody who is not already looking, which rides on the socket that now
+exists and has simply not been built. See [roadmap.md](roadmap.md).

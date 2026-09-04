@@ -23,6 +23,7 @@ import {
     createWindowTool,
 } from '@/editor/tools/architectureTools';
 import { createAreaTool } from '@/editor/tools/areaTool';
+import { reportPointer } from '@/editor/presence/presence';
 import { createCommentTool } from '@/editor/tools/commentTool';
 import {
     createCircleTool,
@@ -260,6 +261,13 @@ export class InputController {
         // toggle is in the same status bar — brings the raw position back.
         interaction.pointerWorld = toolEvent.world;
 
+        /*
+         * And where it is for everybody else. The raw position rather than the snapped one:
+         * a snap is a decision about where a click will land, and somebody watching wants to
+         * know where the hand is, not where the geometry would agree to go.
+         */
+        reportPointer(toolEvent.rawWorld);
+
         if (this.panningFrom !== null) {
             const { viewport, setViewport } = useViewportStore.getState();
 
@@ -311,6 +319,9 @@ export class InputController {
         interaction.pointerScreen = null;
         interaction.pointerWorld = null;
         interaction.hoveredId = null;
+
+        // A pointer that has left the drawing is not pointing at anything on it.
+        reportPointer(null);
         requestRepaint();
     };
 

@@ -16,6 +16,29 @@ php artisan migrate --seed
 npm run dev
 ```
 
+**`composer install` needs a PHP with `ext-curl`.** `pusher/pusher-php-server` arrives with
+Reverb and requires it, so a PHP without it cannot resolve the dependencies — Herd's own PHP
+has it, a standalone build on the `PATH` may not. Everything else is unaffected: the generated
+platform check only asserts the PHP version, so `composer test`, `analyse`, `lint` and every
+artisan command run fine either way. Nothing in the application calls curl at runtime, because
+nothing here broadcasts from PHP.
+
+Presence — seeing who else is on a drawing, and their cursor — needs a websocket server:
+
+```bash
+php artisan reverb:start
+```
+
+**It is optional and the editor must stay that way.** With no `VITE_REVERB_APP_KEY` the client
+never opens a connection, nobody sees anybody, and everything else works exactly as it did —
+which is what a fresh clone and CI both get. A drafting tool that will not start because a
+socket is down is a worse tool than one that quietly has nobody else in it.
+
+`guzzlehttp/guzzle` is held at 7.x rather than 8.x, and not by choice: Reverb pins
+`guzzlehttp/psr7 ^2.6` and Guzzle 8 requires `^3.1`. Nothing in the application uses Guzzle
+directly — it arrives with the framework — so the floor costs nothing today. It can go back up
+when Reverb catches up.
+
 `npm run artwork` regenerates every picture of the product the project ships — the README
 screenshots and the landing page's drawing — by driving a headless Chrome against the running
 app, signed in as the seeded demo account. Run it whenever the editor's chrome or the sample

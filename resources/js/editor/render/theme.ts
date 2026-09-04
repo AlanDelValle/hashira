@@ -24,6 +24,17 @@ export interface CanvasTheme {
     positive: string;
     danger: string;
     caution: string;
+
+    /**
+     * Whose pointer that is. Five, cycled by account id — the second deliberate exception to
+     * "one accent", after the redlines, and each carries a name beside it so the colour is
+     * never the only thing saying who.
+     */
+    presence1: string;
+    presence2: string;
+    presence3: string;
+    presence4: string;
+    presence5: string;
 }
 
 const FALLBACK: CanvasTheme = {
@@ -39,6 +50,11 @@ const FALLBACK: CanvasTheme = {
     positive: '#2f6b45',
     danger: '#a9302a',
     caution: '#8a5a00',
+    presence1: '#0f6b6b',
+    presence2: '#6b3fa0',
+    presence3: '#9a4a17',
+    presence4: '#a03062',
+    presence5: '#3f6212',
 };
 
 const TOKENS: Record<keyof CanvasTheme, string> = {
@@ -54,6 +70,11 @@ const TOKENS: Record<keyof CanvasTheme, string> = {
     positive: '--color-positive',
     danger: '--color-danger',
     caution: '--color-caution',
+    presence1: '--color-presence-1',
+    presence2: '--color-presence-2',
+    presence3: '--color-presence-3',
+    presence4: '--color-presence-4',
+    presence5: '--color-presence-5',
 };
 
 export function readTheme(root: Element): CanvasTheme {

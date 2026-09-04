@@ -28,6 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
         },
         commands: __DIR__.'/../routes/console.php',
     )
+    /*
+     * The socket's front door. `/broadcasting/auth` decides who may listen to a channel, and
+     * it runs on the `web` group for the same reason the API does: authentication here is the
+     * browser session, so the endpoint that authorizes a subscription has to be able to see
+     * it. Presence is the only thing on the other side — see routes/channels.php.
+     */
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['web']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         /*
          * A drawing is data, not form input.

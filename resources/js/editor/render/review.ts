@@ -4,6 +4,7 @@ import type { DocumentDiff } from '@/editor/model/diff';
 import { documentBounds, elementBounds, makeLookup } from '@/editor/model/elements';
 import type { HashiraDocument } from '@/editor/model/types';
 import { wallJoins } from '@/editor/model/walls';
+import { remoteCursors, reportPointer, subscribeToCursors } from '@/editor/presence/presence';
 import { buildScene } from '@/editor/scene/build';
 import type { SceneLayer } from '@/editor/scene/types';
 import {
@@ -20,6 +21,7 @@ import {
 
 import { paintScene } from './canvasScene';
 import { paintCommentPins, pinAt, type CommentPin } from './comments';
+import { paintCursors } from './presence';
 import { buildRedlines } from './redlines';
 import { readTheme, type CanvasTheme } from './theme';
 
@@ -91,6 +93,8 @@ export class ReviewSurface {
     private pressedAt: Point | null = null;
     private travelled = 0;
 
+    private unsubscribeFromCursors: (() => void) | null = null;
+
     private pins: readonly CommentPin[] = [];
     private selectedPinId: string | null = null;
 
@@ -107,10 +111,15 @@ export class ReviewSurface {
     }
 
     start(): void {
+        this.unsubscribeFromCursors = subscribeToCursors(() => {
+            this.dirty = true;
+        });
+
         this.canvas.addEventListener('pointerdown', this.onPointerDown);
         this.canvas.addEventListener('pointermove', this.onPointerMove);
         this.canvas.addEventListener('pointerup', this.onPointerUp);
         this.canvas.addEventListener('pointercancel', this.onPointerUp);
+        this.canvas.addEventListener('pointerleave', this.onPointerLeave);
         this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
 
         this.loop();
@@ -119,10 +128,14 @@ export class ReviewSurface {
     stop(): void {
         cancelAnimationFrame(this.animation);
 
+        this.unsubscribeFromCursors?.();
+        this.unsubscribeFromCursors = null;
+
         this.canvas.removeEventListener('pointerdown', this.onPointerDown);
         this.canvas.removeEventListener('pointermove', this.onPointerMove);
         this.canvas.removeEventListener('pointerup', this.onPointerUp);
         this.canvas.removeEventListener('pointercancel', this.onPointerUp);
+        this.canvas.removeEventListener('pointerleave', this.onPointerLeave);
         this.canvas.removeEventListener('wheel', this.onWheel);
     }
 
@@ -306,6 +319,10 @@ export class ReviewSurface {
         if (this.pins.length > 0) {
             paintCommentPins({ ctx, theme: this.theme, px }, this.pins, this.selectedPinId);
         }
+
+        if (remoteCursors.size > 0) {
+            paintCursors({ ctx, theme: this.theme, px }, remoteCursors.values());
+        }
     }
 
     private screenPoint(event: PointerEvent | WheelEvent): Point {
@@ -329,6 +346,9 @@ export class ReviewSurface {
     };
 
     private onPointerMove = (event: PointerEvent): void => {
+        // Where our own pointer is, whatever else is happening. Presence throttles it.
+        reportPointer(toWorld(this.viewport, this.screenPoint(event)));
+
         const from = this.panningFrom;
 
         if (from === null) {
@@ -374,6 +394,11 @@ export class ReviewSurface {
         const hit = pinAt(this.pins, world, this.pixel);
 
         this.onPick(hit === null ? { kind: 'place', world, screen } : { kind: 'pin', id: hit.id });
+    };
+
+    /** A pointer that has left the drawing is not pointing at anything on it. */
+    private onPointerLeave = (): void => {
+        reportPointer(null);
     };
 
     private onWheel = (event: WheelEvent): void => {

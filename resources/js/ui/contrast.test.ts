@@ -71,6 +71,25 @@ const UI_PAIRS: Pair[] = [
     { fg: 'caution', bg: 'sheet', where: 'what was edited, in a version comparison' },
 ];
 
+/*
+ * Whose pointer that is. Each carries a name label in white on the same colour, so the
+ * demanding pair is the text one rather than the graphic one — which is why these are held to
+ * 4.5:1 and sit in the text list rather than beside the redlines above.
+ */
+for (const index of [1, 2, 3, 4, 5]) {
+    TEXT_PAIRS.push({
+        fg: 'sheet',
+        bg: `presence-${index}`,
+        where: `the name on a remote cursor, colour ${index}`,
+    });
+
+    UI_PAIRS.push({
+        fg: `presence-${index}`,
+        bg: 'sheet',
+        where: `a remote cursor's arrow, colour ${index}`,
+    });
+}
+
 describe('colour contrast', () => {
     it.each(TEXT_PAIRS)('$fg on $bg carries text — $where', ({ fg, bg }) => {
         expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(AA_TEXT);
@@ -104,7 +123,8 @@ function readTokens(): Map<string, string> {
     const css = readFileSync(join(process.cwd(), 'resources/css/app.css'), 'utf8');
     const found = new Map<string, string>();
 
-    for (const [, name, value] of css.matchAll(/(--color-[a-z-]+):\s*(#[0-9a-f]{6});/gi)) {
+    // Digits are part of a token name too — the presence colours are numbered.
+    for (const [, name, value] of css.matchAll(/(--color-[a-z0-9-]+):\s*(#[0-9a-f]{6});/gi)) {
         if (name !== undefined && value !== undefined) {
             found.set(name, value);
         }

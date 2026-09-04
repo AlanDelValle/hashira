@@ -15,6 +15,7 @@ import { useAuth } from '@/auth/useAuth';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { CommentDraft } from '@/editor/react/CommentDraft';
 import { CommentsPanel } from '@/editor/react/CommentsPanel';
+import { PresenceStrip } from '@/editor/react/PresenceStrip';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
 import { DxfImportDialog } from '@/editor/react/DxfImportDialog';
 import { ExportDialog } from '@/editor/react/ExportDialog';
@@ -24,6 +25,7 @@ import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
 import { fetchPeople, fetchThreads } from '@/editor/persistence/comments';
+import { joinProject, leaveProject } from '@/editor/presence/presence';
 import { listUnderlays } from '@/editor/persistence/underlays';
 import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
@@ -124,11 +126,20 @@ export function EditorPage() {
             autosave.start(projectId, payload.revision, state.document);
         }
 
+        /*
+         * Say we are here. With no socket configured this does nothing at all and nobody is
+         * ever shown — the editor is not to notice whether presence exists.
+         */
+        if (user !== null) {
+            joinProject(projectId, { id: user.id, name: user.name });
+        }
+
         return () => {
             autosave.stop();
+            leaveProject();
             useCommentsStore.getState().clear();
         };
-    }, [payload, projectId, load]);
+    }, [payload, projectId, load, user]);
 
     useEffect(() => {
         function warnIfUnsaved(event: BeforeUnloadEvent) {
@@ -225,6 +236,7 @@ export function EditorPage() {
                     name={payload.name}
                     projectId={projectId ?? ''}
                     owned={payload.role === 'owner'}
+                    selfId={user?.id ?? null}
                 />
 
                 <div className="flex overflow-hidden">
@@ -282,11 +294,14 @@ function EditorHeader({
     name,
     projectId,
     owned,
+    selfId,
 }: {
     name: string;
     projectId: string;
     /** Sharing is the owner's alone, so an editor who was let in is not offered it. */
     owned: boolean;
+    /** So the strip of who is here can leave you out of it. */
+    selfId: number | null;
 }) {
     const { canUndo, canRedo, undoLabel, redoLabel } = useHistory();
     const [versionsOpen, setVersionsOpen] = useState(false);
@@ -310,7 +325,11 @@ function EditorHeader({
 
             <SaveStatusIndicator />
 
-            <div className="ml-auto flex items-center gap-0.5">
+            <div className="ml-auto flex items-center gap-3">
+                <PresenceStrip selfId={selfId} />
+            </div>
+
+            <div className="flex items-center gap-0.5">
                 <HeaderButton
                     label={canUndo ? `Undo ${undoLabel ?? ''}`.trim() : 'Undo'}
                     shortcut={formatChord(['Mod', 'Z'])}

@@ -6,8 +6,10 @@ import { useAuth } from '@/auth/useAuth';
 import type { Point } from '@/editor/geometry/vec';
 import { parseDocument } from '@/editor/model/document';
 import { fetchPeople, fetchThreads } from '@/editor/persistence/comments';
+import { joinProject, leaveProject } from '@/editor/presence/presence';
 import { CommentComposer } from '@/editor/react/CommentComposer';
 import { CommentsPanel } from '@/editor/react/CommentsPanel';
+import { PresenceStrip } from '@/editor/react/PresenceStrip';
 import { ReviewCanvas, type ReviewCanvasHandle } from '@/editor/react/ReviewCanvas';
 import { pinHead } from '@/editor/render/comments';
 import type { ReviewContent } from '@/editor/render/review';
@@ -64,8 +66,17 @@ export function ReviewPage() {
                 /* Without the roster, `@` simply offers nobody. */
             });
 
-        return () => useCommentsStore.getState().clear();
-    }, [projectId]);
+        // A reviewer is somebody you want to see looking at your drawing, so they are on the
+        // same channel as anybody in the editor and their cursor is drawn the same way.
+        if (user !== null) {
+            joinProject(projectId, { id: user.id, name: user.name });
+        }
+
+        return () => {
+            leaveProject();
+            useCommentsStore.getState().clear();
+        };
+    }, [projectId, user]);
 
     const parsed = useMemo(
         () => (payload === null ? null : parseDocument(payload.drawing)),
@@ -142,7 +153,10 @@ export function ReviewPage() {
 
                 <h1 className="text-ink text-[13px] font-medium">{payload.name}</h1>
 
-                <span className="text-ink-subtle ml-auto font-mono text-[11px]">comments only</span>
+                <div className="ml-auto flex items-center gap-3">
+                    <PresenceStrip selfId={user?.id ?? null} />
+                    <span className="text-ink-subtle font-mono text-[11px]">comments only</span>
+                </div>
 
                 <button
                     type="button"

@@ -44,7 +44,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, mbstring, intl
+          # curl is not optional: pusher/pusher-php-server arrives with Reverb and
+          # requires it, so `composer install` cannot resolve without it.
+          extensions: pdo_pgsql, mbstring, intl, curl
           coverage: none
 
       - name: Install dependencies
@@ -131,7 +133,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, mbstring, intl
+          # curl is not optional: pusher/pusher-php-server arrives with Reverb and
+          # requires it, so `composer install` cannot resolve without it.
+          extensions: pdo_pgsql, mbstring, intl, curl
           coverage: none
 
       - uses: actions/setup-node@v5

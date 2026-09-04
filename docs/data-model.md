@@ -297,6 +297,23 @@ DELETE /api/projects/{project}/members/{member}
 `accept` answers `404` for a viewer link exactly as it does for an unknown one: a caller
 learns nothing by asking, and a link that offers only viewing has nothing to take up.
 
+### Presence
+
+```
+POST   /broadcasting/auth                     who may listen to a channel
+```
+
+One channel, `presence-project.{project}`, authorized in `routes/channels.php` by the same
+`view` policy every other route asks. It answers with an id and a name — what every other
+member of the channel is handed about this person, and the same shape `/people` serves for the
+same reason.
+
+**Cursors do not come through the server at all.** They are client events, whispered between
+the browsers already on the channel: a pointer moves tens of times a second, and putting that
+through PHP would be a queue of work for something stale before it is read. The server's whole
+part in a cursor is having decided, once, who is allowed on the channel. Nothing in the
+application broadcasts from PHP, which is why nothing here needs a queue worker.
+
 ### Public
 
 ```

@@ -60,6 +60,25 @@
      */
     --color-caution: #8a5a00;
 
+    /*
+     * Whose pointer that is.
+     *
+     * The second deliberate exception to "one accent", after the redlines, and for the same
+     * kind of reason: several people are on a drawing at once and telling them apart is the
+     * whole point. Five, cycled by account id — beyond a handful nobody is distinguishing by
+     * hue anyway, and every cursor carries its owner's name beside it regardless, because a
+     * mark that means somebody only by its colour means nobody to a good part of the people
+     * looking at it.
+     *
+     * Each clears 4.5:1 on the sheet, which is more than the 3:1 a graphic needs: the name
+     * label is white text on the same colour, and that is the demanding half.
+     */
+    --color-presence-1: #0f6b6b;
+    --color-presence-2: #6b3fa0;
+    --color-presence-3: #9a4a17;
+    --color-presence-4: #a03062;
+    --color-presence-5: #3f6212;
+
     /* Drafting surface — the sheet inside the editor, always paper regardless of UI theme */
     --color-sheet: #ffffff;
     --color-grid-minor: #e9e7e2;

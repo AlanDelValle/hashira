@@ -23,6 +23,11 @@ const THEME: CanvasTheme = {
     positive: '#1a7f4b',
     danger: '#b3261e',
     caution: '#8a6b00',
+    presence1: '#0f6b6b',
+    presence2: '#6b3fa0',
+    presence3: '#9a4a17',
+    presence4: '#a03062',
+    presence5: '#3f6212',
 };
 
 const DOOR_WIDTH = 900;

@@ -15,6 +15,7 @@ import type { DisplayUnit, Element, HashiraDocument, WallElement } from '@/edito
 import { formatAngle, formatArea, formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
+import { remoteCursors, subscribeToCursors } from '@/editor/presence/presence';
 import { commentPins, useCommentsStore } from '@/editor/store/commentsStore';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
@@ -24,6 +25,7 @@ import { visibleBounds } from '@/editor/viewport/viewport';
 
 import { paintScene } from './canvasScene';
 import { paintCommentPins } from './comments';
+import { paintCursors } from './presence';
 import { setInvalidator } from './frame';
 import { paintGrid } from './grid';
 import {
@@ -91,6 +93,9 @@ export class CanvasRenderer {
             // A thread arriving, being resolved or being opened in the panel all change what
             // the drawing shows, and none of them touch the document.
             useCommentsStore.subscribe(() => this.invalidate()),
+            // Somebody else's pointer moving is a repaint and nothing else — no store, no
+            // render, per rule 5.
+            subscribeToCursors(() => this.invalidate()),
         ];
 
         this.loop();
@@ -310,6 +315,11 @@ export class CanvasRenderer {
 
         if (pins.length > 0) {
             paintCommentPins({ ctx, theme: this.theme, px }, pins, selectedId);
+        }
+
+        // Over even the pins: a pointer is where somebody is *now*.
+        if (remoteCursors.size > 0) {
+            paintCursors({ ctx, theme: this.theme, px }, remoteCursors.values());
         }
 
         this.writeReadouts(drawing, viewport.zoom);

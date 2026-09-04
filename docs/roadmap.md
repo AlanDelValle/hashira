@@ -229,7 +229,11 @@ whole against a revision, one history stack, and authorization from the authenti
       building it twice is how the two end up disagreeing. An envelope describes state and
       never intent, and `parseCommand` is the only way in — a second, trusting entry point
       would end up being used on wire data
-- [ ] **9.1 Realtime presence and cursors** (Laravel Reverb)
+- [x] **9.1 Realtime presence and cursors** (Laravel Reverb). One presence channel per
+      project, authorized by the same `view` policy every other route asks. Who is here comes
+      from the channel; where their pointer is is whispered browser to browser and never
+      touches PHP. Painted on both surfaces — the editor and the review page — because a
+      reviewer is exactly the person you want to see looking at your drawing
 - [ ] **9.2 Live co-editing** built on the existing command stream
 - [~] **9.3 Comments and mentions** anchored to drawing coordinates. Split in two, because
   it is larger than 9.4 was. **9.3a is done:** a pin dropped at a point in drawing
@@ -341,6 +345,34 @@ What 9.3a settled:
 - **Resolved threads can still be answered.** "That is not quite right" is what somebody needs
   to say about a point closed too early, and a conversation that cannot be reopened by talking
   is one people work around by starting a second pin at the same place.
+
+What 9.1 settled:
+
+- **Presence is optional and the editor does not notice its absence.** With no
+  `VITE_REVERB_APP_KEY` the client never opens a connection, nobody sees anybody, and
+  everything else is unchanged — which is what a fresh clone and CI both get. A drafting tool
+  that will not start because a websocket server is down is a worse tool than one that quietly
+  has nobody else in it.
+- **A cursor never goes through PHP.** It is a client event, whispered between the browsers
+  already on the channel, throttled to twenty a second and skipped when the pointer has not
+  really moved. The server's whole part in a cursor is having decided, once, who is allowed on
+  the channel — which is also why nothing here needs a queue worker.
+- **A remote cursor is not React state.** It arrives at pointer rate and lands in a plain map
+  the render loop reads, the same bargain rule 5 makes for a drag. Who is _here_ changes rarely
+  and does live in a store, because a strip of names is React.
+- **Colour tells people apart; it never names them.** Five hues cycled by account id, held to
+  4.5:1 on the sheet by the same audit as everything else — and every cursor carries its
+  owner's name beside it, every mark in the header carries an initial. To somebody who cannot
+  separate two of the hues, a colour-only strip is a row of identical dots.
+- **The name comes from the channel, not from the message.** A whisper is another browser's
+  word, so a payload that is not two finite numbers is dropped and a cursor claiming somebody
+  who is not on the channel is ignored. The id itself is still the sender's word — the Pusher
+  protocol does not stamp a client event with who sent it — so a member could move another
+  member's cursor. Closing that means routing every pointer move through PHP, which is the one
+  thing a cursor must not cost, and the people who could do it are already in the drawing.
+- **Guzzle is pinned to 7.x, and not by choice.** Reverb requires `guzzlehttp/psr7 ^2.6` and
+  Guzzle 8 wants `^3.1`. Nothing in the application uses Guzzle — it arrives with the framework
+  — so the floor costs nothing today, and it goes back up when Reverb catches up.
 
 What 9.3b settled:
 
