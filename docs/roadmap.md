@@ -222,28 +222,34 @@ Decisions taken at the start of the phase, so they are not re-argued halfway thr
 The first phase about more than one person. Everything before it assumes one: a drawing saved
 whole against a revision, one history stack, and authorization from the authenticated user.
 
-One piece of the groundwork is already in place, ahead of the phase that needs it: **a command
-can be serialised**. `describe()` writes an edit as plain JSON and `commands/envelope.ts` reads
-one back, validated against the document's own schemas. It was built during the refinement pass
-rather than inside a feature, because live co-editing here and the plugin sandbox in Phase 10
-need the identical thing, and building it twice is how the two end up disagreeing.
-
-- [ ] Realtime presence and cursors (Laravel Reverb)
-- [ ] Live co-editing built on the existing command stream
-- [ ] Comments and mentions anchored to drawing coordinates
-- [x] **Version history browsing and comparison** (restore landed in Phase 4). A version is
+- [x] **9.0 Serialisable commands.** `describe()` writes an edit as plain JSON and
+      `commands/envelope.ts` reads one back, validated against the document's own schemas. It
+      was built during the refinement pass rather than inside a feature, because live
+      co-editing here and the plugin sandbox in Phase 10 need the identical thing, and
+      building it twice is how the two end up disagreeing. An envelope describes state and
+      never intent, and `parseCommand` is the only way in — a second, trusting entry point
+      would end up being used on wire data
+- [ ] **9.1 Realtime presence and cursors** (Laravel Reverb)
+- [ ] **9.2 Live co-editing** built on the existing command stream
+- [ ] **9.3 Comments and mentions** anchored to drawing coordinates
+- [ ] **9.4 Share-link roles: viewer, commenter, editor**, and the membership a link grants
+- [x] **9.5 Version history browsing and comparison** (restore landed in Phase 4). A version is
       looked at without being restored, on a surface that is handed a document rather than
       reading one, and any two of them are compared: elements matched by id, and what differs
       marked on the drawing and listed beside it. The current drawing is a version like any
       other in that list, which makes the default comparison "what have I done since I last
       saved a version"
-- [ ] Share-link roles: viewer, commenter, editor
 
-Started with the one part of this phase that needs none of the others. Comparing two versions
-is a question about two documents; there is no websocket in it and no second person, so it
-could be built while the decisions the rest of the phase turns on were still open.
+The numbers are the order these were written in, not the order they are taken. 9.5 went first
+because comparing two versions is a question about two documents — no socket in it and no
+second person — so it could be built while the decisions the rest turns on were still open.
+The rest is taken **9.4 → 9.3 → 9.1 → 9.2**, by that same rule. 9.4 needs neither a socket nor
+a live edit, and it produces the thing the other three are all about: a second person with an
+account attached to a project. 9.3 needs that person and still needs no socket. 9.1 is the
+first item that needs Reverb and asks the least of it — a name and a position. 9.2 is last
+because it is the one that rewrites how a drawing is saved.
 
-What it settled, which the rest of the phase should not re-argue:
+What 9.5 settled, which the rest of the phase should not re-argue:
 
 - **A comparison is computed, not recorded.** A version is a whole document — the drawing is
   one JSONB column and a snapshot copies it — so what changed between two of them is worked
@@ -260,6 +266,29 @@ What it settled, which the rest of the phase should not re-argue:
   same rule will decide what a remote cursor and a comment pin look like.
 - **Both sides are migrated before they are compared.** A schema 5 snapshot is read as schema
   6, so a migration is never reported as somebody's work.
+
+Decided before the rest of the phase starts, so they are not re-argued halfway through:
+
+- **Comments get their own table, not `documents.data`.** Putting them in the drawing would
+  drag them into undo, into every export, into the share payload and into the version diff —
+  a comment is not a thing anybody drew — and it would mean the document schema has to move
+  every time the conversation about a drawing changes shape.
+- **Undo stays local, and it emits an inverse command.** With two people editing, popping a
+  shared stack undoes whatever happened last, which may be somebody else's work. So undo
+  keeps meaning "take back what _I_ just did": it appends the inverse of the local command at
+  the end of the sequence rather than removing anything from it. The history stack the editor
+  already has is per-session, which is the right shape for this and not an accident.
+- **An anonymous link never edits.** `viewer` is the only role a link can hand to somebody
+  with no account. `commenter` and `editor` require signing in, which is what keeps
+  non-negotiable rule 6 intact: authorization is still a policy answering about an
+  authenticated user, never about a token in the request.
+- **A second person is a row, and the link is what writes it.** Accepting a `commenter` or
+  `editor` link while signed in records a membership of that project; from then on the policy
+  reads the row and the token is not consulted again. That is the cheapest honest way to get
+  a second person without building Phase 10's organisations, and it leaves that phase free to
+  grant membership by other means later — exactly the room `share_links.role` left for this.
+  Membership outlives the link that granted it, so re-issuing a link does not evict the
+  people already inside; withdrawing access is its own control, on the share dialog.
 
 ### Phase 10 — Platform
 
