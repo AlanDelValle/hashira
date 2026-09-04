@@ -541,14 +541,32 @@ the job's facts in labelled cells, two to a column. A long name is set smaller b
 short, and a field nobody filled in is dropped label and all, so a stamp closes up rather than
 printing empty boxes. It is drawn by `export/furniture.ts`; `export/pdf.ts` is the geometry.
 
-Down the right-hand side goes what the drawing cannot say in geometry: `settings.notes`, one
-note to a line and numbered when there is more than one, with a legend naming the layers under
-them. That strip is paid for in drawing area rather than taken out of the margins — it narrows
-the frame, and the scale steps back if the plan no longer fits — so it is only reserved when
-there is something to print in it: a note somebody wrote, or a legend of more than one layer.
+Down the right-hand side goes what the drawing cannot say in geometry, stacked in three:
+`settings.notes` at the top, one note to a line and numbered when there is more than one; then
+the **key**; then a legend naming the layers, pinned to the bottom. That strip is paid for in
+drawing area rather than taken out of the margins — it narrows the frame, and the scale steps
+back if the plan no longer fits — so it is only reserved when there is something to print in
+it: a note somebody wrote, a legend of more than one layer, or a single convention to decode.
 `sheetAside` is the one place that decides, and both the canvas outline and the print ask it,
 because an outline that reserved a strip the print does not promises room the print has not
-got. Notes that would run into the legend are cut off at the last line that fits, and say so.
+got.
+
+The key is what the marks on this sheet mean: every hatch and every line type the drawing
+actually uses, gathered by `model/conventions.ts` from the elements — the scene has forgotten
+which convention its geometry came from, since a hatch leaves it as clipped lines. Hatches
+first, then line types, each in catalogue order rather than in order of appearance, so two
+sheets of one set can be read against each other. A hatch is named by what it is, because
+"existing masonry" is both what it is called and what it says; a line type is named by what it
+is _for_, because "Dashed, narrow" printed beside a dashed line explains nothing. Each row
+carries the mark itself, drawn from the same three clipping functions the scene uses and at
+exactly the size it is drawn on the sheet — a swatch at any other size is a picture of a
+different convention. A line type nobody named is not listed: absent means contínua larga, and
+a reader meeting a plain continuous line is not looking anything up.
+
+Notes that would run into the key are cut off at the last line that fits, and say so. Where the
+strip is too short for everything, the key gives way first and marks the cut, because a note is
+prose somebody wrote for this sheet and exists nowhere else while a key can be read off the
+drawing again.
 
 PNG is the same scene on an off-screen canvas at a chosen size. Pen weights follow the zoom, so
 a larger export gets crisper lines rather than thicker ones.

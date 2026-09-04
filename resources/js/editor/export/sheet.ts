@@ -1,3 +1,4 @@
+import type { KeyEntry } from '@/editor/model/conventions';
 import { boundsHeight, boundsWidth, expandBounds, type Bounds } from '@/editor/geometry/bbox';
 import type { Sheet, SheetOrientation, SheetSize } from '@/editor/model/types';
 
@@ -208,27 +209,41 @@ export interface SheetAside {
     /** One note to a line, in the order they were written. */
     notes: string[];
     legend: LegendEntry[];
+    /** The hatches and line types this page uses, as one list. */
+    key: KeyEntry[];
 }
 
 /**
  * What goes in the strip, and so whether the sheet has one at all.
  *
  * A strip is paid for out of the drawing, so it is only worth reserving when something would
- * be printed in it: notes somebody wrote, or a legend that says something — and a legend of
- * one layer says nothing a reader could not see by looking at the drawing.
+ * be printed in it: notes somebody wrote, a legend that says something — and a legend of one
+ * layer says nothing a reader could not see by looking at the drawing — or a key, which says
+ * something the moment there is a single convention on the sheet to decode.
+ *
+ * One convention earns a key where one layer does not earn a legend, and the difference is not
+ * an inconsistency. A layer is a name the drafter chose and can read off the panel; a hatch is
+ * a mark on the paper that means nothing at all to a reader who has not been told what it is.
  *
  * The canvas and the exporter both ask this, because a sheet outline that reserves a strip the
  * print does not is an outline that lies about what fits.
  */
-export function sheetAside(notes: string, layers: readonly LegendEntry[]): SheetAside | null {
+export function sheetAside(
+    notes: string,
+    layers: readonly LegendEntry[],
+    conventions: readonly KeyEntry[] = [],
+): SheetAside | null {
     const written = notes
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter((line) => line !== '');
 
     const legend = layers.length > 1 ? [...layers] : [];
+    const key = [...conventions];
 
-    return written.length === 0 && legend.length === 0 ? null : { notes: written, legend };
+    return written.length === 0 && legend.length === 0 && key.length === 0
+        ? null
+        : { notes: written, legend, key };
 }
 
 /** Round up to a scale a drafter would recognise, so the printed ratio is a real one. */

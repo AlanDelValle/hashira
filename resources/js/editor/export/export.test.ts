@@ -4,12 +4,16 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { toRadians } from '@/editor/geometry/angle';
 import { point } from '@/editor/geometry/vec';
+import { conventionsUsed } from '@/editor/model/conventions';
+import { HATCHES } from '@/editor/model/hatches';
+import { LINE_TYPES } from '@/editor/model/lineTypes';
 import { defaultLayers, emptyDocument } from '@/editor/model/document';
 import {
     createAsset,
     createCircle,
     createDimension,
     createDoor,
+    createLine,
     createRect,
     createWall,
     createWindow,
@@ -236,6 +240,19 @@ describe('a strip of notes beside the drawing', () => {
         ];
 
         expect(sheetAside('', layers)?.legend).toEqual(layers);
+    });
+
+    /*
+     * One convention earns a strip where one layer does not, and that is not an
+     * inconsistency. A layer is a name the drafter chose and can read off the panel; a hatch
+     * is a mark on the paper that means nothing to a reader who has not been told what it is.
+     */
+    it('is reserved for a single convention, even with no notes and one layer', () => {
+        const one = [{ name: 'Architecture', color: '#1F2328' }];
+        const key = [{ kind: 'hatch', id: 'demolish', name: 'To demolish' }] as const;
+
+        expect(sheetAside('', one, key)?.key).toEqual(key);
+        expect(sheetAside('', one)).toBeNull();
     });
 });
 
@@ -496,6 +513,80 @@ describe('PDF export', () => {
 
         expect(new TextDecoder().decode(head)).toBe('%PDF-');
         expect(blob.size).toBeGreaterThan(1000);
+    });
+
+    /*
+     * A key that lists a convention is only worth printing if the mark is printed beside the
+     * words: what the reader is doing is matching something on the drawing to something in the
+     * strip, and a list of names alone cannot be matched to anything.
+     */
+    it('prints the key, its marks and what they are for', async () => {
+        const marked = {
+            ...createWall(point(0, 0), point(6000, 0), LAYER, 150),
+            style: { hatch: 'new' as const },
+        };
+        const centre = {
+            ...createLine(point(0, 400), point(6000, 400), LAYER),
+            style: { lineType: 'dash-dot-narrow' as const },
+        };
+        const drawn = buildScene([marked, centre], defaultLayers(), { palette: PALETTE });
+
+        const blob = await sceneToPdf(
+            [
+                {
+                    sheet: sheet('A3', 'landscape', 50),
+                    layers: drawn,
+                    key: conventionsUsed([marked, centre], new Set([LAYER])),
+                },
+            ],
+            { bounds: { minX: 0, minY: -75, maxX: 6000, maxY: 475 }, title: 'Renovation' },
+        );
+
+        // Lower-cased because pdf-lib writes its hex strings in upper case and `written`
+        // does not, which is the reading the title-block test below takes as well.
+        const ops = pdfOperators(await blob.arrayBuffer()).toLowerCase();
+
+        expect(ops).toContain(written('KEY'));
+        expect(ops).toContain(written('New masonry'));
+        expect(ops).toContain(written('Centre lines and symmetry'));
+    });
+
+    /*
+     * Where the strip cannot hold everything, the key gives way and the notes keep their
+     * space: a note is prose somebody wrote for this sheet and exists nowhere else, while a
+     * key can be read off the drawing again. What is cut has to be cut from the end and
+     * marked, so a short key is never presented as a complete one.
+     */
+    it('cuts the key rather than the notes when the strip is too short for both', async () => {
+        const key = [
+            ...HATCHES.map((hatch) => ({ kind: 'hatch' as const, id: hatch.id, name: hatch.name })),
+            ...LINE_TYPES.map((type) => ({ kind: 'line' as const, id: type.id, name: type.use })),
+        ];
+
+        const blob = await sceneToPdf(
+            [
+                {
+                    sheet: sheet('A4', 'landscape', 50),
+                    layers: scene,
+                    legend: defaultLayers().map((layer) => ({
+                        name: layer.name,
+                        color: layer.color,
+                    })),
+                    key,
+                },
+            ],
+            {
+                bounds: { minX: 0, minY: -75, maxX: 6000, maxY: 75 },
+                title: 'Crowded',
+                notes: 'Verify on site.',
+            },
+        );
+
+        const ops = pdfOperators(await blob.arrayBuffer()).toLowerCase();
+
+        expect(ops).toContain(written('Existing masonry'));
+        expect(ops).toContain(written('Verify on site.'));
+        expect(ops).not.toContain(written(key.at(-1)?.name ?? ''));
     });
 
     /*

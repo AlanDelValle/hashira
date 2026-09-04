@@ -1,4 +1,5 @@
 import { sheetAside, type LegendEntry } from '@/editor/export/sheet';
+import { conventionsUsed } from '@/editor/model/conventions';
 import { documentIndex } from '@/editor/model/documentIndex';
 import { resolveSheet } from '@/editor/model/sheets';
 import { boundsFromPoints, boundsHeight, boundsWidth } from '@/editor/geometry/bbox';
@@ -34,9 +35,20 @@ import {
 import { writeReadout } from './readout';
 import { paintSheetFrame } from './sheetFrame';
 
-/** The layers a legend would list, which is what decides whether the sheet has a strip. */
-function legendOf(drawing: HashiraDocument): LegendEntry[] {
-    return drawnLayers(drawing).map((layer) => ({ name: layer.name, color: layer.color }));
+/**
+ * Whether this sheet has a strip beside the drawing, decided exactly as the print decides it.
+ *
+ * The canvas draws the outline and never the contents, so all it needs is the answer — but it
+ * has to be the same answer, or the outline reserves a margin the print then fills with
+ * drawing. It asks with what the print would be given: the layers a legend would list, and the
+ * conventions a key would explain.
+ */
+function hasAside(drawing: HashiraDocument): boolean {
+    const layers = drawnLayers(drawing);
+    const legend: LegendEntry[] = layers.map((layer) => ({ name: layer.name, color: layer.color }));
+    const key = conventionsUsed(drawing.elements, new Set(layers.map((layer) => layer.id)));
+
+    return sheetAside(drawing.settings.notes, legend, key) !== null;
 }
 import { paintUnderlays } from './underlay';
 import { readTheme, type CanvasTheme } from './theme';
@@ -225,14 +237,7 @@ export class CanvasRenderer {
             const sheet = resolveSheet(drawing.settings.sheets, activeSheetId);
 
             if (sheet !== undefined) {
-                paintSheetFrame(
-                    ctx,
-                    sheet,
-                    index.extent(),
-                    this.theme,
-                    px,
-                    sheetAside(drawing.settings.notes, legendOf(drawing)) !== null,
-                );
+                paintSheetFrame(ctx, sheet, index.extent(), this.theme, px, hasAside(drawing));
             }
         }
 

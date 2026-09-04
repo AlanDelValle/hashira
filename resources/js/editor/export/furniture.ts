@@ -1,7 +1,12 @@
 import type * as PdfLib from 'pdf-lib';
 import type { PDFFont, PDFPage, RGB } from 'pdf-lib';
 
+import { clipLines, scatter, seedFrom, wander } from '@/editor/geometry/hatch';
+import type { KeyEntry } from '@/editor/model/conventions';
+import { findHatch, type HatchDefinition } from '@/editor/model/hatches';
+import { findLineType, LINE_WEIGHTS, type LineTypeDefinition } from '@/editor/model/lineTypes';
 import type { Sheet, TitleBlock } from '@/editor/model/types';
+import { PEN } from '@/editor/scene/types';
 import { MARK_ASPECT, markPaths } from '@/lib/mark';
 
 import {
@@ -87,6 +92,32 @@ const NOTE_LINE_MM = 3.5;
 const NOTE_GAP_MM = 1.8;
 const LEGEND_ROW_MM = 4.6;
 const SWATCH_MM = 7;
+
+/**
+ * How far above the baseline a mark beside a label is centred.
+ *
+ * Text sits *on* its baseline and is read from the middle of its letters, so a mark levelled
+ * with the baseline sits low and one hung off the baseline sits high. Both list blocks take
+ * their measure from here, which is what keeps their rows reading as one rhythm.
+ */
+const MARK_RISE_MM = 1;
+
+/*
+ * The key uses the legend's row, so the two blocks in the strip step at the same pitch. The
+ * swatch is a box rather than a rule and has to fit inside that step with air around it, which
+ * is what decides its height rather than the other way round.
+ */
+const KEY_SAMPLE_MM = 11;
+const KEY_SWATCH_HEIGHT_MM = 3;
+
+/**
+ * A ceiling on the marks one swatch generates.
+ *
+ * Generous: a swatch is eleven millimetres by four, and the finest pattern on the shelf is
+ * mortar at 0.8 mm — a couple of hundred specks at most. It is here so that a spacing somebody
+ * lowers later cannot turn a legend into a page of ink.
+ */
+const KEY_SAMPLE_LIMIT = 2000;
 
 const LABEL_PT = 5.5;
 const NOTE_PT = 7;
@@ -212,14 +243,231 @@ function drawAside(
     const legendHeight =
         content.legend.length === 0 ? 0 : HEADING_HEIGHT_MM + content.legend.length * LEGEND_ROW_MM;
 
-    const floor = box.y + box.height - PADDING_MM - legendHeight;
+    const layersTop = box.y + box.height - PADDING_MM - legendHeight;
+    const ceiling = box.y + PADDING_MM;
+
+    /*
+     * The key gives way before the notes do, and says so when it has.
+     *
+     * Both are pinned above the layers, and on any sheet a plan is issued at there is room for
+     * both. Where there is not, the notes keep their space: a note is prose somebody wrote for
+     * this sheet and exists nowhere else, while the key is derived from the drawing and can be
+     * read off it again. So the notes are measured first and the key is given what is left —
+     * and what is cut is marked, so the sheet never presents a short key as a complete one.
+     */
+    const wanted = ceiling + notesHeight(pen, fonts, content.notes, inner);
+    const room = Math.floor((layersTop - wanted - HEADING_HEIGHT_MM) / LEGEND_ROW_MM);
+    const fits = Math.max(0, Math.min(content.key.length, room));
+    const shown =
+        fits < content.key.length ? content.key.slice(0, Math.max(0, fits - 1)) : content.key;
+    const rows = shown.length + (shown.length < content.key.length ? 1 : 0);
+    const keyHeight = rows === 0 ? 0 : HEADING_HEIGHT_MM + rows * LEGEND_ROW_MM;
+    const keyTop = layersTop - keyHeight;
 
     if (content.notes.length > 0) {
-        drawNotes(pen, fonts, content.notes, x, box.y + PADDING_MM, inner, floor);
+        drawNotes(pen, fonts, content.notes, x, ceiling, inner, keyTop);
+    }
+
+    if (rows > 0) {
+        drawKey(pen, fonts, shown, shown.length < content.key.length, x, keyTop, inner);
     }
 
     if (content.legend.length > 0) {
-        drawLegend(pen, fonts, content.legend, x, floor, inner);
+        drawLegend(pen, fonts, content.legend, x, layersTop, inner);
+    }
+}
+
+/**
+ * How much strip the notes want, before anything else is given any.
+ *
+ * The same wrap `drawNotes` performs, run for its height rather than for its ink. Two passes
+ * over a handful of short lines, and the alternative is laying the key out first and finding
+ * out afterwards that the notes it displaced were the part nobody could reconstruct.
+ */
+function notesHeight(pen: Pen, fonts: StampFonts, notes: readonly string[], width: number): number {
+    if (notes.length === 0) {
+        return 0;
+    }
+
+    const indent = notes.length > 1 ? 5 : 0;
+
+    return notes.reduce(
+        (total, note) =>
+            total +
+            wrap(note, fonts.regular, NOTE_PT, width - indent, pen).length * NOTE_LINE_MM +
+            NOTE_GAP_MM,
+        HEADING_HEIGHT_MM,
+    );
+}
+
+/**
+ * The key: what the marks on this sheet mean.
+ *
+ * A hatch and a line type answer the same question a reader asks of a mark — what is this one
+ * saying — so they are printed as one list rather than as two that happen to sit under each
+ * other. Each row is the mark itself beside what it is for, drawn at exactly the size it is
+ * drawn at on the sheet, because a swatch at any other size is a picture of a different
+ * convention.
+ */
+function drawKey(
+    pen: Pen,
+    fonts: StampFonts,
+    key: readonly KeyEntry[],
+    truncated: boolean,
+    x: number,
+    top: number,
+    width: number,
+): void {
+    let y = heading(pen, fonts, 'Key', x, top, width);
+    const textX = x + KEY_SAMPLE_MM + 2.4;
+    const textWidth = width - KEY_SAMPLE_MM - 2.4;
+
+    for (const entry of key) {
+        // Both marks are centred on the same line the layer legend rules its swatch on, so a
+        // box and a rule sit at one height beside their words.
+        const middle = y - MARK_RISE_MM;
+
+        if (entry.kind === 'hatch') {
+            const hatch = findHatch(entry.id);
+
+            if (hatch !== undefined) {
+                drawHatchSample(pen, hatch, x, middle - KEY_SWATCH_HEIGHT_MM / 2, KEY_SAMPLE_MM);
+            }
+        } else {
+            const line = findLineType(entry.id);
+
+            if (line !== undefined) {
+                drawLineSample(pen, line, x, middle, KEY_SAMPLE_MM);
+            }
+        }
+
+        pen.text(pen.fit(entry.name, fonts.regular, NOTE_PT, textWidth), textX, y, {
+            size: NOTE_PT,
+            font: fonts.regular,
+            color: pen.color(INK),
+        });
+
+        y += LEGEND_ROW_MM;
+    }
+
+    if (truncated) {
+        pen.text('…', textX, y, { size: NOTE_PT, font: fonts.regular, color: pen.color(MUTED) });
+    }
+}
+
+/**
+ * A line type as it is drawn, laid out along the sample by hand.
+ *
+ * The pattern is walked rather than handed to a dash setting, so the sample starts on a mark
+ * and stops where it stops: one ending mid-dot reads as a different convention from the one it
+ * is naming.
+ */
+function drawLineSample(
+    pen: Pen,
+    line: LineTypeDefinition,
+    x: number,
+    y: number,
+    width: number,
+): void {
+    const weight = LINE_WEIGHTS[line.weight];
+    const pattern = line.dash;
+
+    if (pattern === null) {
+        pen.line(x, y, x + width, y, weight, pen.color(INK));
+
+        return;
+    }
+
+    let at = 0;
+
+    for (let step = 0; at < width; step++) {
+        const run = pattern[step % pattern.length] ?? 0;
+
+        if (run <= 0) {
+            return;
+        }
+
+        const end = Math.min(at + run, width);
+
+        if (step % 2 === 0) {
+            pen.line(x + at, y, x + end, y, weight, pen.color(INK));
+        }
+
+        at = end;
+    }
+}
+
+/**
+ * A hatch as it is drawn, clipped into a box the size of the swatch.
+ *
+ * Every spacing on the shelf is already in millimetres of paper, so a swatch measured in the
+ * same millimetres uses them verbatim: the specks in this box are the size and the density of
+ * the specks in the wall. The pattern comes from the same three functions the scene clips with,
+ * so there is one implementation of what a hatch looks like and not a second one for the
+ * legend — only the mark for a speck differs, a square rather than a circle, which at a sixth
+ * of a millimetre is a speck either way.
+ */
+function drawHatchSample(
+    pen: Pen,
+    hatch: HatchDefinition,
+    x: number,
+    y: number,
+    width: number,
+): void {
+    const height = KEY_SWATCH_HEIGHT_MM;
+
+    // Solid is the whole mark: existing masonry is a wall filled in, and an outline round it
+    // would be a box containing a wall rather than the wall itself.
+    if (hatch.kind === 'solid') {
+        pen.rect(x, y, width, height, { fill: pen.color(INK) });
+
+        return;
+    }
+
+    pen.rect(x, y, width, height, { border: pen.color(RULE), width: HAIRLINE_MM });
+
+    if (hatch.kind === 'empty' || hatch.spacing <= 0) {
+        return;
+    }
+
+    const ring = [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+    ];
+    const seed = seedFrom(hatch.id);
+    const ink = pen.color(INK);
+
+    if (hatch.kind === 'scatter') {
+        const size = (hatch.dot ?? 0.1) * 2;
+
+        for (const at of scatter([ring], hatch.spacing, KEY_SAMPLE_LIMIT, seed)) {
+            pen.rect(at.x - size / 2, at.y - size / 2, size, size, { fill: ink });
+        }
+
+        return;
+    }
+
+    const runs = clipLines([ring], hatch.angle, hatch.spacing, KEY_SAMPLE_LIMIT);
+
+    if (hatch.kind === 'veins') {
+        for (const points of wander(runs, hatch.spacing * (hatch.wander ?? 0.4), seed)) {
+            for (let step = 1; step < points.length; step++) {
+                const from = points[step - 1];
+                const to = points[step];
+
+                if (from !== undefined && to !== undefined) {
+                    pen.line(from.x, from.y, to.x, to.y, PEN.fine, ink);
+                }
+            }
+        }
+
+        return;
+    }
+
+    for (const run of runs) {
+        pen.line(run.a.x, run.a.y, run.b.x, run.b.y, PEN.fine, ink);
     }
 }
 
@@ -295,7 +543,7 @@ function drawLegend(
     for (const entry of legend) {
         // A rule in the layer's own colour rather than a swatch: what the reader is matching
         // it against is a line on the drawing, not a filled area.
-        pen.line(x, y - 1, x + SWATCH_MM, y - 1, 0.5, pen.hex(entry.color));
+        pen.line(x, y - MARK_RISE_MM, x + SWATCH_MM, y - MARK_RISE_MM, 0.5, pen.hex(entry.color));
 
         pen.text(
             pen.fit(entry.name, fonts.regular, NOTE_PT, width - SWATCH_MM - 2.4),

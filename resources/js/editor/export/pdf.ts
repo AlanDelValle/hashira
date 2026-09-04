@@ -9,6 +9,7 @@ import type { SceneLayer, ScenePrimitive, Stroke } from '@/editor/scene/types';
 
 import { drawSheetFurniture, type StampFonts, type StampKit } from './furniture';
 import { toPathData, type PathTransform } from './path';
+import type { KeyEntry } from '@/editor/model/conventions';
 import { layoutSheet, PT_PER_MM, sheetAside, type LegendEntry } from './sheet';
 
 /**
@@ -54,6 +55,9 @@ export interface PrintedPage {
      * not per drawing, because a page printed as one layer is a drawing of one layer.
      */
     legend?: readonly LegendEntry[];
+    /** The conventions used on this page, for the key beside it. Also per page, and for the
+     * same reason: a page printed as one layer explains that layer's marks and no others. */
+    key?: readonly KeyEntry[];
 }
 
 export interface PdfOptions {
@@ -119,7 +123,7 @@ function drawPage(
 
     // What goes beside the drawing decides how much page the drawing gets, so it is settled
     // before the page is laid out rather than drawn into whatever room is left over.
-    const aside = sheetAside(options.notes ?? '', printed.legend ?? []);
+    const aside = sheetAside(options.notes ?? '', printed.legend ?? [], printed.key ?? []);
     const layout = layoutSheet(options.bounds, printed.sheet, aside !== null);
     const page = document.addPage([layout.page.width * PT_PER_MM, layout.page.height * PT_PER_MM]);
 

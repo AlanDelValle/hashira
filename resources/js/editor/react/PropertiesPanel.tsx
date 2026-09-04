@@ -42,6 +42,7 @@ import {
     setUnderlaySize,
     setWallThickness,
 } from '@/editor/model/edits';
+import { HATCHABLE, LINE_TYPED } from '@/editor/model/conventions';
 import { HATCH_OPTIONS } from '@/editor/model/hatches';
 import { DEFAULT_LINE_TYPE, LINE_TYPE_OPTIONS } from '@/editor/model/lineTypes';
 import { JAMB_LABEL, LEAF_OPTIONS, SIDE_LABEL } from '@/editor/model/openings';
@@ -66,21 +67,6 @@ import { runCommand, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 
 import { ChoiceRow, MeasureField, ReadonlyRow, ToggleRow } from './MeasureField';
-
-/**
- * The element types a hatch means anything on: the ones that enclose an area. A line has no
- * inside to fill, and an opening is a hole rather than a shape.
- */
-const HATCHABLE: Element['type'][] = ['wall', 'room', 'rect', 'polygon', 'circle'];
-
-/**
- * The element types a line type means anything on: the ones somebody draws for their own sake.
- *
- * Not the same list as the one above, and deliberately not merged with it. A wall and a room
- * are hatched and never re-lined — what those mean is decided by what they are — and a line
- * has no inside to fill.
- */
-const LINE_TYPED: Element['type'][] = ['line', 'rect', 'polygon', 'circle'];
 
 /**
  * The properties of what is selected, as values you can type into.

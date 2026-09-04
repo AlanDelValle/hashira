@@ -1,6 +1,7 @@
+import { conventionsUsed } from '@/editor/model/conventions';
 import { documentBounds, drawnLayers } from '@/editor/model/elements';
 import { resolveSheet } from '@/editor/model/sheets';
-import type { HashiraDocument, Layer, Sheet } from '@/editor/model/types';
+import type { Element, HashiraDocument, Layer, Sheet } from '@/editor/model/types';
 import { buildScene } from '@/editor/scene/build';
 import type { SceneLayer, ScenePalette } from '@/editor/scene/types';
 
@@ -101,13 +102,24 @@ function printedPages(
     perLayer: boolean,
     nameSheets: boolean,
     layers: readonly Layer[],
+    elements: readonly Element[],
 ): PrintedPage[] {
     const pages: PrintedPage[] = [];
 
+    const shown = (id?: string): Layer[] =>
+        layers.filter((layer) => id === undefined || layer.id === id);
+
     const entries = (id?: string): LegendEntry[] =>
-        layers
-            .filter((layer) => id === undefined || layer.id === id)
-            .map((layer) => ({ name: layer.name, color: layer.color }));
+        shown(id).map((layer) => ({ name: layer.name, color: layer.color }));
+
+    /*
+     * The key is gathered from the elements rather than from the scene, because the scene has
+     * forgotten which convention its geometry came from — a hatch leaves it as clipped lines
+     * and a dashed line as a dash array. It is narrowed to the layers a page is a drawing of,
+     * so a page printed as one layer explains that layer's marks and no others.
+     */
+    const conventions = (id?: string) =>
+        conventionsUsed(elements, new Set(shown(id).map((layer) => layer.id)));
 
     for (const sheet of sheets) {
         if (!perLayer) {
@@ -115,6 +127,7 @@ function printedPages(
                 sheet,
                 layers: scene,
                 legend: entries(),
+                key: conventions(),
                 ...(nameSheets ? { label: sheet.name } : {}),
             });
             continue;
@@ -128,6 +141,7 @@ function printedPages(
                 sheet,
                 layers: [layer],
                 legend: entries(layer.id),
+                key: conventions(layer.id),
                 label: nameSheets ? `${sheet.name} · ${layer.name}` : layer.name,
             });
         }
@@ -161,6 +175,7 @@ export function pdfPageCount(document: HashiraDocument, options: ExportOptions =
         options.perLayer === true,
         false,
         drawnLayers(document),
+        document.elements,
     ).length;
 }
 
@@ -222,6 +237,7 @@ export async function exportDocument(
                 perLayer,
                 document.settings.sheets.length > 1,
                 drawnLayers(document),
+                document.elements,
             );
 
             // Nothing to print: every layer chosen was empty, or every sheet asked for has

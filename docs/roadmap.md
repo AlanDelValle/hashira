@@ -425,7 +425,7 @@ Decisions taken before the phase starts, so they are not re-argued halfway throu
   layout, no suggestion, no second room. The scope discipline in AGENTS.md is not relaxed by a
   tool that happens to take a number as input.
 
-### Phase 12 — The line as notation `[ ]`
+### Phase 12 — The line as notation `[x]`
 
 The counterpart to 11.4, one step over. A hatch says what a shape is made of; a line says what
 it _is_ — visible or hidden, a centre, an axis, a trajectory, something overhead. NBR 8403
@@ -481,9 +481,17 @@ those, and the person drawing it does.
       convention is only useful if you can see it before letting go. Choosing contínua larga
       takes the field off rather than writing it, so a drawing never fills up with a field
       saying what its own absence already said
-- [ ] **12.3 A legend of both.** Parked in 11.4 and unblocked here. The strip beside the
+- [x] **12.3 A legend of both.** Parked in 11.4 and unblocked here. The strip beside the
       drawing lists the layers; what a drawing is actually read by is its patterns and its
-      lines. One legend rather than two, because the reader is asking the same question of both
+      lines. One key rather than two lists, because the reader is asking the same question of
+      both — and the row carries the mark itself, drawn from the same clipping functions the
+      scene uses and at the size it is drawn on the sheet, since a list of names cannot be
+      matched to anything. `model/conventions.ts` gathers it from the elements, because the
+      scene has forgotten which convention its geometry came from. A hatch is named by what it
+      is and a line type by what it is _for_: "Dashed, narrow" beside a dashed line explains
+      nothing, so each type gained the application the standard lists first. One convention now
+      earns a strip where one layer never did — a layer is a name the drafter chose, a hatch is
+      a mark that means nothing to a reader who has not been told what it is
 
 The eight are a dash pattern and arrive together. The ninth, **contínua com zigue-zague
 estreita**, is not one of them and is not missing either: it already exists as the `break-line`
@@ -491,10 +499,35 @@ block on the annotation shelf, from Phase 8.5. It was never a dash pattern to be
 run itself deviates, which is generated geometry like the revision cloud's bumps — and a
 convention the library already draws does not need a second way to be drawn.
 
-The dead fields go with this. `style.strokeWidth` and `style.dash` have been in the format
-since version 1, validated by zod, and are written by nothing and read by nothing — `§4.7` of
-[document-format.md](document-format.md) documents the first as though it worked. `lineType` is
-what they were reaching for, and 12.1 is where they are either read or removed.
+The dead fields went with it. `style.strokeWidth` and `style.dash` had been in the format since
+version 1, validated by zod, and were written by nothing and read by nothing — `§4.7` of
+[document-format.md](document-format.md) documented the first as though it worked. `lineType` is
+what they were reaching for, and schema 10 removed them: no migration step, because an unknown
+key is dropped at validation, which is what always happened to those two anyway.
+
+Walked one sub-phase at a time. 12.1 was **looked at** rather than only tested: all eight drawn
+as a contact sheet through the editor's own SVG exporter and read, which is how the family came
+to share one rhythm rather than one dash length per weight. It also turned up a bug older than
+the phase — the PDF exporter had never read `Stroke.dash`, so every arched head and every
+overhead door had been printing solid since 11.1, on screen dashed and on paper not. Fixed
+first and on its own.
+
+12.2 was walked in a browser against Herd and PostgreSQL, driven by the project's own
+Playwright so no password was typed by hand: the line tool picked, dash-dot chosen before
+anything was drawn, the rubber band dashing as it was dragged, the shape committing with the
+panel already naming its type, autosave settling, and a reload bringing back a 6.5 m line that
+still says Dash-dot.
+
+12.3 was printed and read, which is the only way to check a legend. A renovation plan using six
+hatches and five line types came out with every key row matched against its own mark on the
+drawing, and a crowded A4 came out with the key cut and the cut marked. Both of the things that
+were wrong were found by looking rather than by the suite: the first layout starved the notes
+on a sheet too short for everything, which is backwards — a note exists nowhere else and a key
+can be read off the drawing again, so the notes are now measured first and the key gets what is
+left. And the key's marks hung off the baseline while its rows stepped at a pitch of their own,
+so a block meant to sit beside Notes and Layers read as a third thing. The rise a mark takes
+above its baseline is now one number both list blocks measure from, and the key steps at the
+legend's pitch with the swatch sized to fit it.
 
 Decisions taken before the phase starts, so they are not re-argued halfway through:
 

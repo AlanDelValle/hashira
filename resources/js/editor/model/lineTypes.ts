@@ -47,6 +47,15 @@ export interface LineTypeDefinition {
     weight: LineWeight;
     /** Sheet millimetres, on then off, repeating. `null` is a line with no gaps in it. */
     dash: number[] | null;
+    /**
+     * What the line is for, for a legend to print beside the mark.
+     *
+     * A hatch's name is its meaning — "existing masonry" is both what it is called and what it
+     * says. A line type's name is only its appearance, so "Dashed, narrow" printed next to a
+     * dashed line is a legend explaining nothing. The standard lists several applications for
+     * most of these; this is the one a reader of a plan meets first.
+     */
+    use: string;
 }
 
 /*
@@ -80,6 +89,7 @@ export const LINE_TYPES: LineTypeDefinition[] = [
         name: 'Continuous, extra wide',
         weight: 'extra-wide',
         dash: null,
+        use: 'Cut outlines, unhatched',
     },
     /*
      * Visible outlines in section where hatching *is* used, visible edges of what is in view,
@@ -87,22 +97,41 @@ export const LINE_TYPES: LineTypeDefinition[] = [
      * the default because it is the commonest line on an architectural drawing, and because it
      * is what every line, rectangle, polygon and circle was already drawn as.
      */
-    { id: 'continuous-wide', name: 'Continuous, wide', weight: 'wide', dash: null },
+    {
+        id: 'continuous-wide',
+        name: 'Continuous, wide',
+        weight: 'wide',
+        dash: null,
+        use: 'Cut outlines and visible edges',
+    },
     /*
      * Hatching, dimension lines, call-out leaders, arrows showing a direction of approach, a
      * change of level in plan, and sections revolved into the view they are taken from.
      */
-    { id: 'continuous-narrow', name: 'Continuous, narrow', weight: 'narrow', dash: null },
+    {
+        id: 'continuous-narrow',
+        name: 'Continuous, narrow',
+        weight: 'narrow',
+        dash: null,
+        use: 'Dimensions, hatching, leaders',
+    },
 
     // ── Interrupted ──────────────────────────────────────────────────────────
     /** Hidden edges and hidden outlines: what is there and cannot be seen from here. */
-    { id: 'dashed-narrow', name: 'Dashed, narrow', weight: 'narrow', dash: [DASH, GAP] },
+    {
+        id: 'dashed-narrow',
+        name: 'Dashed, narrow',
+        weight: 'narrow',
+        dash: [DASH, GAP],
+        use: 'Hidden edges',
+    },
     /** Centre lines, lines of symmetry, and trajectories. */
     {
         id: 'dash-dot-narrow',
         name: 'Dash-dot, narrow',
         weight: 'narrow',
         dash: [DASH, GAP, DOT, GAP],
+        use: 'Centre lines and symmetry',
     },
     /*
      * The ends of a section plane and every change of direction along it. The same pattern as
@@ -114,6 +143,7 @@ export const LINE_TYPES: LineTypeDefinition[] = [
         name: 'Dash-dot, extra wide',
         weight: 'extra-wide',
         dash: [DASH, GAP, DOT, GAP],
+        use: 'Section planes',
     },
     /*
      * What is beyond the cut and still belongs to the drawing: floors cantilevered overhead,
@@ -125,6 +155,7 @@ export const LINE_TYPES: LineTypeDefinition[] = [
         name: 'Dash-double-dot, narrow',
         weight: 'narrow',
         dash: [DASH, GAP, DOT, GAP, DOT, GAP],
+        use: 'Projections overhead',
     },
     /** Axis lines, which are told from a centre line by the length of the dash. */
     {
@@ -132,6 +163,7 @@ export const LINE_TYPES: LineTypeDefinition[] = [
         name: 'Long-dash-dot, narrow',
         weight: 'narrow',
         dash: [LONG_DASH, GAP, DOT, GAP],
+        use: 'Axis lines',
     },
 ];
 
