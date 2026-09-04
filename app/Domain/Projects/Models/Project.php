@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -112,6 +113,28 @@ class Project extends Model
     public function members(): HasMany
     {
         return $this->hasMany(ProjectMember::class);
+    }
+
+    /**
+     * Everybody who can open this project: its owner, and everybody a link let in. It is the
+     * list somebody can mention, and it is deliberately not the member list — that one names
+     * accounts and belongs to the owner alone.
+     *
+     * @return Collection<int, User>
+     */
+    public function people(): Collection
+    {
+        $members = $this->loadMissing('members.user')->members
+            ->map(fn (ProjectMember $member): ?User => $member->user)
+            ->filter()
+            ->values();
+
+        /** @var Collection<int, User> */
+        return $members
+            ->prepend($this->loadMissing('owner')->owner)
+            ->filter()
+            ->unique(fn (User $user): int => (int) $user->getKey())
+            ->values();
     }
 
     public function isOwnedBy(User $user): bool

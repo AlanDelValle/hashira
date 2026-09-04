@@ -217,6 +217,17 @@ go into a floating field the same way a label's do, and the result is a row in
 dropping a second one on top of it, and the point is deliberately not snapped — a snap is for
 construction, and a remark is made where somebody was looking.
 
+Typing `@` offers the people on the project and writes a whole name in. The picker is not
+decoration: the server resolves a mention by matching a roster name in the text, so it is there
+to put an exact name where somebody would otherwise spell it and wonder why nothing happened.
+The client highlights what the server hands back and parses nothing.
+
+Somebody who may comment but not edit never sees this page. They get `pages/ReviewPage.tsx` —
+the surface §14 built to look at a version on, given a click that means something. That was the
+choice over handing them the editor with its tools removed, which would have meant teaching the
+toolbar, the shortcut table, the panels, undo, the underlay dialog and the DXF import who was
+looking, one at a time.
+
 The text field is focused one frame after it appears, which looks like a workaround and is not: the
 click that opens it is a click on the canvas, and the browser moves focus to the canvas as the
 _default action_ of that same mousedown — after the handler that opened the field has run.
@@ -750,7 +761,8 @@ the mitres have to follow, so they are worked out again — but only then.
 
 Anything that happens between two people at the same time: presence, cursors, live
 co-editing. What is here of that phase is the part that needs nobody watching — comparing two
-versions of a drawing, roles and the membership a link grants, and now **comments**: a pin
-dropped at a point in the drawing, a conversation under it, and resolving. What comments still
-lack is mentions, and a surface for somebody who may comment but not edit; the editor refuses
-to open for them until that exists. See [roadmap.md](roadmap.md).
+versions of a drawing, roles and the membership a link grants, and **comments**: a pin dropped
+at a point in the drawing, a conversation under it, mentions, resolving, and a surface of its
+own for somebody who may comment but not edit. What a mention still does not do is reach
+anybody who is not looking: delivering one is the same problem as delivering presence, and it
+waits for the same socket. See [roadmap.md](roadmap.md).

@@ -391,9 +391,11 @@ Three things have come off that list, and the list did not notice the first two,
 failure mode a list like this has. **DXF** left in Phase 8, in both directions. **Version
 history browsing and comparison** left in Phase 9.5. **Share-link roles and the membership
 they grant** left in Phase 9.4: a project can now have a second person in it, with an account,
-a role and a way out. **Comments** left in Phase 9.3a — their own tables, anchored to a point
-in drawing millimetres, deliberately not in `documents.data`. What is still absent is
-everything that happens between two people at once: no socket, no presence, no operation log. Anything struck off here
+a role and a way out. **Comments and mentions** left in Phase 9.3 — their own tables,
+anchored to a point in drawing millimetres, deliberately not in `documents.data`, with a
+surface of their own for somebody who may comment but not edit. What is still absent is
+everything that happens between two people at once: no socket, no presence, no operation log —
+and, for the same reason, nothing that tells you a mention happened. Anything struck off here
 belongs in the same commit as the feature that strikes it.
 
 ---

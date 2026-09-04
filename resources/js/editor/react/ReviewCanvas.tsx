@@ -1,12 +1,20 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
 import type { Bounds } from '@/editor/geometry/bbox';
-import { ReviewSurface, type ReviewContent } from '@/editor/render/review';
+import type { Point } from '@/editor/geometry/vec';
+import type { CommentPin } from '@/editor/render/comments';
+import { ReviewSurface, type ReviewContent, type ReviewPick } from '@/editor/render/review';
 
 export interface ReviewCanvasHandle {
     /** Frame a box of world millimetres — one change picked out of the list beside it. */
     frame: (bounds: Bounds | null) => void;
     frameAll: () => void;
+    /** Bring a world point to the middle, for a thread chosen from a list. */
+    centre: (world: Point) => void;
+    /** Where a world point is on the canvas now, for anything floating over it. */
+    toScreen: (world: Point) => Point;
+    /** One screen pixel in world millimetres, which is what pin geometry is measured in. */
+    pixel: () => number;
 }
 
 /**
@@ -23,8 +31,18 @@ export interface ReviewCanvasHandle {
  */
 export const ReviewCanvas = forwardRef<
     ReviewCanvasHandle,
-    { content: ReviewContent | null; label: string }
->(function ReviewCanvas({ content, label }, ref) {
+    {
+        content: ReviewContent | null;
+        label: string;
+        /** Comment pins to paint over it. Absent, the surface is only for looking. */
+        pins?: readonly CommentPin[];
+        selectedPinId?: string | null;
+        /** Called when a click turns out to be a pin, or an empty place. */
+        onPick?: (pick: ReviewPick) => void;
+        /** Called whenever the view moves, so a floating composer can follow it. */
+        onViewChange?: () => void;
+    }
+>(function ReviewCanvas({ content, label, pins, selectedPinId, onPick, onViewChange }, ref) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const surfaceRef = useRef<ReviewSurface | null>(null);
@@ -63,9 +81,30 @@ export const ReviewCanvas = forwardRef<
         surfaceRef.current?.show(content);
     }, [content]);
 
+    useEffect(() => {
+        surfaceRef.current?.showComments(pins ?? [], selectedPinId ?? null);
+    }, [pins, selectedPinId]);
+
+    /*
+     * Assigned rather than passed to the constructor: the surface is started once, and these
+     * are closures over props that change on every render. Handing it the latest one each time
+     * keeps it from calling back into a stale one.
+     */
+    useEffect(() => {
+        const surface = surfaceRef.current;
+
+        if (surface !== null) {
+            surface.onPick = onPick ?? null;
+            surface.onViewChange = onViewChange ?? null;
+        }
+    });
+
     useImperativeHandle(ref, () => ({
         frame: (bounds) => surfaceRef.current?.frame(bounds),
         frameAll: () => surfaceRef.current?.frameAll(),
+        centre: (world) => surfaceRef.current?.centre(world),
+        toScreen: (world) => surfaceRef.current?.toScreen(world) ?? { x: 0, y: 0 },
+        pixel: () => surfaceRef.current?.pixel ?? 1,
     }));
 
     return (

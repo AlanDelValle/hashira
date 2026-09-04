@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Comments\Actions\AddComment;
 use App\Domain\Comments\Models\Comment;
 use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Projects\Models\Project;
@@ -30,6 +31,7 @@ final class CommentReplyController extends Controller
         StoreCommentReplyRequest $request,
         Project $project,
         CommentThread $thread,
+        AddComment $add,
     ): JsonResponse {
         $this->belongsTo($project, $thread);
 
@@ -38,13 +40,9 @@ final class CommentReplyController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $comment = new Comment;
-        $comment->thread_id = $thread->id;
-        $comment->user_id = (int) $user->getKey();
-        $comment->body = trim((string) $request->validated('body'));
-        $comment->save();
+        $comment = $add->handle($thread, $user, trim((string) $request->validated('body')));
 
-        return CommentResource::make($comment->load('author'))
+        return CommentResource::make($comment)
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }

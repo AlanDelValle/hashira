@@ -107,7 +107,26 @@ export interface DrawingComment {
     body: string;
     authorId: number | null;
     authorName: string | null;
+    /**
+     * Who this was aimed at, with the text exactly as it was typed. The server resolves them;
+     * the client highlights those strings and parses nothing, so there is one matching rule
+     * rather than two that can disagree.
+     */
+    mentions: CommentMention[];
     createdAt: string;
+}
+
+export interface CommentMention {
+    userId: number | null;
+    /** Their name today, which is not necessarily the text that was typed. */
+    name: string | null;
+    text: string;
+}
+
+/** Somebody who can be mentioned on a project: a name and an id, and nothing else. */
+export interface ProjectPerson {
+    id: number;
+    name: string;
 }
 
 /** A conversation, and the place on the drawing it points at. `x` and `y` are millimetres. */

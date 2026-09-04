@@ -7,12 +7,13 @@ import {
     setThreadResolved,
 } from '@/editor/persistence/comments';
 import { commentPins, useCommentsStore } from '@/editor/store/commentsStore';
-import { useViewportStore } from '@/editor/store/viewportStore';
-import { centreOn } from '@/editor/viewport/viewport';
 import { cn } from '@/lib/cn';
 import { formatRelativeTime } from '@/lib/time';
 import type { CommentThread } from '@/types/api';
 import { Button } from '@/ui/Button';
+
+import { CommentBody } from './CommentBody';
+import { MentionField } from './MentionField';
 
 /**
  * The conversations, in words.
@@ -24,19 +25,24 @@ import { Button } from '@/ui/Button';
  * to. It is also the part that takes the keyboard, because the canvas is a picture.
  *
  * Choosing a thread brings its pin to the middle of the view, so the list and the drawing are
- * two ways into the same thing rather than two lists.
+ * two ways into the same thing rather than two lists. How that happens is the host's business
+ * — the editor moves its own viewport store, the review surface moves itself — so it arrives
+ * as `focusOn` rather than being reached for from here.
  */
 export function CommentsPanel({
     projectId,
     canComment,
     userId,
     isOwner,
+    focusOn,
 }: {
     projectId: string;
     /** False for somebody who may look but not take part; they still read the thread. */
     canComment: boolean;
     userId: number | null;
     isOwner: boolean;
+    /** Bring this thread's pin into view, however this host does that. */
+    focusOn: (thread: CommentThread) => void;
 }) {
     const threads = useCommentsStore((state) => state.threads);
     const selectedId = useCommentsStore((state) => state.selectedId);
@@ -49,14 +55,7 @@ export function CommentsPanel({
 
     function choose(thread: CommentThread) {
         select(thread.id === selectedId ? null : thread.id);
-
-        const { viewport, size } = useViewportStore.getState();
-
-        if (size.width > 0 && size.height > 0) {
-            useViewportStore
-                .getState()
-                .setViewport(centreOn(viewport, { x: thread.x, y: thread.y }, size));
-        }
+        focusOn(thread);
     }
 
     return (
@@ -130,6 +129,7 @@ function Thread({
 }) {
     const put = useCommentsStore((state) => state.put);
     const remove = useCommentsStore((state) => state.remove);
+    const people = useCommentsStore((state) => state.people);
 
     const [reply, setReply] = useState('');
     const [busy, setBusy] = useState(false);
@@ -215,7 +215,11 @@ function Thread({
 
                 <span className="min-w-0 flex-1">
                     <span className="text-ink block text-[13px] leading-snug">
-                        {opening?.body ?? ''}
+                        {opening === undefined ? (
+                            ''
+                        ) : (
+                            <CommentBody body={opening.body} mentions={opening.mentions} />
+                        )}
                     </span>
                     <span className="text-ink-subtle mt-0.5 block text-[11px]">
                         {thread.authorName ?? 'A former collaborator'} ·{' '}
@@ -230,7 +234,9 @@ function Thread({
                 <div className="space-y-3 px-3 pb-3">
                     {thread.comments.slice(1).map((comment) => (
                         <div key={comment.id}>
-                            <p className="text-ink text-[13px] leading-snug">{comment.body}</p>
+                            <p className="text-ink text-[13px] leading-snug">
+                                <CommentBody body={comment.body} mentions={comment.mentions} />
+                            </p>
                             <p className="text-ink-subtle mt-0.5 text-[11px]">
                                 {comment.authorName ?? 'A former collaborator'} ·{' '}
                                 {formatRelativeTime(comment.createdAt)}
@@ -240,14 +246,13 @@ function Thread({
 
                     {canComment && (
                         <form onSubmit={(event) => void send(event)} className="space-y-2">
-                            <textarea
+                            <MentionField
                                 value={reply}
+                                onChange={setReply}
+                                people={people}
                                 rows={2}
-                                aria-label="Reply"
-                                placeholder="Reply"
-                                onChange={(event) => setReply(event.target.value)}
-                                onKeyDown={(event) => event.stopPropagation()}
-                                className="border-line-strong bg-sunken text-ink w-full resize-y rounded-md border px-2 py-1.5 text-[13px]"
+                                label="Reply"
+                                placeholder="Reply. @ names somebody."
                             />
 
                             <div className="flex flex-wrap items-center gap-2">

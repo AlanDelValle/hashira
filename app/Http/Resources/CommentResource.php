@@ -33,6 +33,22 @@ final class CommentResource extends JsonResource
             // Null when the account is gone: its words stay, and what that reads as is the
             // interface's sentence to write, not this one's. Same shape as a version's author.
             'authorName' => $this->author?->name,
+            /*
+             * Who this was aimed at, with the text as it was typed. The client highlights
+             * those strings and parses nothing: the matching rule lives on the server, in
+             * `Mentions`, and a second copy of it is how the picture and the record end up
+             * disagreeing about who was addressed.
+             */
+            'mentions' => $this->whenLoaded(
+                'mentions',
+                fn () => $this->mentions
+                    ->map(fn ($mention) => [
+                        'userId' => $mention->user_id,
+                        'name' => $mention->user?->name,
+                        'text' => $mention->text,
+                    ])
+                    ->all(),
+            ),
             'createdAt' => $this->created_at->toIso8601String(),
         ];
     }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import type { CommentPin } from '@/editor/render/comments';
-import type { CommentThread } from '@/types/api';
+import type { CommentThread, ProjectPerson } from '@/types/api';
 
 /**
  * The conversations on the drawing that is open.
@@ -17,6 +17,8 @@ import type { CommentThread } from '@/types/api';
 
 interface CommentsStore {
     threads: CommentThread[];
+    /** Who can be mentioned. Fetched with the threads, and empty is simply no suggestions. */
+    people: ProjectPerson[];
     /** Which thread the panel has open, and which pin is ringed on the drawing. */
     selectedId: string | null;
     /** True while the first fetch for this project is in flight. */
@@ -25,6 +27,7 @@ interface CommentsStore {
     error: string | null;
 
     load: (threads: CommentThread[]) => void;
+    loadPeople: (people: ProjectPerson[]) => void;
     fail: (message: string) => void;
     begin: () => void;
     clear: () => void;
@@ -51,6 +54,7 @@ function inReadingOrder(threads: CommentThread[]): CommentThread[] {
 
 export const useCommentsStore = create<CommentsStore>()((set) => ({
     threads: [],
+    people: [],
     selectedId: null,
     loading: false,
     error: null,
@@ -58,7 +62,8 @@ export const useCommentsStore = create<CommentsStore>()((set) => ({
     begin: () => set({ loading: true, error: null }),
     load: (threads) => set({ threads: inReadingOrder(threads), loading: false, error: null }),
     fail: (message) => set({ loading: false, error: message }),
-    clear: () => set({ threads: [], selectedId: null, loading: false, error: null }),
+    loadPeople: (people) => set({ people }),
+    clear: () => set({ threads: [], people: [], selectedId: null, loading: false, error: null }),
 
     put: (thread) =>
         set((state) => ({

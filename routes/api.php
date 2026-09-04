@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberController;
+use App\Http\Controllers\Api\ProjectPeopleController;
 use App\Http\Controllers\Api\SharedDocumentController;
 use App\Http\Controllers\Api\ShareLinkAcceptanceController;
 use App\Http\Controllers\Api\ShareLinkController;
@@ -121,6 +122,10 @@ Route::middleware('auth')->group(function (): void {
     Route::post('share/{token}/accept', ShareLinkAcceptanceController::class)
         ->middleware('throttle:30,1')
         ->name('share.accept');
+
+    // Who can be mentioned: names and ids, for anybody who can open the project.
+    Route::get('projects/{project}/people', ProjectPeopleController::class)
+        ->name('projects.people');
 
     Route::get('projects/{project}/members', [ProjectMemberController::class, 'index'])
         ->name('projects.members.index');

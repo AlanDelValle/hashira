@@ -133,7 +133,17 @@ export function DashboardPage() {
                                     className="group border-line flex items-center justify-between border-b"
                                 >
                                     <Link
-                                        to={`/projects/${project.id}`}
+                                        /*
+                                         * A project you cannot edit opens on the review
+                                         * surface. The editor would only redirect here
+                                         * anyway; going straight there saves a round trip
+                                         * through a page that is not for you.
+                                         */
+                                        to={
+                                            project.role === 'commenter'
+                                                ? `/projects/${project.id}/review`
+                                                : `/projects/${project.id}`
+                                        }
                                         className="flex-1 rounded-sm py-3.5 pr-4"
                                     >
                                         <span className="text-ink text-sm font-medium">

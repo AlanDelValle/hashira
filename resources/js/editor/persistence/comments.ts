@@ -1,5 +1,5 @@
 import { api, type Envelope } from '@/lib/api';
-import type { CommentThread, DrawingComment } from '@/types/api';
+import type { CommentThread, DrawingComment, ProjectPerson } from '@/types/api';
 
 /**
  * The conversations on a drawing.
@@ -56,4 +56,14 @@ export function deleteThread(projectId: string, threadId: string): Promise<void>
 
 export function deleteReply(projectId: string, threadId: string, commentId: string): Promise<void> {
     return api.delete(`/api/projects/${projectId}/comments/${threadId}/replies/${commentId}`);
+}
+
+/**
+ * Who can be mentioned here: names and ids, for anybody who can open the project. Not the
+ * member list — that one names accounts and belongs to the owner.
+ */
+export function fetchPeople(projectId: string): Promise<ProjectPerson[]> {
+    return api
+        .get<Envelope<ProjectPerson[]>>(`/api/projects/${projectId}/people`)
+        .then((response) => response.data);
 }

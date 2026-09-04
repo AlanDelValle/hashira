@@ -27,9 +27,8 @@ import { Modal } from '@/ui/Modal';
  * already inside back out. Collapsing the two would mean an owner could not re-issue a link
  * without evicting the people they are working with.
  *
- * `commenter` is the third role the API knows, and it is deliberately not offered here yet:
- * there is nothing to comment on until comments exist, and a picker that promises otherwise
- * is a picture of a feature rather than the feature.
+ * All three roles are offered now. `commenter` waited until there was something to comment
+ * on: a picker that promises a feature before it exists is a picture of one.
  */
 
 const ROLES: { value: ShareRole; title: string; detail: string }[] = [
@@ -37,6 +36,11 @@ const ROLES: { value: ShareRole; title: string; detail: string }[] = [
         value: 'viewer',
         title: 'Can view',
         detail: 'Anyone with the link can look at the drawing, without an account.',
+    },
+    {
+        value: 'commenter',
+        title: 'Can comment',
+        detail: 'They can look and leave remarks on the drawing, but not change it.',
     },
     {
         value: 'editor',
@@ -148,7 +152,7 @@ export function ShareDialog({
             open={open}
             onOpenChange={onOpenChange}
             title="Share this drawing"
-            description="A link hands out one of two things: looking, or working on it with you."
+            description="A link hands out one of three things: looking, remarking, or working with you."
         >
             <div className="space-y-4">
                 {!loaded && <p className="text-ink-subtle text-[13px]">Loading…</p>}

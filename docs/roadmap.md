@@ -342,6 +342,30 @@ What 9.3a settled:
   to say about a point closed too early, and a conversation that cannot be reopened by talking
   is one people work around by starting a second pin at the same place.
 
+What 9.3b settled:
+
+- **A mention is resolved once, on the server, and the client only highlights.** Each comment
+  comes back with the people it named and the exact text that named them. The alternative —
+  the client working out for itself what looks like a mention — is two copies of one matching
+  rule, and they disagree the first time somebody is removed from a project.
+- **The text is stored beside the id.** Names change and a comment is a record of what was
+  said, so highlighting by re-deriving today's name would quietly rewrite last month's
+  conversation. An `@` that names nobody on the project stays plain text, which is what "the
+  door is at @900mm" needs.
+- **Who can be mentioned is its own endpoint, not a lighter mode of the member list.** The
+  member list names accounts and says when each joined, and that is the owner's. This one is
+  names and ids, readable by anybody who can open the project — the same reasoning that gave
+  the public share payload its own resource rather than a trimmed `DocumentResource`.
+- **A commenter gets a surface, not an editor with its buttons removed.** `pages/ReviewPage`
+  is what 9.5 built to look at a version on, given a click that means something. The
+  alternative would have meant teaching the toolbar, the shortcut table, the side panels,
+  undo, the underlay dialog and the DXF import who was looking, one at a time — and the result
+  would still have been a drafting tool with most of it missing. The editor now redirects
+  rather than refusing.
+- **Nothing delivers a mention yet, and that is deliberate.** Telling somebody they were named
+  is a question of what carries it, and it is the same delivery problem as presence. It waits
+  for the socket 9.1 brings rather than growing a second, weaker answer beside it.
+
 Decided before the rest of the phase started, so they are not re-argued halfway through:
 
 - **Comments get their own table, not `documents.data`.** Putting them in the drawing would

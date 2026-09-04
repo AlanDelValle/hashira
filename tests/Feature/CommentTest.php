@@ -265,3 +265,127 @@ it('takes the conversations with the project', function (): void {
     expect(CommentThread::query()->count())->toBe(0)
         ->and(Comment::query()->count())->toBe(0);
 });
+
+/*
+ * Mentions. Resolved on the server and nowhere else, so the picture and the record cannot
+ * disagree about who was addressed.
+ */
+
+it('records who a remark was aimed at, and the text as it was typed', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $editor = User::factory()->create(['name' => 'Ana Paula']);
+    joins($project, $editor, ShareRole::Editor);
+
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana Paula can you check this?',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.comments.0.mentions.0.userId', $editor->getKey())
+        ->assertJsonPath('data.comments.0.mentions.0.text', '@Ana Paula');
+});
+
+it('prefers the longest name, so a short one does not eat a long one', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $short = User::factory()->create(['name' => 'Ana']);
+    $long = User::factory()->create(['name' => 'Ana Paula']);
+    joins($project, $short, ShareRole::Commenter);
+    joins($project, $long, ShareRole::Commenter);
+
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana Paula please look',
+    ])
+        ->assertCreated()
+        ->assertJsonCount(1, 'data.comments.0.mentions')
+        ->assertJsonPath('data.comments.0.mentions.0.userId', $long->getKey());
+});
+
+it('leaves an @ that names nobody on the project as plain text', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $stranger = User::factory()->create(['name' => 'Nobody Here']);
+
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => 'The door is at @900mm, ask @Nobody Here',
+    ])
+        ->assertCreated()
+        ->assertJsonCount(0, 'data.comments.0.mentions');
+
+    expect($stranger->fresh())->not->toBeNull();
+});
+
+it('records one row however often somebody is named', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+    $editor = User::factory()->create(['name' => 'Ana']);
+    joins($project, $editor, ShareRole::Editor);
+
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana and again @Ana',
+    ])
+        ->assertCreated()
+        ->assertJsonCount(1, 'data.comments.0.mentions');
+});
+
+it('resolves mentions in an answer, not only in the opening remark', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+    $editor = User::factory()->create(['name' => 'Ana']);
+    joins($project, $editor, ShareRole::Editor);
+
+    $this->postJson("/api/projects/{$project->id}/comments", ['x' => 0, 'y' => 0, 'body' => 'Check']);
+    $thread = CommentThread::query()->sole();
+
+    $this->postJson("/api/projects/{$project->id}/comments/{$thread->id}/replies", [
+        'body' => 'Over to @Ana',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.mentions.0.userId', $editor->getKey());
+});
+
+it('keeps what was typed when the person named later renames their account', function (): void {
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+    $editor = User::factory()->create(['name' => 'Ana']);
+    joins($project, $editor, ShareRole::Editor);
+
+    $this->postJson("/api/projects/{$project->id}/comments", ['x' => 0, 'y' => 0, 'body' => 'Ask @Ana']);
+
+    $editor->forceFill(['name' => 'Ana Paula'])->save();
+
+    // The remark still reads as it was written; only the name beside it has moved on.
+    $this->getJson("/api/projects/{$project->id}/comments")
+        ->assertOk()
+        ->assertJsonPath('data.0.comments.0.mentions.0.text', '@Ana')
+        ->assertJsonPath('data.0.comments.0.mentions.0.name', 'Ana Paula');
+});
+
+it('lists who can be mentioned, without naming their accounts', function (): void {
+    $owner = User::factory()->create(['name' => 'The Owner']);
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $reviewer = signedIn();
+    joins($project, $reviewer, ShareRole::Commenter);
+
+    $response = $this->getJson("/api/projects/{$project->id}/people")->assertOk();
+
+    expect($response->json('data'))->toHaveCount(2)
+        ->and($response->json('data.0'))->toHaveKeys(['id', 'name'])
+        ->and($response->json('data.0'))->not->toHaveKey('email');
+
+    // A stranger cannot read the roster at all.
+    signedIn();
+    $this->getJson("/api/projects/{$project->id}/people")->assertNotFound();
+});

@@ -89,6 +89,15 @@ comments
   timestamps
   index (thread_id, created_at)
 
+comment_mentions
+  id                ulid pk
+  comment_id        ulid fk → comments, cascade delete
+  user_id           bigint fk → users, null on delete
+  text              varchar(160)            -- the '@…' exactly as it was typed
+  timestamps
+  unique (comment_id, user_id)
+  index (user_id)
+
 underlays
   id                ulid pk
   project_id        ulid fk → projects, cascade delete
@@ -145,6 +154,10 @@ Notes on the shape:
   because the alternative is "the oldest comment", and two rows written in the same
   millisecond tie on `created_at` with ULIDs breaking the tie at random. It is the same
   mistake as deciding which face of a wall is inside from the order it was drawn in.
+- **A mention is a row, not a re-scan.** The roster changes: somebody removed from a project
+  tomorrow was still addressed today. `text` is what was actually typed, kept beside the id so
+  that highlighting cannot quietly rewrite last month's conversation when a person renames
+  their account.
 - **An underlay belongs to a project, not to a person.** A survey is imported to draw one
   particular building on top of. Deleting the project deletes the pictures as well as the
   rows: a foreign key cascade has never deleted a file.
@@ -241,6 +254,17 @@ to its author and the project's owner. The remark a thread was opened with canno
 on its own — that answers `409`, because a place with answers to a question nobody can read is
 worse than no pin at all; delete the thread instead.
 
+Mentions are resolved on the server, when a remark is written, by matching a roster name
+after an `@` — longest first, so "Ana Paula" is not read as "Ana". Each comment comes back
+with the people it named and the exact text that named them, and the client highlights those
+strings rather than parsing for itself: two copies of one matching rule is how the picture and
+the record end up disagreeing about who was addressed. An `@` that names nobody on the project
+stays plain text, which is what "the door is at @900mm" needs.
+
+Nothing is delivered yet. Telling somebody they were named is a question of what carries it —
+mail, or something live in the page — and that is the same delivery problem as presence, so it
+waits for the socket in 9.1.
+
 Replying to a resolved thread is allowed on purpose: "that is not quite right" is exactly what
 somebody needs to say about a point that was closed too early.
 
@@ -262,6 +286,8 @@ DELETE /api/projects/{project}/share          revokes
 POST   /api/share/{token}/accept              takes up a commenter or editor link; answers with
                                               the project. Behind `auth`, unlike the endpoint
                                               that serves the drawing
+GET    /api/projects/{project}/people         who can be mentioned: names and ids, for
+                                              anybody who can open the project
 GET    /api/projects/{project}/members        who has joined — owner only
 DELETE /api/projects/{project}/members/{member}
                                               removes one. The owner may remove anybody; anybody

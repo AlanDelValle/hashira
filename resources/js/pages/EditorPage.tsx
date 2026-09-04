@@ -9,7 +9,7 @@ import {
     Undo2,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { CanvasHost } from '@/editor/react/CanvasHost';
@@ -23,7 +23,7 @@ import { ShareDialog } from '@/editor/react/ShareDialog';
 import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
-import { fetchThreads } from '@/editor/persistence/comments';
+import { fetchPeople, fetchThreads } from '@/editor/persistence/comments';
 import { listUnderlays } from '@/editor/persistence/underlays';
 import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
@@ -35,6 +35,8 @@ import { useHistory } from '@/editor/react/useHistory';
 import { useCommentsStore } from '@/editor/store/commentsStore';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
+import { useViewportStore } from '@/editor/store/viewportStore';
+import { centreOn } from '@/editor/viewport/viewport';
 import { useDocument } from '@/projects/useDocument';
 import { registerBlocks } from '@/projects/useBlocks';
 import { cn } from '@/lib/cn';
@@ -100,6 +102,13 @@ export function EditorPage() {
         void fetchThreads(projectId)
             .then((threads) => useCommentsStore.getState().load(threads))
             .catch(() => useCommentsStore.getState().fail('Could not load the comments.'));
+
+        // Who can be mentioned. No suggestions is a workable state, so nothing waits on it.
+        void fetchPeople(projectId)
+            .then((people) => useCommentsStore.getState().loadPeople(people))
+            .catch(() => {
+                /* Without the roster, `@` simply offers nobody. */
+            });
 
         // A selection left over from another project in this tab would name elements that no
         // longer exist, and the panels would be describing nothing.
@@ -176,25 +185,13 @@ export function EditorPage() {
         );
     }
 
+    /*
+     * Somebody who may not change the drawing is not shown an editor with its tools taken
+     * away — they are sent to the surface built for them, which has the drawing, the pins and
+     * the conversation and nothing they cannot use.
+     */
     if (!canEdit(payload.role)) {
-        return (
-            <div className="bg-canvas flex min-h-screen items-center justify-center px-6">
-                <div className="max-w-sm text-center">
-                    <p className="text-ink text-sm">
-                        You can look at this drawing, but not change it.
-                    </p>
-                    <p className="text-ink-muted mt-1.5 text-sm">
-                        Ask whoever owns it for a link that can edit, and open that.
-                    </p>
-                    <Link
-                        to="/projects"
-                        className="text-ink-muted mt-5 inline-block rounded-sm text-sm underline"
-                    >
-                        Back to projects
-                    </Link>
-                </div>
-            </div>
-        );
+        return <Navigate to={`/projects/${projectId ?? ''}/review`} replace />;
     }
 
     // The editor is a pointer-and-precision tool; a phone cannot give it a good home.
@@ -245,6 +242,17 @@ export function EditorPage() {
                             canComment
                             userId={user?.id ?? null}
                             isOwner={payload.role === 'owner'}
+                            focusOn={(thread) => {
+                                const { viewport, size } = useViewportStore.getState();
+
+                                if (size.width > 0 && size.height > 0) {
+                                    useViewportStore
+                                        .getState()
+                                        .setViewport(
+                                            centreOn(viewport, { x: thread.x, y: thread.y }, size),
+                                        );
+                                }
+                            }}
                         />
                     )}
 

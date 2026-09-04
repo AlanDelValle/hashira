@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -47,5 +48,16 @@ class Comment extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Who this was aimed at. Resolved once, when it was written — see Mentions for why the
+     * text is stored beside the id.
+     *
+     * @return HasMany<CommentMention, $this>
+     */
+    public function mentions(): HasMany
+    {
+        return $this->hasMany(CommentMention::class);
     }
 }

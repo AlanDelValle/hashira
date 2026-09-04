@@ -28,6 +28,7 @@ function route<T extends string>(load: () => Promise<Record<T, ComponentType>>, 
 }
 
 const EditorPage = route(() => import('@/pages/EditorPage'), 'EditorPage');
+const ReviewPage = route(() => import('@/pages/ReviewPage'), 'ReviewPage');
 const SharedPlanPage = route(() => import('@/pages/SharedPlanPage'), 'SharedPlanPage');
 const DashboardPage = route(() => import('@/pages/DashboardPage'), 'DashboardPage');
 
@@ -50,6 +51,11 @@ export function Application() {
                         <Route element={<RequireAuth />}>
                             <Route path="/projects" element={<DashboardPage />} />
                             <Route path="/projects/:projectId" element={<EditorPage />} />
+                            {/*
+                             * Where somebody who may comment but not edit works. The editor
+                             * sends them here rather than opening with its tools taken away.
+                             */}
+                            <Route path="/projects/:projectId/review" element={<ReviewPage />} />
                         </Route>
 
                         <Route path="*" element={<NotFoundPage />} />

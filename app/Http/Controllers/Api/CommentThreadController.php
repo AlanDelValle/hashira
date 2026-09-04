@@ -33,7 +33,7 @@ final class CommentThreadController extends Controller
 
         return CommentThreadResource::collection(
             $project->commentThreads()
-                ->with(['comments.author', 'author'])
+                ->with(['comments.author', 'comments.mentions.user', 'author'])
                 ->inReadingOrder()
                 ->get(),
         );
@@ -83,7 +83,9 @@ final class CommentThreadController extends Controller
         $thread->resolved_by = $resolved ? (int) $user->getKey() : null;
         $thread->save();
 
-        return CommentThreadResource::make($thread->load(['comments.author', 'author']));
+        return CommentThreadResource::make(
+            $thread->load(['comments.author', 'comments.mentions.user', 'author']),
+        );
     }
 
     public function destroy(Project $project, CommentThread $thread): JsonResponse

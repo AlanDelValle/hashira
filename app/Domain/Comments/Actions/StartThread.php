@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Comments\Actions;
 
-use App\Domain\Comments\Models\Comment;
 use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Projects\Models\Project;
 use App\Models\User;
@@ -19,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class StartThread
 {
+    public function __construct(private readonly AddComment $add) {}
+
     public function handle(
         Project $project,
         User $author,
@@ -36,18 +37,14 @@ final class StartThread
             $thread->created_by = (int) $author->getKey();
             $thread->save();
 
-            $comment = new Comment;
-            $comment->thread_id = $thread->id;
-            $comment->user_id = (int) $author->getKey();
-            $comment->body = $body;
-            $comment->save();
+            $comment = $this->add->handle($thread, $author, $body);
 
             // Which remark opened the thread is recorded, not inferred: two rows written in
             // the same millisecond tie on `created_at`, and the tie breaks at random.
             $thread->opening_comment_id = $comment->id;
             $thread->save();
 
-            return $thread->load(['comments.author', 'author']);
+            return $thread->load(['comments.author', 'comments.mentions.user', 'author']);
         });
     }
 }

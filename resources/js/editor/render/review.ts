@@ -8,6 +8,8 @@ import { buildScene } from '@/editor/scene/build';
 import type { SceneLayer } from '@/editor/scene/types';
 import {
     centreOn,
+    toScreen,
+    toWorld,
     DEFAULT_ZOOM,
     fitBounds,
     panByScreen,
@@ -17,6 +19,7 @@ import {
 } from '@/editor/viewport/viewport';
 
 import { paintScene } from './canvasScene';
+import { paintCommentPins, pinAt, type CommentPin } from './comments';
 import { buildRedlines } from './redlines';
 import { readTheme, type CanvasTheme } from './theme';
 
@@ -43,6 +46,16 @@ const ZOOM_STEP = 1.12;
 /** A version is looked at whole, so it sits closer to the edges than a drawing being drawn. */
 const FRAME_PADDING_PX = 24;
 
+/** How far a press may wander and still count as a click rather than as a pan. */
+const CLICK_SLOP_PX = 4;
+
+/**
+ * What a click on the surface turned out to mean: an existing pin, or an empty place somebody
+ * wants to say something about. The surface reports it and decides nothing.
+ */
+export type ReviewPick =
+    { kind: 'pin'; id: string } | { kind: 'place'; world: Point; screen: Point };
+
 export interface ReviewContent {
     /** The version on show. When two are being compared, the later of them. */
     drawing: HashiraDocument;
@@ -68,6 +81,24 @@ export class ReviewSurface {
     private dpr = 1;
     private needsFraming = false;
     private panningFrom: Point | null = null;
+
+    /*
+     * Where the pointer went down, and whether it has travelled far enough to be a drag. A
+     * surface whose only gesture was panning could treat every press as one; now that a press
+     * can also mean "say something here", the two have to be told apart, and a few pixels of
+     * hand tremor is not a decision to pan.
+     */
+    private pressedAt: Point | null = null;
+    private travelled = 0;
+
+    private pins: readonly CommentPin[] = [];
+    private selectedPinId: string | null = null;
+
+    /** Set by the host that wants clicks. Left null, the surface only pans and zooms. */
+    onPick: ((pick: ReviewPick) => void) | null = null;
+
+    /** Called whenever the view moves, so anything floating over the canvas can follow it. */
+    onViewChange: (() => void) | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -130,6 +161,34 @@ export class ReviewSurface {
 
         this.needsFraming = true;
         this.dirty = true;
+    }
+
+    /** The pins to paint over the drawing, and which of them is ringed. */
+    showComments(pins: readonly CommentPin[], selectedId: string | null): void {
+        this.pins = pins;
+        this.selectedPinId = selectedId;
+        this.dirty = true;
+    }
+
+    /** Where a world point is on the canvas right now, for positioning anything floating. */
+    toScreen(world: Point): Point {
+        return toScreen(this.viewport, world);
+    }
+
+    /** One screen pixel in world millimetres, which is what pin geometry is measured in. */
+    get pixel(): number {
+        return 1 / this.viewport.zoom;
+    }
+
+    /** Bring a world point to the middle, for a thread chosen from the list beside this. */
+    centre(world: Point): void {
+        if (this.size.width === 0 || this.size.height === 0) {
+            return;
+        }
+
+        this.viewport = centreOn(this.viewport, world, this.size);
+        this.dirty = true;
+        this.onViewChange?.();
     }
 
     /** Frame a box of world millimetres — one change picked out of a list, usually. */
@@ -243,6 +302,10 @@ export class ReviewSurface {
 
         paintScene(ctx, this.drawing, { px });
         paintScene(ctx, this.redlines, { px });
+
+        if (this.pins.length > 0) {
+            paintCommentPins({ ctx, theme: this.theme, px }, this.pins, this.selectedPinId);
+        }
     }
 
     private screenPoint(event: PointerEvent | WheelEvent): Point {
@@ -258,6 +321,8 @@ export class ReviewSurface {
         }
 
         this.panningFrom = this.screenPoint(event);
+        this.pressedAt = this.panningFrom;
+        this.travelled = 0;
         this.canvas.setPointerCapture(event.pointerId);
         this.canvas.style.cursor = 'grabbing';
         event.preventDefault();
@@ -272,9 +337,11 @@ export class ReviewSurface {
 
         const now = this.screenPoint(event);
 
+        this.travelled += Math.hypot(now.x - from.x, now.y - from.y);
         this.viewport = panByScreen(this.viewport, { x: now.x - from.x, y: now.y - from.y });
         this.panningFrom = now;
         this.dirty = true;
+        this.onViewChange?.();
     };
 
     private onPointerUp = (event: PointerEvent): void => {
@@ -282,12 +349,31 @@ export class ReviewSurface {
             return;
         }
 
+        const pressed = this.pressedAt;
+
         this.panningFrom = null;
+        this.pressedAt = null;
         this.canvas.style.cursor = '';
 
         if (this.canvas.hasPointerCapture(event.pointerId)) {
             this.canvas.releasePointerCapture(event.pointerId);
         }
+
+        // A press that went nowhere is a click. Left button only: the middle one is for
+        // panning and has nothing to say.
+        if (this.onPick === null || pressed === null || event.button !== 0) {
+            return;
+        }
+
+        if (this.travelled > CLICK_SLOP_PX) {
+            return;
+        }
+
+        const screen = this.screenPoint(event);
+        const world = toWorld(this.viewport, screen);
+        const hit = pinAt(this.pins, world, this.pixel);
+
+        this.onPick(hit === null ? { kind: 'place', world, screen } : { kind: 'pin', id: hit.id });
     };
 
     private onWheel = (event: WheelEvent): void => {
@@ -297,5 +383,6 @@ export class ReviewSurface {
 
         this.viewport = zoomAt(this.viewport, this.screenPoint(event), factor);
         this.dirty = true;
+        this.onViewChange?.();
     };
 }
