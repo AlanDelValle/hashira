@@ -4,3 +4,7 @@ public/build
 storage
 composer.lock
 package-lock.json
+
+# Worktrees a task session opened inside the repo. Their build output is not ours to
+# format, and `public/build` above is anchored to the root, so it does not reach theirs.
+.claude

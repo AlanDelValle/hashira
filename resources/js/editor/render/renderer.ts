@@ -15,6 +15,7 @@ import type { DisplayUnit, Element, HashiraDocument, WallElement } from '@/edito
 import { formatAngle, formatArea, formatLength } from '@/editor/model/units';
 import { buildScene } from '@/editor/scene/build';
 import type { ScenePalette } from '@/editor/scene/types';
+import { commentPins, useCommentsStore } from '@/editor/store/commentsStore';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { interaction } from '@/editor/store/interaction';
@@ -22,6 +23,7 @@ import { useViewportStore } from '@/editor/store/viewportStore';
 import { visibleBounds } from '@/editor/viewport/viewport';
 
 import { paintScene } from './canvasScene';
+import { paintCommentPins } from './comments';
 import { setInvalidator } from './frame';
 import { paintGrid } from './grid';
 import {
@@ -86,6 +88,9 @@ export class CanvasRenderer {
             useDocumentStore.subscribe(() => this.invalidate()),
             useEditorStore.subscribe(() => this.invalidate()),
             useViewportStore.subscribe(() => this.invalidate()),
+            // A thread arriving, being resolved or being opened in the panel all change what
+            // the drawing shows, and none of them touch the document.
+            useCommentsStore.subscribe(() => this.invalidate()),
         ];
 
         this.loop();
@@ -285,6 +290,26 @@ export class CanvasRenderer {
         // something the person needs, and the rest of the time it would just be always on.
         if (interaction.snap !== null && (interaction.snap.kind !== 'grid' || tool !== 'select')) {
             paintSnapIndicator(overlay, interaction.snap);
+        }
+
+        /*
+         * Last, over everything, because a pin is chrome rather than ink: it is not in the
+         * scene the exporters read and it never reaches a printed sheet. A plan that goes to
+         * site carries what was decided, not the conversation that decided it.
+         */
+        const { threads, selectedId } = useCommentsStore.getState();
+
+        /*
+         * An open remark is something the drawing still owes somebody an answer to, so its pin
+         * is on whatever tool is in hand. A resolved one is history, and history belongs in the
+         * panel: kept on the sheet it would slowly fill a drawing with rings from conversations
+         * that ended months ago. So it comes back only while the comment tool is active, which
+         * is when somebody is asking what has already been said.
+         */
+        const pins = commentPins(threads).filter((pin) => !pin.resolved || tool === 'comment');
+
+        if (pins.length > 0) {
+            paintCommentPins({ ctx, theme: this.theme, px }, pins, selectedId);
         }
 
         this.writeReadouts(drawing, viewport.zoom);

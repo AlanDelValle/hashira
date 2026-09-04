@@ -68,6 +68,27 @@ project_members
   unique (project_id, user_id)
   index (user_id)
 
+comment_threads
+  id                  ulid pk
+  project_id          ulid fk → projects, cascade delete
+  x                   double precision        -- millimetres of drawing, like the document
+  y                   double precision
+  element_id          varchar(64) null        -- what the pin was dropped on, if anything
+  opening_comment_id  ulid null               -- which remark the pin was dropped for
+  resolved_at         timestamptz null
+  resolved_by         bigint fk → users, null on delete
+  created_by          bigint fk → users, null on delete
+  timestamps
+  index (project_id, resolved_at)
+
+comments
+  id                ulid pk
+  thread_id         ulid fk → comment_threads, cascade delete
+  user_id           bigint fk → users, null on delete
+  body              text
+  timestamps
+  index (thread_id, created_at)
+
 underlays
   id                ulid pk
   project_id        ulid fk → projects, cascade delete
@@ -111,6 +132,19 @@ Notes on the shape:
   nulled rather than cascaded, because issuing a fresh link revokes the previous one and must
   not evict the people already working. Closing the door and showing somebody out are two
   different acts, and they have two different controls.
+- **A comment is not in the drawing.** It gets its own tables rather than a place in
+  `documents.data`, because it is not a thing anybody drew: in the document it would be
+  dragged into undo, into every export, into the share payload and into the version
+  comparison, and the schema would have to move every time the conversation about a plan
+  changed shape.
+- **A pin does not follow the geometry.** `x` and `y` are where somebody pointed, and they
+  stay there. `element_id` records what was under the click so a thread can say the thing it
+  was about has been deleted — moving the pin when a wall moves would re-point what somebody
+  said.
+- **Which remark opened a thread is recorded, not worked out.** `opening_comment_id` exists
+  because the alternative is "the oldest comment", and two rows written in the same
+  millisecond tie on `created_at` with ULIDs breaking the tie at random. It is the same
+  mistake as deciding which face of a wall is inside from the order it was drawn in.
 - **An underlay belongs to a project, not to a person.** A survey is imported to draw one
   particular building on top of. Deleting the project deletes the pictures as well as the
   rows: a foreign key cascade has never deleted a file.
@@ -188,6 +222,27 @@ The document JSON is called `drawing` in responses, not `data`. Laravel skips it
 envelope for any resource whose payload already contains that key, which would silently leave
 these two endpoints shaped differently from every other one. Requests still send it as `data`,
 matching the validation rule name.
+
+### Comments
+
+```
+GET    /api/projects/{project}/comments                    threads, open ones first
+POST   /api/projects/{project}/comments                    { x, y, elementId?, body } → a thread
+                                                           and the remark it was opened with
+PATCH  /api/projects/{project}/comments/{thread}           { resolved }
+DELETE /api/projects/{project}/comments/{thread}           takes its comments with it
+
+POST   /api/projects/{project}/comments/{thread}/replies   { body }
+DELETE /api/projects/{project}/comments/{thread}/replies/{comment}
+```
+
+Reading needs `view`; saying anything needs `comment`. Deleting a thread or one remark is kept
+to its author and the project's owner. The remark a thread was opened with cannot be deleted
+on its own — that answers `409`, because a place with answers to a question nobody can read is
+worse than no pin at all; delete the thread instead.
+
+Replying to a resolved thread is allowed on purpose: "that is not quite right" is exactly what
+somebody needs to say about a point that was closed too early.
 
 ### Versions
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AuthenticatedUserController;
 use App\Http\Controllers\Api\BlockController;
+use App\Http\Controllers\Api\CommentReplyController;
+use App\Http\Controllers\Api\CommentThreadController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\ProjectController;
@@ -85,6 +87,24 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.underlays.image');
     Route::delete('projects/{project}/underlays/{underlay}', [UnderlayController::class, 'destroy'])
         ->name('projects.underlays.destroy');
+
+    /*
+     * Reading a drawing's conversations needs `view`; adding to them needs `comment`. Both are
+     * checked in the controller, against the account rather than against anything sent.
+     */
+    Route::get('projects/{project}/comments', [CommentThreadController::class, 'index'])
+        ->name('projects.comments.index');
+    Route::post('projects/{project}/comments', [CommentThreadController::class, 'store'])
+        ->name('projects.comments.store');
+    Route::patch('projects/{project}/comments/{thread}', [CommentThreadController::class, 'update'])
+        ->name('projects.comments.update');
+    Route::delete('projects/{project}/comments/{thread}', [CommentThreadController::class, 'destroy'])
+        ->name('projects.comments.destroy');
+
+    Route::post('projects/{project}/comments/{thread}/replies', [CommentReplyController::class, 'store'])
+        ->name('projects.comments.replies.store');
+    Route::delete('projects/{project}/comments/{thread}/replies/{comment}', [CommentReplyController::class, 'destroy'])
+        ->name('projects.comments.replies.destroy');
 
     Route::get('projects/{project}/versions', [DocumentVersionController::class, 'index'])
         ->name('projects.versions.index');

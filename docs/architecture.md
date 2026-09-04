@@ -382,8 +382,8 @@ reason except the one that matters.
 
 ## 7. What we are deliberately not building yet
 
-3D, BIM, DWG, generative AI, CRDT multiplayer, comments, payments, organisations and teams,
-a large block library, a mobile editor. See [roadmap.md](roadmap.md). The architecture leaves
+3D, BIM, DWG, generative AI, CRDT multiplayer, payments, organisations and teams, a large
+block library, a mobile editor. See [roadmap.md](roadmap.md). The architecture leaves
 room for them — commands for collaboration, JSONB for entity extraction — without paying for
 them now.
 
@@ -391,8 +391,9 @@ Three things have come off that list, and the list did not notice the first two,
 failure mode a list like this has. **DXF** left in Phase 8, in both directions. **Version
 history browsing and comparison** left in Phase 9.5. **Share-link roles and the membership
 they grant** left in Phase 9.4: a project can now have a second person in it, with an account,
-a role and a way out. What is still absent is everything that happens between two people at
-once — no socket, no presence, no operation log, and no comments. Anything struck off here
+a role and a way out. **Comments** left in Phase 9.3a — their own tables, anchored to a point
+in drawing millimetres, deliberately not in `documents.data`. What is still absent is
+everything that happens between two people at once: no socket, no presence, no operation log. Anything struck off here
 belongs in the same commit as the feature that strikes it.
 
 ---

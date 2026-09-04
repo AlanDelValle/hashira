@@ -93,3 +93,33 @@ export interface ShareLink {
     viewCount: number;
     createdAt: string;
 }
+
+/**
+ * One thing said in a thread. Named `DrawingComment` rather than `Comment` because the DOM
+ * already has a `Comment` and a file importing both would be reading a coin toss.
+ *
+ * `authorName` is null when the account that wrote it has been deleted: the words stay, and
+ * what that reads as is the interface's sentence to write. `authorId` is what decides whether
+ * a delete control is offered, without a second request.
+ */
+export interface DrawingComment {
+    id: string;
+    body: string;
+    authorId: number | null;
+    authorName: string | null;
+    createdAt: string;
+}
+
+/** A conversation, and the place on the drawing it points at. `x` and `y` are millimetres. */
+export interface CommentThread {
+    id: string;
+    x: number;
+    y: number;
+    elementId: string | null;
+    resolved: boolean;
+    resolvedAt: string | null;
+    authorId: number | null;
+    authorName: string | null;
+    createdAt: string;
+    comments: DrawingComment[];
+}

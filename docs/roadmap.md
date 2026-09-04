@@ -231,7 +231,12 @@ whole against a revision, one history stack, and authorization from the authenti
       would end up being used on wire data
 - [ ] **9.1 Realtime presence and cursors** (Laravel Reverb)
 - [ ] **9.2 Live co-editing** built on the existing command stream
-- [ ] **9.3 Comments and mentions** anchored to drawing coordinates
+- [~] **9.3 Comments and mentions** anchored to drawing coordinates. Split in two, because
+  it is larger than 9.4 was. **9.3a is done:** a pin dropped at a point in drawing
+  millimetres, the conversation under it, replies, resolving and reopening — in the
+  editor, for the people who already open it. **9.3b** is the rest: mentions, the surface
+  somebody who may comment but not edit works on, and `commenter` going into the share
+  dialog's picker
 - [x] **9.4 Share-link roles: viewer, commenter, editor**, and the membership a link grants.
       A link now carries what it hands out. `viewer` is the whole of anonymous access and
       records nobody; the other two cannot be taken up without signing in, and accepting one
@@ -301,6 +306,41 @@ What 9.4 settled, on top of those:
 - **Two editors are possible now and not yet pleasant.** The drawing is still saved whole
   against a revision, so the second person to save gets the conflict `autosave` already
   reports. That is honest and it is 9.2's job, not this one's.
+
+What 9.3a settled:
+
+- **A pin points at a place, and the place does not move.** The anchor is a point in drawing
+  millimetres. What the click landed on is recorded as `element_id` and never used to
+  reposition anything: a remark was made at a place on a drawing at a moment, and following
+  the geometry would silently re-point somebody's words when a wall moved. What the element
+  is for is telling a thread that the thing it was about has been deleted.
+- **A pin is chrome, not ink.** Constant size on screen, painted after everything else, absent
+  from the scene the exporters read and from every printed sheet. A plan that goes to site
+  carries what was decided, not the conversation that decided it.
+- **Open and resolved differ in shape.** A solid head with its number reversed out, against a
+  hollow ring with the number inside — 9.5's rule that nothing may mean something in colour
+  alone, applied to the first thing built after it. The panel says it again in words, and the
+  panel is the half that takes the keyboard.
+- **A pin's number is its age, not its position in the list.** The list puts open threads
+  first, so numbering by it would renumber every pin the moment one was resolved — and the
+  number is the thing somebody says out loud.
+- **Which remark opened a thread is a column, not a sort.** Two rows written in the same
+  millisecond tie on `created_at`, and ULIDs break that tie at random. Deriving identity from
+  ordering is the mistake 11.2 already refused when it decided which face of a wall is inside.
+  A test caught this one, which is the only reason it is written here and not in a bug report.
+- **The comment tool is a tool, and commits nothing.** Rule 2 is about document mutations and
+  a remark is not one, so it produces no command. It is a `ToolId` anyway, because it is a
+  pointer mode picked with a key — which puts it in the shortcut table, the toolbar and the
+  `?` dialog without a second mechanism, and rule 8 asks for exactly that.
+- **An open pin is always on the sheet; a resolved one only in comment mode.** Found by
+  looking, after a resolved thread left a ring sitting on the plan with the select tool in
+  hand. An open remark is something the drawing still owes somebody an answer to, so it shows
+  whatever you are doing. A settled one is history, and history belongs in the panel — left on
+  the sheet it would slowly fill a drawing with rings from conversations that ended months
+  ago.
+- **Resolved threads can still be answered.** "That is not quite right" is what somebody needs
+  to say about a point closed too early, and a conversation that cannot be reopened by talking
+  is one people work around by starting a second pin at the same place.
 
 Decided before the rest of the phase started, so they are not re-argued halfway through:
 

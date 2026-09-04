@@ -23,6 +23,7 @@ import {
     createWindowTool,
 } from '@/editor/tools/architectureTools';
 import { createAreaTool } from '@/editor/tools/areaTool';
+import { createCommentTool } from '@/editor/tools/commentTool';
 import {
     createCircleTool,
     createLineTool,
@@ -99,6 +100,7 @@ export class InputController {
             radius: createRadiusTool(),
             leader: createLeaderTool(),
             asset: createAssetTool(),
+            comment: createCommentTool(),
         };
     }
 

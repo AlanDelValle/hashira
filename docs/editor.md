@@ -210,6 +210,13 @@ something the format can express. **Leader** is the one that writes rather than 
 click on what the note is about, further clicks to bend the line, then Enter — and the words
 are typed into the same floating field a label uses, for the same reason.
 
+**Comment** is the only tool that commits nothing. A remark is not a thing anybody drew, so
+it produces no command and never touches the document: the click decides the place, the words
+go into a floating field the same way a label's do, and the result is a row in
+`comment_threads`. Clicking a pin that is already there opens its conversation instead of
+dropping a second one on top of it, and the point is deliberately not snapped — a snap is for
+construction, and a remark is made where somebody was looking.
+
 The text field is focused one frame after it appears, which looks like a workaround and is not: the
 click that opens it is a click on the canvas, and the browser moves focus to the canvas as the
 _default action_ of that same mousedown — after the handler that opened the field has run.
@@ -229,6 +236,7 @@ before a character can be typed.
 | `M`                            | dimension                                |
 | `A` `U`                        | angle, radius                            |
 | `T` `E`                        | text, leader                             |
+| `K`                            | comment                                  |
 | `B`                            | the block library                        |
 | `G` / `S`                      | grid on or off / snap to grid on or off  |
 | `Delete` / `Backspace`         | delete the selection                     |
@@ -740,6 +748,9 @@ the mitres have to follow, so they are worked out again — but only then.
 
 ## 20. What is not here yet
 
-Anything with a second person in it: presence, cursors, live co-editing, comments. Comparing
-two versions of a drawing is the one part of that phase already here, and it is the part that
-needed nobody else. See [roadmap.md](roadmap.md).
+Anything that happens between two people at the same time: presence, cursors, live
+co-editing. What is here of that phase is the part that needs nobody watching — comparing two
+versions of a drawing, roles and the membership a link grants, and now **comments**: a pin
+dropped at a point in the drawing, a conversation under it, and resolving. What comments still
+lack is mentions, and a surface for somebody who may comment but not edit; the editor refuses
+to open for them until that exists. See [roadmap.md](roadmap.md).

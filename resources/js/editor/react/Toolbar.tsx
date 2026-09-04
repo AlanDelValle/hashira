@@ -4,6 +4,7 @@ import {
     Circle,
     Cloud,
     Columns2,
+    MessageSquare,
     Diameter,
     DoorOpen,
     Minus,
@@ -41,15 +42,20 @@ const ICONS: Record<ToolId, ComponentType<{ className?: string }>> = {
     leader: TextQuote,
     cloud: Cloud,
     asset: Sofa,
+    comment: MessageSquare,
 };
 
-/** Grouped the way the work goes: pick, build the space, draw, then say what it is. */
+/**
+ * Grouped the way the work goes: pick, build the space, draw, then say what it is — and last,
+ * on its own, the one that says something to a person rather than on the sheet.
+ */
 const GROUPS: ToolId[][] = [
     ['select'],
     ['wall', 'door', 'window', 'room', 'area'],
     ['line', 'rect', 'circle', 'polygon'],
     ['dimension', 'angle', 'radius'],
     ['text', 'leader', 'cloud'],
+    ['comment'],
 ];
 
 /**
@@ -104,7 +110,7 @@ export function Toolbar() {
     return (
         <div
             role="toolbar"
-            aria-label="Drawing tools"
+            aria-label="Tools"
             aria-orientation="vertical"
             onKeyDown={onKeyDown}
             className="border-line bg-surface flex flex-col items-center gap-0.5 border-r py-2"

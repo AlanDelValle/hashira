@@ -21,6 +21,13 @@ import type { DoorLeaf, LineType } from '@/editor/model/types';
  * note and a label are the same act of writing, and differ only in whether anything points
  * at what is being written about.
  */
+/** A pin about to be dropped: where it points, and what it was dropped on, if anything. */
+export interface CommentDraft {
+    id: string;
+    at: Point;
+    elementId: string | null;
+}
+
 export interface TextDraft {
     id: string;
     at: Point;
@@ -44,7 +51,14 @@ export type ToolId =
     | 'radius'
     | 'leader'
     | 'cloud'
-    | 'asset';
+    | 'asset'
+    /*
+     * Not a drawing tool: it commits nothing to the document and produces no command. It is
+     * here because it is a pointer mode you pick with a key, which is exactly what a ToolId
+     * is — and being one means the toolbar, the shortcut table and the reference dialog all
+     * find it without a second mechanism.
+     */
+    | 'comment';
 
 /**
  * What the interface is doing, as opposed to what the drawing contains.
@@ -108,6 +122,7 @@ interface EditorStore {
      * else in flight — drags, rubber bands, snap previews — stays out of React by design.
      */
     textDraft: TextDraft | null;
+    commentDraft: CommentDraft | null;
     /** The library block the asset tool will place, if any. */
     pendingAssetId: string | null;
     /** Whether the block library is showing. */
@@ -125,6 +140,8 @@ interface EditorStore {
     setTextSize: (size: number) => void;
     setDimensionSize: (size: number) => void;
     setCloudRadius: (radius: number) => void;
+    beginComment: (at: Point, elementId: string | null) => void;
+    cancelComment: () => void;
     beginText: (at: Point) => void;
     beginNote: (points: Point[]) => void;
     cancelText: () => void;
@@ -157,6 +174,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     dimensionSize: DEFAULT_DIMENSION_SIZE,
     cloudRadius: DEFAULT_CLOUD_RADIUS,
     textDraft: null,
+    commentDraft: null,
     pendingAssetId: null,
     libraryOpen: false,
     shortcutsOpen: false,
@@ -168,6 +186,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
             // label — neither has anywhere to live once the tool that owns it is gone.
             pendingAssetId: tool === 'asset' ? state.pendingAssetId : null,
             textDraft: tool === 'text' || tool === 'leader' ? state.textDraft : null,
+            commentDraft: tool === 'comment' ? state.commentDraft : null,
         })),
 
     setActiveLayer: (activeLayerId) => set({ activeLayerId }),
@@ -198,6 +217,10 @@ export const useEditorStore = create<EditorStore>((set) => ({
     setTextSize: (textSize) => set({ textSize }),
     setDimensionSize: (dimensionSize) => set({ dimensionSize }),
     setCloudRadius: (cloudRadius) => set({ cloudRadius }),
+
+    beginComment: (at, elementId) => set({ commentDraft: { id: newId(), at, elementId } }),
+    cancelComment: () =>
+        set((state) => (state.commentDraft === null ? state : { commentDraft: null })),
 
     beginText: (at) => set({ textDraft: { id: newId(), at } }),
 

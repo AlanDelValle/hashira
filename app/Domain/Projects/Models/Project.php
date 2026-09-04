@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Projects\Models;
 
+use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Documents\Models\Document;
 use App\Domain\Sharing\Models\ShareLink;
 use App\Domain\Sharing\ShareRole;
@@ -140,6 +141,18 @@ class Project extends Model
         return $this->relationLoaded('members')
             ? $this->members->firstWhere('user_id', (int) $user->getKey())
             : $this->members()->where('user_id', $user->getKey())->first();
+    }
+
+    /**
+     * The conversations on this drawing. They belong to the project rather than to the
+     * document, because a remark outlives the revision it was made against — see
+     * document-format.md on why nothing about a comment is in `documents.data`.
+     *
+     * @return HasMany<CommentThread, $this>
+     */
+    public function commentThreads(): HasMany
+    {
+        return $this->hasMany(CommentThread::class);
     }
 
     /** @return HasMany<ShareLink, $this> */

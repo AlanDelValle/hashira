@@ -36,6 +36,14 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
     { id: 'radius', label: 'Radius', key: 'U' },
     { id: 'leader', label: 'Leader', key: 'E' },
     { id: 'cloud', label: 'Revision cloud', key: 'I' },
+
+    /*
+     * Not a drawing tool, and the only entry here that commits nothing to the document. It is
+     * in this table because it is picked with a key like the others, and a key that lived
+     * anywhere else would be a key nobody could find — which is rule 8, and exactly how the
+     * library button once came to advertise a `B` that did nothing.
+     */
+    { id: 'comment', label: 'Comment', key: 'K' },
 ];
 
 /** The key that opens the block library. Not a tool: the tool arms when a block is chosen. */

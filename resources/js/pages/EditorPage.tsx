@@ -11,7 +11,10 @@ import {
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { useAuth } from '@/auth/useAuth';
 import { CanvasHost } from '@/editor/react/CanvasHost';
+import { CommentDraft } from '@/editor/react/CommentDraft';
+import { CommentsPanel } from '@/editor/react/CommentsPanel';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
 import { DxfImportDialog } from '@/editor/react/DxfImportDialog';
 import { ExportDialog } from '@/editor/react/ExportDialog';
@@ -20,6 +23,7 @@ import { ShareDialog } from '@/editor/react/ShareDialog';
 import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { autosave } from '@/editor/persistence/autosave';
+import { fetchThreads } from '@/editor/persistence/comments';
 import { listUnderlays } from '@/editor/persistence/underlays';
 import { ShortcutsDialog } from '@/editor/react/ShortcutsDialog';
 import { SidePanel } from '@/editor/react/SidePanel';
@@ -28,6 +32,7 @@ import { StatusBar } from '@/editor/react/StatusBar';
 import { Toolbar } from '@/editor/react/Toolbar';
 import { useFrameOnce, zoomToDrawing } from '@/editor/react/framing';
 import { useHistory } from '@/editor/react/useHistory';
+import { useCommentsStore } from '@/editor/store/commentsStore';
 import { history, useDocumentStore } from '@/editor/store/documentStore';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { useDocument } from '@/projects/useDocument';
@@ -60,6 +65,8 @@ export function EditorPage() {
     const drawingId = useDocumentStore((state) => state.document.id);
     const elementCount = useDocumentStore((state) => state.document.elements.length);
     const libraryOpen = useEditorStore((state) => state.libraryOpen);
+    const commentsOpen = useEditorStore((state) => state.tool === 'comment');
+    const { user } = useAuth();
 
     // Matches the `lg` breakpoint. Below it the editor is not merely hidden, it is not built.
     const roomToDraw = useMediaQuery('(min-width: 64rem)');
@@ -80,6 +87,20 @@ export function EditorPage() {
             /* An underlay that will not load is drawn as its own dashed outline. */
         });
 
+        /*
+         * The conversations on this drawing. They are not part of the document and arrive on
+         * their own, so a slow list never delays the plan appearing — and the panel says it is
+         * loading rather than saying there is nothing to discuss.
+         */
+        const comments = useCommentsStore.getState();
+
+        comments.clear();
+        comments.begin();
+
+        void fetchThreads(projectId)
+            .then((threads) => useCommentsStore.getState().load(threads))
+            .catch(() => useCommentsStore.getState().fail('Could not load the comments.'));
+
         // A selection left over from another project in this tab would name elements that no
         // longer exist, and the panels would be describing nothing.
         useEditorStore.getState().clearSelection();
@@ -94,7 +115,10 @@ export function EditorPage() {
             autosave.start(projectId, payload.revision, state.document);
         }
 
-        return () => autosave.stop();
+        return () => {
+            autosave.stop();
+            useCommentsStore.getState().clear();
+        };
     }, [payload, projectId, load]);
 
     useEffect(() => {
@@ -211,9 +235,23 @@ export function EditorPage() {
 
                     {libraryOpen && <LibraryPanel />}
 
+                    {/*
+                     * The panel belongs to the tool, the way the library does: pressing K
+                     * brings both the pin cursor and the list of what has already been said.
+                     */}
+                    {commentsOpen && (
+                        <CommentsPanel
+                            projectId={projectId ?? ''}
+                            canComment
+                            userId={user?.id ?? null}
+                            isOwner={payload.role === 'owner'}
+                        />
+                    )}
+
                     <main id="sheet" className="border-line relative min-w-0 flex-1 border-r">
                         <CanvasHost />
                         <TextDraft />
+                        <CommentDraft projectId={projectId ?? ''} />
                         {elementCount === 0 && <EmptySheet />}
                     </main>
 
