@@ -234,40 +234,22 @@ export const layerSchema = z.object({
     order: finiteNumber,
 });
 
-const settingsSchema = z
-    .object({
-        unit: z.enum(['mm', 'cm', 'm']).optional(),
-        scale: finiteNumber.positive().optional(),
-        grid: z
-            .object({
-                size: finiteNumber.positive().optional(),
-                subdivisions: z.number().int().min(1).max(20).optional(),
-                visible: z.boolean().optional(),
-                snap: z.boolean().optional(),
-            })
-            .optional(),
-        snapping: z
-            .object({
-                enabled: z.boolean().optional(),
-                endpoint: z.boolean().optional(),
-                midpoint: z.boolean().optional(),
-                intersection: z.boolean().optional(),
-                axis: z.boolean().optional(),
-            })
-            .optional(),
-        title: z.string().optional(),
-        notes: z.string().optional(),
-        titleBlock: z
-            .object({
-                project: z.string().optional(),
-                client: z.string().optional(),
-                drawnBy: z.string().optional(),
-                revision: z.string().optional(),
-                date: z.string().optional(),
-            })
-            .optional(),
-    })
-    .optional();
+/*
+ * The settings, one field at a time.
+ *
+ * They used to be a single object schema, parsed in one call, and one unreadable field
+ * anywhere in it failed the whole parse and fell back to an empty object — so a drawing lost
+ * its unit, its scale, its grid, its snapping, its title, its title block and its notes
+ * together, on load, silently, and autosave then wrote the defaults back over what it had
+ * actually said. `resolveSheets` below already knew better: it drops the one page it cannot
+ * read rather than the whole list, for exactly the same reason a broken element does not cost
+ * anyone their drawing. These are that rule applied to the fields it was still missing from.
+ */
+const unitSchema = z.enum(['mm', 'cm', 'm']);
+const positiveSchema = finiteNumber.positive();
+const subdivisionsSchema = z.number().int().min(1).max(20);
+const flagSchema = z.boolean();
+const textSchema = z.string();
 
 /**
  * A sheet is validated whole, unlike the rest of the settings.
@@ -398,20 +380,76 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Whatever is at a key, as something with keys of its own. */
+function asRecord(value: unknown): Record<string, unknown> {
+    return isRecord(value) ? value : {};
+}
+
+/**
+ * One settings field: what the drawing says, or the default when it says nothing readable.
+ *
+ * `null` needs no case of its own. No field here is nullable, so a null fails to parse and
+ * takes the default — which is what an absent field does, and what a null means. It reads
+ * that way because for a long time it was what these fields came back as: the request
+ * middleware turned every empty string in a saved drawing into one before it was stored, so
+ * an unfilled title-block field or a drawing with no notes came back null. That is fixed at
+ * the source in bootstrap/app.php, and the documents it already wrote are repaired by
+ * database/migrations, but a drawing is also a file somebody can hand you — so the reader
+ * stays the one that copes.
+ */
+function settingsField<Schema extends z.ZodType>(
+    schema: Schema,
+    raw: unknown,
+    fallback: z.output<Schema>,
+): z.output<Schema> {
+    const parsed = schema.safeParse(raw);
+
+    return parsed.success ? parsed.data : fallback;
+}
+
 export function mergeSettings(raw: unknown, fallbackTitle: string): DocumentSettings {
-    const parsed = settingsSchema.safeParse(raw);
-    const value = parsed.success ? (parsed.data ?? {}) : {};
-    const scale = value.scale ?? DEFAULT_SETTINGS.scale;
+    const value = asRecord(raw);
+    const grid = asRecord(value.grid);
+    const snapping = asRecord(value.snapping);
+    const titleBlock = asRecord(value.titleBlock);
+    const blank = emptyTitleBlock();
+    const defaults = DEFAULT_SETTINGS;
+    const scale = settingsField(positiveSchema, value.scale, defaults.scale);
 
     return {
-        unit: value.unit ?? DEFAULT_SETTINGS.unit,
+        unit: settingsField(unitSchema, value.unit, defaults.unit),
         scale,
-        grid: { ...DEFAULT_SETTINGS.grid, ...value.grid },
-        snapping: { ...DEFAULT_SETTINGS.snapping, ...value.snapping },
-        sheets: resolveSheets(isRecord(raw) ? raw.sheets : undefined, scale),
-        title: value.title ?? fallbackTitle,
-        titleBlock: { ...emptyTitleBlock(), ...value.titleBlock },
-        notes: value.notes ?? '',
+        grid: {
+            size: settingsField(positiveSchema, grid.size, defaults.grid.size),
+            subdivisions: settingsField(
+                subdivisionsSchema,
+                grid.subdivisions,
+                defaults.grid.subdivisions,
+            ),
+            visible: settingsField(flagSchema, grid.visible, defaults.grid.visible),
+            snap: settingsField(flagSchema, grid.snap, defaults.grid.snap),
+        },
+        snapping: {
+            enabled: settingsField(flagSchema, snapping.enabled, defaults.snapping.enabled),
+            endpoint: settingsField(flagSchema, snapping.endpoint, defaults.snapping.endpoint),
+            midpoint: settingsField(flagSchema, snapping.midpoint, defaults.snapping.midpoint),
+            intersection: settingsField(
+                flagSchema,
+                snapping.intersection,
+                defaults.snapping.intersection,
+            ),
+            axis: settingsField(flagSchema, snapping.axis, defaults.snapping.axis),
+        },
+        sheets: resolveSheets(value.sheets, scale),
+        title: settingsField(textSchema, value.title, fallbackTitle),
+        titleBlock: {
+            project: settingsField(textSchema, titleBlock.project, blank.project),
+            client: settingsField(textSchema, titleBlock.client, blank.client),
+            drawnBy: settingsField(textSchema, titleBlock.drawnBy, blank.drawnBy),
+            revision: settingsField(textSchema, titleBlock.revision, blank.revision),
+            date: settingsField(textSchema, titleBlock.date, blank.date),
+        },
+        notes: settingsField(textSchema, value.notes, defaults.notes),
     };
 }
 

@@ -65,6 +65,11 @@ determined by `layer.order`, not by array position.
 
 Grid presets offered in the UI: 50 mm, 100 mm, 250 mm, 500 mm, 1000 mm.
 
+Every one of these is optional to a reader, and read one at a time: a field it cannot make
+sense of falls back to its own default and costs the drawing nothing else, the same way one
+unreadable sheet does not cost it the other pages. `null` counts as not stated — no field here
+is nullable, and a drawing that says null is a drawing something has been unhelpful with.
+
 ### 2.1 Sheets
 
 A drawing is drawn at full size and printed at a ratio. A sheet is where that ratio is
@@ -476,6 +481,12 @@ raw JSON → version check → migration chain → zod validation → HashiraDoc
 - **Structurally invalid** — reject with the validation path. We never half-load a drawing.
 - **Individually broken elements** (a dangling `hostId`, an unknown `layerId`) — dropped,
   counted, and reported once in the UI. One corrupt element must not cost you the plan.
+- **An individually broken setting** — that field falls back to its default and nothing else
+  moves. Settings were read as a single object until 2026-09-04, and one unreadable field in
+  them reset the unit, the scale, the grid, the snapping, the title, the title block and the
+  notes together — then autosave wrote that back. The rule the elements and the sheets were
+  already following is the rule: a drawing that cannot state its title has not forgotten what
+  it is drawn at.
 
 Validation uses a zod schema derived from the same TypeScript types the editor uses, so the
 runtime contract and the compile-time contract cannot drift apart.

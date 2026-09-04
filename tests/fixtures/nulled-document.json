@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 10,
+  "id": "01jbq8zk4t0000000000000000",
+  "name": "Garage",
+  "settings": {
+    "unit": "cm",
+    "scale": 100,
+    "grid": {
+      "size": 250,
+      "subdivisions": 4,
+      "visible": false,
+      "snap": true
+    },
+    "snapping": {
+      "enabled": true,
+      "endpoint": true,
+      "midpoint": false,
+      "intersection": true,
+      "axis": true
+    },
+    "sheets": [
+      {
+        "id": "sheet_1",
+        "name": "Sheet 1",
+        "size": "A2",
+        "orientation": "portrait",
+        "scale": 100,
+        "centre": null
+      }
+    ],
+    "title": "Garage",
+    "titleBlock": {
+      "project": "Maltings, unit 4",
+      "client": null,
+      "drawnBy": null,
+      "revision": null,
+      "date": null
+    },
+    "notes": null
+  },
+  "layers": [
+    {
+      "id": "layer_architecture",
+      "name": "Architecture",
+      "color": "#1F2328",
+      "visible": true,
+      "locked": false,
+      "order": 0
+    },
+    {
+      "id": "layer_annotations",
+      "name": "Annotations",
+      "color": "#5F636B",
+      "visible": true,
+      "locked": false,
+      "order": 4
+    }
+  ],
+  "elements": [
+    {
+      "id": "el_wall",
+      "type": "wall",
+      "layerId": "layer_architecture",
+      "transform": { "x": 3000, "y": 0, "rotation": 0 },
+      "geometry": {
+        "a": { "x": -3000, "y": 0 },
+        "b": { "x": 3000, "y": 0 },
+        "thickness": 150
+      },
+      "style": { "fill": null, "hatch": "existing", "lineType": null },
+      "metadata": { "createdAt": "2026-03-14T09:00:00.000Z", "label": null }
+    },
+    {
+      "id": "el_label",
+      "type": "text",
+      "layerId": "layer_annotations",
+      "transform": { "x": 0, "y": 1200, "rotation": 0 },
+      "geometry": { "content": null, "fontSize": 200, "align": "left" },
+      "metadata": { "createdAt": "2026-03-14T09:01:00.000Z", "label": null }
+    }
+  ]
+}
