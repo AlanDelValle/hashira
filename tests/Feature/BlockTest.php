@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Domain\Blocks\Models\Block;
 use App\Domain\Documents\DocumentSchema;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Models\ProjectMember;
+use App\Domain\Sharing\ShareRole;
 use App\Models\User;
 
 /** @return array<string, mixed> */
@@ -174,6 +176,45 @@ it('does not hand out a block that belongs to somebody else’s library', functi
     $this->getJson("/api/projects/{$project->id}/document")
         ->assertOk()
         ->assertJsonCount(0, 'data.blocks');
+});
+
+/*
+ * A block belongs to a person, so "whose library" became a real question the moment a project
+ * could have more than one person in it. Anybody who may edit could have placed one, and a
+ * drawing that resolves differently depending on who opened it is the failure to avoid: the
+ * owner would find a dashed footprint where their collaborator had put a desk.
+ */
+it('hands out a block an editor placed from their own library', function (): void {
+    $owner = signedIn();
+    $editor = User::factory()->create();
+    $theirs = makeBlock($editor, 'Their desk');
+    $project = Project::factory()->for($owner, 'owner')->create(['name' => 'Office']);
+
+    $member = new ProjectMember;
+    $member->project_id = $project->id;
+    $member->user_id = (int) $editor->getKey();
+    $member->role = ShareRole::Editor;
+    $member->joined_at = now();
+    $member->save();
+
+    $data = DocumentSchema::blank('Office');
+    $data['elements'] = [[
+        'id' => 'el_desk',
+        'type' => 'asset',
+        'layerId' => 'layer_furniture',
+        'transform' => ['x' => 0, 'y' => 0, 'rotation' => 0],
+        'geometry' => ['assetId' => $theirs->id, 'width' => 1400, 'height' => 700, 'mirrored' => false],
+    ]];
+
+    $project->documents()->create([
+        'name' => 'Office',
+        'schema_version' => DocumentSchema::CURRENT_VERSION,
+        'data' => $data,
+    ]);
+
+    $this->getJson("/api/projects/{$project->id}/document")
+        ->assertOk()
+        ->assertJsonPath('data.blocks.0.name', 'Their desk');
 });
 
 it('requires signing in', function (): void {

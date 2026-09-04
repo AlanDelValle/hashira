@@ -232,7 +232,13 @@ whole against a revision, one history stack, and authorization from the authenti
 - [ ] **9.1 Realtime presence and cursors** (Laravel Reverb)
 - [ ] **9.2 Live co-editing** built on the existing command stream
 - [ ] **9.3 Comments and mentions** anchored to drawing coordinates
-- [ ] **9.4 Share-link roles: viewer, commenter, editor**, and the membership a link grants
+- [x] **9.4 Share-link roles: viewer, commenter, editor**, and the membership a link grants.
+      A link now carries what it hands out. `viewer` is the whole of anonymous access and
+      records nobody; the other two cannot be taken up without signing in, and accepting one
+      writes a `project_members` row. From that moment the token is finished: `view`,
+      `update`, `comment`, `share`, `delete` and `manageMembers` are answered by the policy
+      reading that row, so a second person is a fact in the database rather than a URL being
+      passed around
 - [x] **9.5 Version history browsing and comparison** (restore landed in Phase 4). A version is
       looked at without being restored, on a surface that is handed a document rather than
       reading one, and any two of them are compared: elements matched by id, and what differs
@@ -243,11 +249,11 @@ whole against a revision, one history stack, and authorization from the authenti
 The numbers are the order these were written in, not the order they are taken. 9.5 went first
 because comparing two versions is a question about two documents — no socket in it and no
 second person — so it could be built while the decisions the rest turns on were still open.
-The rest is taken **9.4 → 9.3 → 9.1 → 9.2**, by that same rule. 9.4 needs neither a socket nor
-a live edit, and it produces the thing the other three are all about: a second person with an
-account attached to a project. 9.3 needs that person and still needs no socket. 9.1 is the
-first item that needs Reverb and asks the least of it — a name and a position. 9.2 is last
-because it is the one that rewrites how a drawing is saved.
+The rest is taken **9.4 → 9.3 → 9.1 → 9.2**, by that same rule. 9.4 went next because it needs
+neither a socket nor a live edit, and it produces the thing the other three are all about: a
+second person with an account attached to a project. 9.3 needs that person and still needs no
+socket. 9.1 is the first item that needs Reverb and asks the least of it — a name and a
+position. 9.2 is last because it is the one that rewrites how a drawing is saved.
 
 What 9.5 settled, which the rest of the phase should not re-argue:
 
@@ -267,7 +273,36 @@ What 9.5 settled, which the rest of the phase should not re-argue:
 - **Both sides are migrated before they are compared.** A schema 5 snapshot is read as schema
   6, so a migration is never reported as somebody's work.
 
-Decided before the rest of the phase starts, so they are not re-argued halfway through:
+What 9.4 settled, on top of those:
+
+- **Two controls, because there are two acts.** Revoking a link closes the door: nobody else
+  comes in and the anonymous viewers lose the drawing. Removing a member shows somebody
+  already inside back out. Collapsing them into one would mean an owner cannot re-issue a link
+  without evicting the people they are working with — and re-issuing is how the expiry is
+  changed. A member can also leave, without asking, because nobody should be stuck in somebody
+  else's project for having once opened a link.
+- **Accepting a link never lowers a role.** An owner issuing a commenter link is inviting more
+  people, not demoting the editor who is halfway through a drawing.
+- **A denial says which of the two things it is.** No access at all is `404`, so a project id
+  reveals nothing. Access, but not for this, is `403` — telling a member that the drawing on
+  their screen does not exist is a lie they can see through.
+- **A block belongs to a person, so a drawing resolves two libraries.** `ReferencedBlocks`
+  looks the ids up against the owner and everybody with an editor's membership: anybody who
+  could have placed one. Narrower and the owner opens their own plan to find a dashed
+  footprint where a collaborator put a desk.
+- **A duplicate belongs to whoever asked for it.** It used to be filed under the original's
+  owner, which was the same person until this sub-phase and silently wrong afterwards. It is
+  an editor's privilege now, not a viewer's: taking a copy of somebody's drawing into your own
+  account is a bigger thing than looking at it.
+- **The commenter role is not offered in the share dialog yet.** It exists in the column, the
+  enum, the policy and the tests, and the picker gets it in 9.3 — when there is something to
+  comment on. A picker that promised it today would be a picture of a feature rather than the
+  feature, which is the mistake rule 10 exists to prevent.
+- **Two editors are possible now and not yet pleasant.** The drawing is still saved whole
+  against a revision, so the second person to save gets the conflict `autosave` already
+  reports. That is honest and it is 9.2's job, not this one's.
+
+Decided before the rest of the phase started, so they are not re-argued halfway through:
 
 - **Comments get their own table, not `documents.data`.** Putting them in the drawing would
   drag them into undo, into every export, into the share payload and into the version diff —

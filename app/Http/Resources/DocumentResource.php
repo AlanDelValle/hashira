@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Domain\Blocks\ReferencedBlocks;
 use App\Domain\Documents\Models\Document;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,9 @@ final class DocumentResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        /** @var User|null $user */
+        $user = $request->user();
+
         return [
             'id' => $this->id,
             'projectId' => $this->project_id,
@@ -31,8 +35,16 @@ final class DocumentResource extends JsonResource
             // The blocks this drawing refers to, since it stores their ids and not their
             // geometry. See App\Domain\Blocks\ReferencedBlocks.
             'blocks' => BlockResource::collection(
-                ReferencedBlocks::of($this->data, (int) $this->project->user_id),
+                ReferencedBlocks::of($this->data, $this->project),
             ),
+            /*
+             * What the reader holds in the project this drawing belongs to. The editor asks
+             * before it opens: a member who may look but not change is told so, rather than
+             * handed a full editor whose every save is refused.
+             */
+            'role' => $user === null ? null : ($this->project->isOwnedBy($user)
+                ? 'owner'
+                : $this->project->memberRole($user)?->value),
             'updatedAt' => $this->updated_at->toIso8601String(),
         ];
     }

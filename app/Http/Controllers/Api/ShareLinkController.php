@@ -43,6 +43,7 @@ final class ShareLinkController extends Controller
             project: $project,
             issuer: $user,
             expiresAt: is_string($expiresAt) ? new \DateTimeImmutable($expiresAt) : null,
+            role: $request->role(),
         );
 
         return ShareLinkResource::make($link)

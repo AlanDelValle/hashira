@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Blocks;
 
 use App\Domain\Blocks\Models\Block;
+use App\Domain\Projects\Models\Project;
+use App\Domain\Sharing\ShareRole;
 use Illuminate\Support\Collection;
 
 /**
@@ -15,9 +17,13 @@ use Illuminate\Support\Collection;
  * price is that a reader has to be able to resolve the id, and a share link is read by someone
  * who has no library of their own. So the drawing travels with the definitions it refers to.
  *
- * Only the owner's blocks are ever looked up. An id belonging to somebody else is left
- * unresolved and the editor draws its footprint as a dashed rectangle, which is what it does
- * for any block it does not know.
+ * A block belongs to a person, so "whose library" is a real question once a project has more
+ * than one person in it. The answer is everybody who could have placed one: the owner, and
+ * anybody with an editor's membership. Narrower than that and a drawing would look different
+ * depending on who opened it — the owner seeing a dashed footprint where a collaborator had
+ * placed a chair. An id belonging to nobody here is still left unresolved, and the editor
+ * draws its footprint as a dashed rectangle, which is what it does for any block it does not
+ * know.
  */
 final class ReferencedBlocks
 {
@@ -25,7 +31,7 @@ final class ReferencedBlocks
      * @param  array<string, mixed>  $drawing
      * @return Collection<int, Block>
      */
-    public static function of(array $drawing, int $ownerId): Collection
+    public static function of(array $drawing, Project $project): Collection
     {
         $ids = self::assetIds($drawing);
 
@@ -35,10 +41,23 @@ final class ReferencedBlocks
         }
 
         return Block::query()
-            ->where('user_id', $ownerId)
+            ->whereIn('user_id', self::libraries($project))
             ->whereIn('id', $ids)
             ->orderBy('name')
             ->get();
+    }
+
+    /** @return list<int> */
+    private static function libraries(Project $project): array
+    {
+        /** @var list<int> $editors */
+        $editors = $project->members()
+            ->where('role', ShareRole::Editor->value)
+            ->pluck('user_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return array_values(array_unique([(int) $project->user_id, ...$editors]));
     }
 
     /**

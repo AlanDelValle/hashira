@@ -13,6 +13,8 @@ interface ProjectsState {
     rename: (id: string, name: string) => Promise<void>;
     duplicate: (id: string) => Promise<void>;
     remove: (id: string) => Promise<void>;
+    /** Show yourself out of a project somebody else owns. */
+    leave: (id: string, membershipId: string) => Promise<void>;
 }
 
 /**
@@ -76,5 +78,10 @@ export function useProjects(): ProjectsState {
         setProjects((current) => current.filter((project) => project.id !== id));
     }, []);
 
-    return { projects, loading, error, reload, create, rename, duplicate, remove };
+    const leave = useCallback(async (id: string, membershipId: string) => {
+        await api.delete(`/api/projects/${id}/members/${membershipId}`);
+        setProjects((current) => current.filter((project) => project.id !== id));
+    }, []);
+
+    return { projects, loading, error, reload, create, rename, duplicate, remove, leave };
 }

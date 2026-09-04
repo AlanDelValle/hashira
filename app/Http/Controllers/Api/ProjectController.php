@@ -11,6 +11,7 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -24,8 +25,20 @@ final class ProjectController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $projects = $user->projects()
-            ->with(['document', 'activeShareLink'])
+        /*
+         * Everything this person can reach: what they own, and what a share link let them
+         * into. `members` is eager loaded because the resource asks each project what role
+         * the reader holds in it, and a query per card is how a list gets slow quietly.
+         */
+        $projects = Project::query()
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('user_id', $user->getKey())
+                    ->orWhereHas(
+                        'members',
+                        fn (Builder $member) => $member->where('user_id', $user->getKey()),
+                    );
+            })
+            ->with(['document', 'activeShareLink', 'members', 'owner'])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -52,7 +65,7 @@ final class ProjectController extends Controller
     {
         Gate::authorize('view', $project);
 
-        return ProjectResource::make($project->load(['document', 'activeShareLink']));
+        return ProjectResource::make($project->load(['document', 'activeShareLink', 'members', 'owner']));
     }
 
     public function update(UpdateProjectRequest $request, Project $project): ProjectResource
@@ -61,7 +74,7 @@ final class ProjectController extends Controller
 
         $project->update($request->validated());
 
-        return ProjectResource::make($project->load(['document', 'activeShareLink']));
+        return ProjectResource::make($project->load(['document', 'activeShareLink', 'members', 'owner']));
     }
 
     public function destroy(Project $project): JsonResponse

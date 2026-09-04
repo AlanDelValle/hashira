@@ -36,7 +36,10 @@ These exist because breaking them is what turns an editor into an unmaintainable
 5. **Interaction state is not React state.** Drags, rubber bands and snap previews live in a
    plain object read by the render loop. A drag must cause zero React renders.
 6. **Authorization comes from a policy against the authenticated user**, never from request
-   input.
+   input. A share token is the one exception and it is not really one: it is read once, by
+   `AcceptShareLink`, which writes a membership row — and from then on the policy answers
+   about the account, not the URL. A link that grants more than viewing therefore cannot be
+   taken up anonymously.
 7. **The document format is versioned.** Changing its shape requires a `schemaVersion` bump,
    a migration and a fixture test — see [`docs/document-format.md`](docs/document-format.md).
    A new element type counts: it looks additive and is not, because a reader that predates the

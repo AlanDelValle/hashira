@@ -6,6 +6,16 @@ export interface AuthenticatedUser {
     email: string;
 }
 
+/**
+ * What a share link offers. `viewer` is the only one an anonymous visitor can take up;
+ * the other two mean signing in, which is what keeps every write authorized against an
+ * account rather than against a URL.
+ */
+export type ShareRole = 'viewer' | 'commenter' | 'editor';
+
+/** What somebody holds in a project. Viewing is never a standing — it is what a link does. */
+export type ProjectRole = 'owner' | 'commenter' | 'editor';
+
 export interface ProjectSummary {
     id: string;
     name: string;
@@ -14,6 +24,21 @@ export interface ProjectSummary {
     updatedAt: string;
     documentId?: string | null;
     isShared?: boolean;
+    /** What the person reading this holds here. */
+    role: ProjectRole | null;
+    /** Only present on somebody else's project. */
+    ownerName?: string;
+    /** Their own membership row — what they delete in order to leave. */
+    membershipId?: string;
+}
+
+/** Somebody who was let into a project, as their owner sees them. */
+export interface ProjectMember {
+    id: string;
+    name: string;
+    email: string;
+    role: Exclude<ProjectRole, 'owner'>;
+    joinedAt: string;
 }
 
 /**
@@ -44,6 +69,8 @@ export interface DocumentPayload {
     drawing: unknown;
     /** The blocks this drawing refers to; it stores their ids, never their geometry. */
     blocks: BlockPayload[];
+    /** What the reader may do with it. The editor asks before it opens. */
+    role: ProjectRole | null;
     updatedAt: string;
 }
 
@@ -52,13 +79,15 @@ export interface SharedDocumentPayload {
     schemaVersion: number;
     drawing: unknown;
     blocks: BlockPayload[];
+    /** What this link offers, which is not the same as what the visitor currently has. */
+    role: ShareRole;
     updatedAt: string;
 }
 
 export interface ShareLink {
     id: string;
     url: string;
-    role: 'viewer';
+    role: ShareRole;
     expiresAt: string | null;
     lastViewedAt: string | null;
     viewCount: number;

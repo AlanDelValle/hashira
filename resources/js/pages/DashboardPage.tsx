@@ -17,7 +17,8 @@ type Pending = { kind: 'create' } | { kind: 'rename'; project: ProjectSummary } 
 
 export function DashboardPage() {
     const { user, logout } = useAuth();
-    const { projects, loading, error, reload, create, rename, duplicate, remove } = useProjects();
+    const { projects, loading, error, reload, create, rename, duplicate, remove, leave } =
+        useProjects();
     const navigate = useNavigate();
 
     const [pending, setPending] = useState<Pending>(null);
@@ -140,7 +141,13 @@ export function DashboardPage() {
                                         </span>
                                         <span className="text-ink-subtle mt-0.5 block text-xs">
                                             Updated {formatRelativeTime(project.updatedAt)}
-                                            {project.isShared === true && ' · Shared'}
+                                            {project.role === 'owner'
+                                                ? project.isShared === true && ' · Shared'
+                                                : ` · ${project.ownerName ?? 'Somebody else'}’s, ${
+                                                      project.role === 'editor'
+                                                          ? 'you can edit'
+                                                          : 'you can comment'
+                                                  }`}
                                         </span>
                                     </Link>
 
@@ -154,19 +161,43 @@ export function DashboardPage() {
                                             </button>
                                         }
                                     >
-                                        <MenuItem onSelect={() => openRename(project)}>
-                                            Rename
-                                        </MenuItem>
-                                        <MenuItem onSelect={() => void duplicate(project.id)}>
-                                            Duplicate
-                                        </MenuItem>
+                                        {project.role === 'owner' && (
+                                            <MenuItem onSelect={() => openRename(project)}>
+                                                Rename
+                                            </MenuItem>
+                                        )}
+
+                                        {project.role !== 'commenter' && (
+                                            <MenuItem onSelect={() => void duplicate(project.id)}>
+                                                Duplicate
+                                            </MenuItem>
+                                        )}
+
                                         <MenuSeparator />
-                                        <MenuItem
-                                            destructive
-                                            onSelect={() => setConfirming(project)}
-                                        >
-                                            Delete
-                                        </MenuItem>
+
+                                        {project.role === 'owner' ? (
+                                            <MenuItem
+                                                destructive
+                                                onSelect={() => setConfirming(project)}
+                                            >
+                                                Delete
+                                            </MenuItem>
+                                        ) : (
+                                            /*
+                                             * Leaving, not deleting. Removing yourself from
+                                             * somebody else's project takes nothing away from
+                                             * them, so it does not ask twice.
+                                             */
+                                            <MenuItem
+                                                destructive
+                                                onSelect={() =>
+                                                    project.membershipId !== undefined &&
+                                                    void leave(project.id, project.membershipId)
+                                                }
+                                            >
+                                                Leave
+                                            </MenuItem>
+                                        )}
                                     </Menu>
                                 </li>
                             ))}

@@ -15,6 +15,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * It answers 404 for unknown, revoked and expired tokens alike, so probing cannot tell the
  * three apart, and it returns SharedDocumentResource — a shape that has no project, owner or
  * identifier in it at all.
+ *
+ * It serves the drawing read-only whatever role the link carries, including to somebody who
+ * is signed in. A link that offers more is taken up deliberately, through the endpoint that
+ * writes a membership row; nothing here changes anything.
  */
 final class SharedDocumentController extends Controller
 {
@@ -34,6 +38,6 @@ final class SharedDocumentController extends Controller
 
         $link->increment('view_count', 1, ['last_viewed_at' => now()]);
 
-        return SharedDocumentResource::make($document);
+        return new SharedDocumentResource($document, $link->role);
     }
 }

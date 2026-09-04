@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Models\ProjectMember;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -36,5 +37,17 @@ class User extends Authenticatable
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /**
+     * Projects somebody else owns that this person was let into. Separate from `projects`
+     * rather than folded into it, because owning and being admitted are different standings
+     * and the interface says which one a card is.
+     *
+     * @return HasMany<ProjectMember, $this>
+     */
+    public function projectMemberships(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
     }
 }

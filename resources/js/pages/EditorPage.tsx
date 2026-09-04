@@ -35,10 +35,20 @@ import { registerBlocks } from '@/projects/useBlocks';
 import { cn } from '@/lib/cn';
 import { formatChord } from '@/lib/keys';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import type { ProjectRole } from '@/types/api';
 import { Button } from '@/ui/Button';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Logo } from '@/ui/Logo';
 import { SkipLink } from '@/ui/SkipLink';
+
+/**
+ * Only an owner or an editor is handed a drawing they can change. Somebody who was let into a
+ * project to comment gets told so, rather than a full editor whose every save is refused —
+ * and their own surface arrives with the comments themselves.
+ */
+function canEdit(role: ProjectRole | null): boolean {
+    return role === 'owner' || role === 'editor';
+}
 
 export function EditorPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -78,7 +88,9 @@ export function EditorPage() {
         // right baseline: autosave must treat what just arrived as saved, not as an edit.
         const state = useDocumentStore.getState();
 
-        if (state.error === null) {
+        // No autosave for a drawing this person may not change: it would queue a save the
+        // policy is going to refuse, and report it as a conflict nobody can resolve.
+        if (state.error === null && canEdit(payload.role)) {
             autosave.start(projectId, payload.revision, state.document);
         }
 
@@ -140,6 +152,27 @@ export function EditorPage() {
         );
     }
 
+    if (!canEdit(payload.role)) {
+        return (
+            <div className="bg-canvas flex min-h-screen items-center justify-center px-6">
+                <div className="max-w-sm text-center">
+                    <p className="text-ink text-sm">
+                        You can look at this drawing, but not change it.
+                    </p>
+                    <p className="text-ink-muted mt-1.5 text-sm">
+                        Ask whoever owns it for a link that can edit, and open that.
+                    </p>
+                    <Link
+                        to="/projects"
+                        className="text-ink-muted mt-5 inline-block rounded-sm text-sm underline"
+                    >
+                        Back to projects
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     // The editor is a pointer-and-precision tool; a phone cannot give it a good home.
     if (!roomToDraw) {
         return (
@@ -167,7 +200,11 @@ export function EditorPage() {
             <div className="bg-canvas grid h-screen grid-rows-[3rem_1fr_1.75rem]">
                 <SkipLink to="sheet">Skip to the drawing</SkipLink>
 
-                <EditorHeader name={payload.name} projectId={projectId ?? ''} />
+                <EditorHeader
+                    name={payload.name}
+                    projectId={projectId ?? ''}
+                    owned={payload.role === 'owner'}
+                />
 
                 <div className="flex overflow-hidden">
                     <Toolbar />
@@ -195,7 +232,16 @@ export function EditorPage() {
     );
 }
 
-function EditorHeader({ name, projectId }: { name: string; projectId: string }) {
+function EditorHeader({
+    name,
+    projectId,
+    owned,
+}: {
+    name: string;
+    projectId: string;
+    /** Sharing is the owner's alone, so an editor who was let in is not offered it. */
+    owned: boolean;
+}) {
     const { canUndo, canRedo, undoLabel, redoLabel } = useHistory();
     const [versionsOpen, setVersionsOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
@@ -259,9 +305,11 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
 
                 <ExportDialog />
 
-                <HeaderButton label="Share" onClick={() => setShareOpen(true)}>
-                    <Share2 className="size-3.5" aria-hidden />
-                </HeaderButton>
+                {owned && (
+                    <HeaderButton label="Share" onClick={() => setShareOpen(true)}>
+                        <Share2 className="size-3.5" aria-hidden />
+                    </HeaderButton>
+                )}
             </div>
 
             <VersionsDialog
@@ -270,7 +318,9 @@ function EditorHeader({ name, projectId }: { name: string; projectId: string }) 
                 onOpenChange={setVersionsOpen}
             />
 
-            <ShareDialog projectId={projectId} open={shareOpen} onOpenChange={setShareOpen} />
+            {owned && (
+                <ShareDialog projectId={projectId} open={shareOpen} onOpenChange={setShareOpen} />
+            )}
 
             <DxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} />
 

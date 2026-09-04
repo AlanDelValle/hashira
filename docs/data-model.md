@@ -48,7 +48,7 @@ share_links
   id                ulid pk
   project_id        ulid fk → projects, cascade delete
   token             char(43) unique          -- 32 random bytes, base64url
-  role              varchar(16)              -- 'viewer' today; 'commenter' | 'editor' later
+  role              varchar(16)              -- 'viewer' | 'commenter' | 'editor'
   expires_at        timestamptz null
   revoked_at        timestamptz null
   last_viewed_at    timestamptz null
@@ -56,6 +56,17 @@ share_links
   created_by        bigint fk → users, null on delete
   timestamps
   unique (token)
+
+project_members
+  id                ulid pk
+  project_id        ulid fk → projects, cascade delete
+  user_id           bigint fk → users, cascade delete
+  role              varchar(16)              -- 'commenter' | 'editor'; viewing is not recorded
+  share_link_id     ulid fk → share_links, null on delete   -- which link let them in
+  joined_at         timestamptz
+  timestamps
+  unique (project_id, user_id)
+  index (user_id)
 
 underlays
   id                ulid pk
@@ -92,6 +103,14 @@ Notes on the shape:
   against a stale revision gets `409 Conflict` rather than clobbering another tab.
 - **Share tokens are 32 bytes from a CSPRNG**, never derived from an id. Revocation is a
   timestamp, not a delete, so a leaked link can be audited after the fact.
+- **A link's role decides whether it can be taken up at all.** `viewer` is the whole of
+  anonymous access and records nobody. `commenter` and `editor` cannot be used without
+  signing in, and accepting one writes a `project_members` row — after which the token is
+  never consulted again and every answer comes from the policy reading that row.
+- **A membership outlives the link that wrote it.** `share_link_id` is kept for the audit and
+  nulled rather than cascaded, because issuing a fresh link revokes the previous one and must
+  not evict the people already working. Closing the door and showing somebody out are two
+  different acts, and they have two different controls.
 - **An underlay belongs to a project, not to a person.** A survey is imported to draw one
   particular building on top of. Deleting the project deletes the pictures as well as the
   rows: a foreign key cascade has never deleted a file.
@@ -182,27 +201,45 @@ GET    /api/projects/{project}/versions/{version}
 
 ```
 GET    /api/projects/{project}/share          the active link, if any
-POST   /api/projects/{project}/share          { expiresAt? } issues a token, revoking prior ones
+POST   /api/projects/{project}/share          { expiresAt?, role? } issues a token, revoking prior ones
 DELETE /api/projects/{project}/share          revokes
+
+POST   /api/share/{token}/accept              takes up a commenter or editor link; answers with
+                                              the project. Behind `auth`, unlike the endpoint
+                                              that serves the drawing
+GET    /api/projects/{project}/members        who has joined — owner only
+DELETE /api/projects/{project}/members/{member}
+                                              removes one. The owner may remove anybody; anybody
+                                              may remove themselves
 ```
+
+`accept` answers `404` for a viewer link exactly as it does for an unknown one: a caller
+learns nothing by asking, and a link that offers only viewing has nothing to take up.
 
 ### Public
 
 ```
 GET    /share/{token}                         the read-only viewer page
-GET    /api/share/{token}                     { name, schemaVersion, drawing, blocks } — no more
+GET    /api/share/{token}                     { name, schemaVersion, drawing, blocks, role } — no more
 ```
 
 The public endpoint is deliberately a different controller with its own resource. It never
 touches the project or user models in its response, is rate limited, and returns `404` —
 not `403` — for revoked or expired tokens, so a probe cannot distinguish "wrong token" from
-"revoked token".
+"revoked token". It serves the drawing read-only whatever role the link carries, including to
+somebody who is signed in — `role` is there so the page can offer to take the link up, not
+because the link is doing anything more. The single field it says about the project is one
+the reader is already holding in their address bar.
 
 ### Conventions
 
 - **Form Requests** for validation, **API Resources** for every response shape.
-- **Policies** for `view`, `update`, `delete`, `share` on `Project` and `delete` on `Block`;
-  documents and versions authorize through their project.
+- **Policies** for `view`, `update`, `comment`, `delete`, `share` and `manageMembers` on
+  `Project` and `delete` on `Block`; documents, versions, underlays and members all authorize
+  through their project. There are two ways to pass: owning the project, or holding a
+  membership row in it. A caller with neither is told `404`, so a project id reveals nothing;
+  a member who simply may not do this particular thing is told `403`, because pretending the
+  drawing on their screen does not exist would be a lie they can see through.
 - Errors are Laravel's standard problem shapes: `422` validation with field paths, `403`
   authorization, `404` for anything the caller may not know exists, `409` for stale saves.
 - Rate limits: authentication endpoints per email plus IP; the public share endpoint per IP.

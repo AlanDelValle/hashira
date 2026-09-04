@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
+use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\SharedDocumentController;
+use App\Http\Controllers\Api\ShareLinkAcceptanceController;
 use App\Http\Controllers\Api\ShareLinkController;
 use App\Http\Controllers\Api\UnderlayController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -90,6 +92,20 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.versions.store');
     Route::get('projects/{project}/versions/{version}', [DocumentVersionController::class, 'show'])
         ->name('projects.versions.show');
+
+    /*
+     * Taking up a link that offers commenting or editing. Behind `auth` while the endpoint
+     * that serves the drawing is not, because this is the step that turns a token into a
+     * person — and after it, the token is never consulted again.
+     */
+    Route::post('share/{token}/accept', ShareLinkAcceptanceController::class)
+        ->middleware('throttle:30,1')
+        ->name('share.accept');
+
+    Route::get('projects/{project}/members', [ProjectMemberController::class, 'index'])
+        ->name('projects.members.index');
+    Route::delete('projects/{project}/members/{member}', [ProjectMemberController::class, 'destroy'])
+        ->name('projects.members.destroy');
 
     Route::get('projects/{project}/share', [ShareLinkController::class, 'show'])
         ->name('projects.share.show');

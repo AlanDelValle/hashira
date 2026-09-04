@@ -6,6 +6,7 @@ namespace App\Domain\Projects\Models;
 
 use App\Domain\Documents\Models\Document;
 use App\Domain\Sharing\Models\ShareLink;
+use App\Domain\Sharing\ShareRole;
 use App\Domain\Underlays\Models\Underlay;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
@@ -99,6 +100,46 @@ class Project extends Model
     public function underlays(): HasMany
     {
         return $this->hasMany(Underlay::class);
+    }
+
+    /**
+     * Everybody here who is not the owner. See ProjectMember: a row is written when somebody
+     * signed in accepts a link that carries a role.
+     *
+     * @return HasMany<ProjectMember, $this>
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return (int) $this->user_id === (int) $user->getKey();
+    }
+
+    /**
+     * What this person holds here, or null if they hold nothing. The owner is not a member of
+     * their own project and gets null too — ownership is answered by `isOwnedBy`, and keeping
+     * the two apart is what stops an owner's access depending on a row existing.
+     *
+     * Reads a loaded `members` relation when there is one, so listing projects does not turn
+     * into a query per card.
+     */
+    public function memberRole(User $user): ?ShareRole
+    {
+        return $this->membershipFor($user)?->role;
+    }
+
+    /**
+     * The row itself, which the interface needs in order to offer somebody the way out: a
+     * member leaves by deleting their own membership.
+     */
+    public function membershipFor(User $user): ?ProjectMember
+    {
+        return $this->relationLoaded('members')
+            ? $this->members->firstWhere('user_id', (int) $user->getKey())
+            : $this->members()->where('user_id', $user->getKey())->first();
     }
 
     /** @return HasMany<ShareLink, $this> */

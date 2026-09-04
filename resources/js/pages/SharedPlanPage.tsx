@@ -1,15 +1,18 @@
 import { Maximize2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { useAuth } from '@/auth/useAuth';
 import { formatScale } from '@/editor/model/units';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { useFrameOnce, zoomToDrawing } from '@/editor/react/framing';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { registerBlocks } from '@/projects/useBlocks';
+import { acceptShareLink } from '@/editor/persistence/sharing';
 import { useEditorStore } from '@/editor/store/editorStore';
 import { api, type Envelope } from '@/lib/api';
-import type { SharedDocumentPayload } from '@/types/api';
+import type { ShareRole, SharedDocumentPayload } from '@/types/api';
+import { Button } from '@/ui/Button';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
 import { Wordmark } from '@/ui/Logo';
 import { SkipLink } from '@/ui/SkipLink';
@@ -21,10 +24,15 @@ import { SkipLink } from '@/ui/SkipLink';
  * so a viewer gets a real drawing to inspect rather than a flat picture, while there is nothing
  * here that could change it. The endpoint behind this page returns the drawing and nothing
  * else: no project, no owner, no identifiers.
+ *
+ * That is true of every link, including one that offers editing. A link is read-only until it
+ * is deliberately taken up, and taking it up means signing in — which is what turns a token
+ * into a person the policy can answer about, instead of a URL that carries permission around.
  */
 export function SharedPlanPage() {
     const { token } = useParams<{ token: string }>();
     const [name, setName] = useState<string | null>(null);
+    const [role, setRole] = useState<ShareRole>('viewer');
     const [loading, setLoading] = useState(true);
 
     const load = useDocumentStore((state) => state.load);
@@ -50,6 +58,7 @@ export function SharedPlanPage() {
                 registerBlocks(response.data.blocks);
                 load(response.data.drawing);
                 setName(response.data.name);
+                setRole(response.data.role);
             })
             .catch(() => {
                 /* Unknown, revoked and expired links all land in the same empty state. */
@@ -103,6 +112,8 @@ export function SharedPlanPage() {
                     {formatScale(scale)} · read only
                 </span>
 
+                <TakeUpLink token={token ?? ''} role={role} />
+
                 <button
                     type="button"
                     title="Zoom to fit  ·  Shift 1"
@@ -123,6 +134,66 @@ export function SharedPlanPage() {
                     </p>
                 )}
             </main>
+        </div>
+    );
+}
+
+/**
+ * The offer a link makes, when it makes one.
+ *
+ * A viewer link makes none — it is already doing everything it can. The other two are shown
+ * as a deliberate step rather than taken automatically: joining somebody's project is not a
+ * thing to have happen to you because you followed a URL while signed in.
+ */
+function TakeUpLink({ token, role }: { token: string; role: ShareRole }) {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [busy, setBusy] = useState(false);
+    const [failed, setFailed] = useState(false);
+
+    if (role === 'viewer') {
+        return null;
+    }
+
+    const verb = role === 'editor' ? 'edit' : 'comment on';
+
+    if (user === null) {
+        return (
+            <Link
+                to="/login"
+                state={{ from: `/share/${token}` }}
+                className="text-ink-muted hover:text-ink rounded-sm text-[13px] underline"
+            >
+                Sign in to {verb} this drawing
+            </Link>
+        );
+    }
+
+    async function join() {
+        setBusy(true);
+        setFailed(false);
+
+        try {
+            const project = await acceptShareLink(token);
+
+            await navigate(`/projects/${project.id}`);
+        } catch {
+            setFailed(true);
+            setBusy(false);
+        }
+    }
+
+    return (
+        <div className="flex items-center gap-2">
+            {failed && (
+                <span role="alert" className="text-danger text-[13px]">
+                    Could not open it.
+                </span>
+            )}
+
+            <Button size="sm" variant="primary" busy={busy} onClick={() => void join()}>
+                {role === 'editor' ? 'Open in the editor' : 'Join to comment'}
+            </Button>
         </div>
     );
 }

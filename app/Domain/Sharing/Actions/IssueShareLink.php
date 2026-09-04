@@ -6,6 +6,7 @@ namespace App\Domain\Sharing\Actions;
 
 use App\Domain\Projects\Models\Project;
 use App\Domain\Sharing\Models\ShareLink;
+use App\Domain\Sharing\ShareRole;
 use App\Models\User;
 use DateTimeInterface;
 use Illuminate\Support\Carbon;
@@ -17,19 +18,27 @@ final class IssueShareLink
     private const TOKEN_BYTES = 32;
 
     /**
-     * Issue a read-only link, replacing any link the project already had.
+     * Issue a link at a role, replacing any link the project already had.
      *
      * Replacing rather than accumulating means "share" has one obvious meaning in the UI and
      * revoking is unambiguous: there is never a second live URL a user has forgotten about.
+     *
+     * Replacing does not evict anybody. A link that has been accepted has already written a
+     * membership row, and that row is what access is read from afterwards — so re-issuing a
+     * link changes who can still come in, never who is already here.
      */
-    public function handle(Project $project, User $issuer, ?DateTimeInterface $expiresAt = null): ShareLink
-    {
-        return DB::transaction(function () use ($project, $issuer, $expiresAt): ShareLink {
+    public function handle(
+        Project $project,
+        User $issuer,
+        ?DateTimeInterface $expiresAt = null,
+        ShareRole $role = ShareRole::Viewer,
+    ): ShareLink {
+        return DB::transaction(function () use ($project, $issuer, $expiresAt, $role): ShareLink {
             $project->shareLinks()->whereNull('revoked_at')->update(['revoked_at' => now()]);
 
             $link = new ShareLink;
             $link->token = self::token();
-            $link->role = ShareLink::ROLE_VIEWER;
+            $link->role = $role;
             $link->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
             $link->created_by = $issuer->getKey();
             $link->project()->associate($project);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Sharing\Models;
 
 use App\Domain\Projects\Models\Project;
+use App\Domain\Sharing\ShareRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * A capability URL granting read-only access to one project's drawing.
+ * A capability URL granting access to one project's drawing, at the role it carries.
  *
  * Nothing here is mass assignable: every field is set by an action, because a share link is
  * the one place where a stray attribute would hand out access.
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $project_id
  * @property string $token
- * @property string $role
+ * @property ShareRole $role
  * @property Carbon|null $expires_at
  * @property Carbon|null $revoked_at
  * @property Carbon|null $last_viewed_at
@@ -34,12 +35,11 @@ class ShareLink extends Model
 {
     use HasUlids;
 
-    public const ROLE_VIEWER = 'viewer';
-
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
+            'role' => ShareRole::class,
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
             'last_viewed_at' => 'datetime',
