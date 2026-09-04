@@ -70,6 +70,29 @@ export class HistoryStack {
         this.emit();
     }
 
+    /**
+     * Apply an edit that is not ours.
+     *
+     * Somebody else's change is still a command and still goes through the one door onto the
+     * document — rule 2 does not stop applying because the edit arrived over a socket. What it
+     * does not do is join our undo stack: undo means "take back what I did", and taking back
+     * somebody else's work because it happened to be last is the behaviour that decision was
+     * made to avoid.
+     *
+     * The redo stack is cleared for the same reason a local edit clears it. Whatever we had
+     * undone was a branch off a document that has since moved on, and redoing onto this one
+     * would put back a state that never existed.
+     */
+    apply(command: Command): void {
+        this.port.set(command.execute(this.port.get()));
+
+        this.redoStack = [];
+
+        // Nothing may coalesce into or across an edit that is not ours.
+        this.lastExecutedAt = 0;
+        this.emit();
+    }
+
     undo(): boolean {
         const command = this.undoStack.pop();
 

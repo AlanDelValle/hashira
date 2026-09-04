@@ -66,6 +66,11 @@ export interface DocumentPayload {
     name: string;
     schemaVersion: number;
     revision: number;
+    /**
+     * How far the edit log had got when this snapshot was written. A client asks for
+     * everything after it, so somebody opening the drawing mid-session is not quietly behind.
+     */
+    sequence: number;
     drawing: unknown;
     /** The blocks this drawing refers to; it stores their ids, never their geometry. */
     blocks: BlockPayload[];

@@ -393,11 +393,11 @@ history browsing and comparison** left in Phase 9.5. **Share-link roles and the 
 they grant** left in Phase 9.4: a project can now have a second person in it, with an account,
 a role and a way out. **Comments and mentions** left in Phase 9.3 — their own tables,
 anchored to a point in drawing millimetres, deliberately not in `documents.data`, with a
-surface of their own for somebody who may comment but not edit. **Presence** left in Phase 9.1: a socket, a channel
-per project, who is here and where their pointer is. What is still absent is a shared _edit_ —
-there is no operation log, so a drawing is still saved whole against a revision and the second
-person to save gets a conflict. Nothing tells you a mention happened yet either; that rides on
-the same socket and has not been built. Anything struck off here
+surface of their own for somebody who may comment but not edit. **Presence** left in Phase 9.1 and **live
+co-editing** in 9.2a: a socket, a channel per project, who is here, where their pointer is, and
+an edit made by one person arriving in everybody else's drawing. What is still absent is undo
+reaching the other person, and what the interface says when the connection drops. Nothing tells
+you a mention happened yet either; that rides on the same socket and has not been built. Anything struck off here
 belongs in the same commit as the feature that strikes it.
 
 ---

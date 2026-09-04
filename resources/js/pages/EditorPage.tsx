@@ -23,6 +23,7 @@ import { SaveStatusIndicator } from '@/editor/react/SaveStatusIndicator';
 import { ShareDialog } from '@/editor/react/ShareDialog';
 import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
+import { startCoEditing, stopCoEditing } from '@/editor/collaboration/coediting';
 import { autosave } from '@/editor/persistence/autosave';
 import { fetchPeople, fetchThreads } from '@/editor/persistence/comments';
 import { joinProject, leaveProject } from '@/editor/presence/presence';
@@ -124,6 +125,13 @@ export function EditorPage() {
         // policy is going to refuse, and report it as a conflict nobody can resolve.
         if (state.error === null && canEdit(payload.role)) {
             autosave.start(projectId, payload.revision, state.document);
+
+            /*
+             * And log what is drawn here, from the sequence this snapshot was written at.
+             * Anything after it happened while the drawing was in flight and is fetched
+             * rather than waited for.
+             */
+            startCoEditing(projectId, payload.sequence);
         }
 
         /*
@@ -136,6 +144,7 @@ export function EditorPage() {
 
         return () => {
             autosave.stop();
+            stopCoEditing();
             leaveProject();
             useCommentsStore.getState().clear();
         };

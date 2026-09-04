@@ -51,7 +51,34 @@ export const history = new HistoryStack({
     set: (document) => useDocumentStore.setState({ document }),
 });
 
-/** Run an edit. Every mutation in the application funnels through this one call. */
+/**
+ * Whoever wants to know what was just edited here.
+ *
+ * A listener rather than a direct call into the collaboration module, because that module
+ * already reads this one — `history` lives here — and two files importing each other is a
+ * circle that works until the day the bundler decides which half to evaluate first.
+ */
+let observer: ((command: Command) => void) | null = null;
+
+export function observeCommands(listener: (command: Command) => void): () => void {
+    observer = listener;
+
+    return () => {
+        if (observer === listener) {
+            observer = null;
+        }
+    };
+}
+
+/**
+ * Run an edit. Every mutation in the application funnels through this one call — which is why
+ * it is also the one place that knows an edit is worth telling anybody else about.
+ *
+ * Only edits made *here* come through here. Somebody else's arrives through `history.apply`,
+ * which deliberately does not come back out this way: an edit must not be logged twice, and a
+ * foreign edit is not ours to undo.
+ */
 export function runCommand(command: Command): void {
     history.execute(command);
+    observer?.(command);
 }

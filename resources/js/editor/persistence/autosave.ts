@@ -1,3 +1,4 @@
+import { isCoEditing } from '@/editor/collaboration/coediting';
 import type { HashiraDocument } from '@/editor/model/types';
 import { useDocumentStore } from '@/editor/store/documentStore';
 import { ApiError, api, type Envelope } from '@/lib/api';
@@ -14,9 +15,19 @@ import type { DocumentPayload } from '@/types/api';
  *   drawing continuously still gets saved rather than only when they pause.
  * - Only one request is ever in flight. Edits made during a save are saved after it, in one
  *   further request, rather than queueing a request per keystroke.
- * - A conflict is not an error to retry. If the drawing was saved somewhere else, retrying
- *   would overwrite that work; the only correct move is to stop and say so.
+ * - A conflict is not an error to retry — **unless the edits themselves are being logged**.
+ *   On its own, a save that lost a race would overwrite work this session never saw, and the
+ *   only correct move is to stop and say so. While co-editing, every edit has already reached
+ *   this drawing through the operation log, so the two copies agree and the only thing that
+ *   was stale is the number: take the current revision and write again. Nothing is lost either
+ *   way, which is the whole reason the log exists.
  */
+
+/**
+ * How many times a conflict may be reconciled before it is treated as one. A drawing that
+ * cannot win a race after this many tries is one where saying so beats trying for ever.
+ */
+const MAX_RECONCILE_ATTEMPTS = 5;
 
 /** How long a burst of edits is allowed to settle before a save goes out. */
 const DEBOUNCE_MS = 1_200;
@@ -67,11 +78,14 @@ export class AutosaveController {
     private retryAttempt = 0;
 
     private inFlight = false;
+    private reconcileAttempt = 0;
     private unsubscribe: (() => void) | null = null;
 
     constructor(
         private readonly gateway: DocumentGateway = httpGateway,
         private readonly now: () => number = () => Date.now(),
+        /** Whether edits are reaching this drawing through the log, and a conflict is recoverable. */
+        private readonly coEditing: () => boolean = isCoEditing,
     ) {}
 
     /** Begin watching a project's drawing, treating `document` as already saved. */
@@ -82,6 +96,7 @@ export class AutosaveController {
         this.revision = revision;
         this.synced = document;
         this.retryAttempt = 0;
+        this.reconcileAttempt = 0;
         this.setStatus({ kind: 'idle' });
 
         this.unsubscribe = useDocumentStore.subscribe((state, previous) => {
@@ -179,6 +194,7 @@ export class AutosaveController {
                 this.revision = revision;
                 this.synced = document;
                 this.retryAttempt = 0;
+                this.reconcileAttempt = 0;
                 this.setStatus({ kind: 'saved', at: this.now() });
 
                 // Work that arrived while the request was out goes in one further save,
@@ -195,6 +211,27 @@ export class AutosaveController {
 
     private onFailed(error: unknown): void {
         if (error instanceof ApiError && error.isConflict) {
+            const current = currentRevisionOf(error.payload);
+
+            /*
+             * Somebody else's snapshot landed first. While the edits are being logged, their
+             * work is already in the drawing this session is holding — it arrived as an
+             * operation — so nothing is overwritten by writing again from the number they
+             * left behind. Without the log, that same write would be a silent clobber.
+             */
+            if (
+                this.coEditing() &&
+                current !== null &&
+                this.reconcileAttempt < MAX_RECONCILE_ATTEMPTS
+            ) {
+                this.reconcileAttempt += 1;
+                this.revision = current;
+                this.setStatus({ kind: 'editing' });
+                this.send();
+
+                return;
+            }
+
             this.setStatus({
                 kind: 'conflict',
                 message: 'This drawing was saved somewhere else. Reload to see that version.',
@@ -202,6 +239,8 @@ export class AutosaveController {
 
             return;
         }
+
+        this.reconcileAttempt = 0;
 
         const message = error instanceof ApiError ? error.message : 'Could not reach the server.';
 
@@ -231,6 +270,19 @@ export class AutosaveController {
             listener();
         }
     }
+}
+
+/** The revision the server says is current, out of a 409's body. */
+function currentRevisionOf(payload: unknown): number | null {
+    if (typeof payload !== 'object' || payload === null) {
+        return null;
+    }
+
+    const { currentRevision } = payload as { currentRevision?: unknown };
+
+    return typeof currentRevision === 'number' && Number.isFinite(currentRevision)
+        ? currentRevision
+        : null;
 }
 
 export const autosave = new AutosaveController();

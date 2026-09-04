@@ -31,6 +31,12 @@ final class DocumentResource extends JsonResource
             'name' => $this->name,
             'schemaVersion' => $this->schema_version,
             'revision' => $this->revision,
+            /*
+             * How far the edit log had got when this snapshot was written. A client asks for
+             * everything after it, which closes the window where somebody opening the drawing
+             * mid-session is quietly behind.
+             */
+            'sequence' => $this->operation_sequence,
             'drawing' => $this->data,
             // The blocks this drawing refers to, since it stores their ids and not their
             // geometry. See App\Domain\Blocks\ReferencedBlocks.

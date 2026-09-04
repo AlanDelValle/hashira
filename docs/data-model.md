@@ -28,10 +28,21 @@ documents
   project_id        ulid fk → projects, cascade delete
   name              varchar(120)
   schema_version    smallint
-  revision          integer default 0        -- optimistic concurrency
+  revision          integer default 0        -- optimistic concurrency, for the snapshot
+  operation_sequence bigint default 0        -- how far the edit log has got
   data              jsonb                    -- the drawing, see document-format.md
   timestamps
   index (project_id)
+
+document_operations
+  id                ulid pk
+  document_id       ulid fk → documents, cascade delete
+  sequence          bigint                   -- dense and monotonic per document
+  user_id           bigint fk → users, null on delete
+  origin            varchar(40)              -- which browser sent it, so it can skip its echo
+  envelope          jsonb                    -- opaque here; see commands/envelope.ts
+  created_at        timestamptz
+  unique (document_id, sequence)
 
 document_versions
   id                ulid pk
@@ -129,8 +140,23 @@ Notes on the shape:
 - **`documents.data` is JSONB, not a table of elements.** The reasoning is in
   [architecture.md §2.8](architecture.md). JSONB keeps the door open: `data -> 'elements'`
   is queryable and indexable if a future feature needs it.
-- **`revision` is the concurrency guard.** Every write increments it; a client that saves
-  against a stale revision gets `409 Conflict` rather than clobbering another tab.
+- **`revision` is the concurrency guard for the snapshot.** Every write increments it; a
+  client that saves against a stale revision gets `409 Conflict` rather than clobbering
+  another tab. While the edits are being logged that conflict is recoverable — the other
+  copy's work has already arrived as an operation, so the only stale thing was the number.
+- **`operation_sequence` is not `revision`, and the two are different questions.** One guards
+  a whole-document save: one writer replacing the snapshot. The other orders the edits that
+  make up the snapshot. It is a counter on the row rather than `max(sequence)` over the log,
+  because two edits arriving together must not be handed the same number, and a read-then-write
+  is a race with a name.
+- **The log is not what a version comparison reads.** 9.5 settled that a comparison is computed
+  from two whole documents; two snapshots a month apart have no operations between them left to
+  replay. This log is for ordering live edits and for catching up somebody who opened the
+  drawing a minute late.
+- **`envelope` is opaque to the server.** It orders and stores; what a command _means_ is
+  settled by `commands/envelope.ts`, which parses one against the document's own schemas at the
+  far end. A second implementation of that in PHP is exactly what building the envelope once
+  was meant to avoid.
 - **Share tokens are 32 bytes from a CSPRNG**, never derived from an id. Revocation is a
   timestamp, not a delete, so a leaked link can be audited after the fact.
 - **A link's role decides whether it can be taken up at all.** `viewer` is the whole of
@@ -267,6 +293,22 @@ waits for the socket in 9.1.
 
 Replying to a resolved thread is allowed on purpose: "that is not quite right" is exactly what
 somebody needs to say about a point that was closed too early.
+
+### Edits
+
+```
+GET    /api/projects/{project}/operations?after=N   everything the log has after N
+POST   /api/projects/{project}/operations           { envelope, origin } → its number
+```
+
+**Posting is the write; the broadcast that follows is only delivery.** An edit is in the log,
+with its number, before anybody else hears about it — so a socket that is down turns
+co-editing into ordinary editing rather than into losing work. Reading is how somebody who
+opened the drawing a minute late catches up: the snapshot they loaded carries the sequence it
+was written at, and everything after it is here.
+
+Writing needs `update`; reading needs only `view`, so a commenter can follow along without
+being able to add to it.
 
 ### Versions
 

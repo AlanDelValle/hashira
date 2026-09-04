@@ -60,12 +60,32 @@ function changed(): void {
     }
 }
 
-interface Channel {
+export interface Channel {
+    listen: (event: string, handler: (payload: unknown) => void) => Channel;
     here: (handler: (members: PresenceMember[]) => void) => Channel;
     joining: (handler: (member: PresenceMember) => void) => Channel;
     leaving: (handler: (member: PresenceMember) => void) => Channel;
     listenForWhisper: (event: string, handler: (payload: unknown) => void) => Channel;
     whisper: (event: string, payload: unknown) => Channel;
+}
+
+/*
+ * What else wants to hear from this channel. Presence owns it because presence is what a
+ * channel *is* — a list of who is on it — and co-editing asks to be introduced rather than
+ * opening a second connection to the same room.
+ */
+const guests = new Set<(channel: Channel) => void>();
+
+export function onProjectChannel(guest: (channel: Channel) => void): () => void {
+    guests.add(guest);
+
+    // Introduced now if the channel is already open, so the order of two `useEffect`s in two
+    // components is not something either has to think about.
+    if (channel !== null) {
+        guest(channel);
+    }
+
+    return () => guests.delete(guest);
 }
 
 let channel: Channel | null = null;
@@ -112,6 +132,10 @@ export function joinProject(projectId: string, me: PresenceMember): void {
             changed();
         })
         .listenForWhisper('cursor', (payload) => receive(payload));
+
+    for (const guest of guests) {
+        guest(joined);
+    }
 
     timer = setInterval(whisperPointer, WHISPER_INTERVAL_MS);
 }

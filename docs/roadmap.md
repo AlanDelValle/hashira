@@ -234,7 +234,12 @@ whole against a revision, one history stack, and authorization from the authenti
       from the channel; where their pointer is is whispered browser to browser and never
       touches PHP. Painted on both surfaces — the editor and the review page — because a
       reviewer is exactly the person you want to see looking at your drawing
-- [ ] **9.2 Live co-editing** built on the existing command stream
+- [~] **9.2 Live co-editing** built on the existing command stream. Split in two. **9.2a is
+  done:** an edit is posted to a log that numbers it, sent on to everybody else on the
+  project's channel, and applied there without joining their undo stack — and somebody who
+  opens the drawing mid-session asks for everything after the sequence their snapshot was
+  written at. **9.2b** is the rest: undo reaching the other person, and what the interface
+  says when the connection drops and this falls behind
 - [~] **9.3 Comments and mentions** anchored to drawing coordinates. Split in two, because
   it is larger than 9.4 was. **9.3a is done:** a pin dropped at a point in drawing
   millimetres, the conversation under it, replies, resolving and reopening — in the
@@ -345,6 +350,34 @@ What 9.3a settled:
 - **Resolved threads can still be answered.** "That is not quite right" is what somebody needs
   to say about a point closed too early, and a conversation that cannot be reopened by talking
   is one people work around by starting a second pin at the same place.
+
+What 9.2a settled:
+
+- **The post is the write; the broadcast is delivery.** An edit is in the log with its number
+  before anybody else hears about it, so a socket that is down turns co-editing into ordinary
+  editing rather than into losing work. That is the difference between an edit and a cursor,
+  which has nowhere else to live.
+- **The server orders and stores; it does not understand.** An envelope goes into the log as
+  it arrived and comes back out to be parsed by `commands/envelope.ts` against the document's
+  own schemas. A second implementation of the command layer in PHP is exactly what building
+  the envelope once, ahead of the phase that needed it, was meant to avoid.
+- **The number comes from a counter on the document, not from counting the log.** Two edits
+  arriving together must not be handed the same sequence, and `max(sequence) + 1` is a
+  read-then-write with a race in the middle.
+- **A foreign edit never joins your undo stack.** It is still a command and still goes through
+  the one door onto the document — rule 2 does not stop applying because the edit arrived over
+  a socket — but undo means "take back what I did", which is the decision this phase parked
+  and settled before any of it was built.
+- **The counter advances on delivery, never on the reply to our own post.** The reply to
+  number 5 can beat the broadcast of number 4, and 4 would then arrive looking like something
+  already seen. Found while writing it, not while running it.
+- **A conflict is recoverable while the edits are logged, and only then.** Everybody's work
+  reaches the drawing as an operation, so the two copies agree and the only stale thing is the
+  number: take the current revision and write again, up to a few tries. Without the log that
+  same write is a silent clobber, which is why the sticky conflict stays exactly as it was.
+- **Catching up is part of the loop, not polish.** The snapshot carries the sequence it was
+  written at and the client asks for everything after it. Without that there is a window where
+  somebody who opened the plan mid-session is quietly behind — worse than being visibly behind.
 
 What 9.1 settled:
 

@@ -219,4 +219,53 @@ describe('history', () => {
         history.undo();
         expect(calls).toBe(1);
     });
+
+    /*
+     * Somebody else's edit. It changes the drawing and it is still a command, but it is not
+     * ours to take back — undo means "take back what I did", and popping a foreign edit off
+     * because it happened to be last is the behaviour that decision was made to avoid.
+     */
+    describe('an edit that is not ours', () => {
+        it('changes the drawing without joining the undo stack', () => {
+            const mine = createLine(point(0, 0), point(1000, 0), LAYER);
+            const theirs = createLine(point(0, 500), point(1000, 500), LAYER);
+
+            history.execute(addElements([mine]));
+            history.apply(addElements([theirs]));
+
+            expect(document.elements).toHaveLength(2);
+
+            history.undo();
+
+            // Ours came back out; theirs stayed, and there is nothing left to undo.
+            expect(document.elements.map((element) => element.id)).toEqual([theirs.id]);
+            expect(history.getState().canUndo).toBe(false);
+        });
+
+        it('closes off a redo, because the drawing it branched from has moved on', () => {
+            history.execute(addElements([createLine(point(0, 0), point(1000, 0), LAYER)]));
+            history.undo();
+
+            expect(history.getState().canRedo).toBe(true);
+
+            history.apply(addElements([createLine(point(0, 500), point(1000, 500), LAYER)]));
+
+            expect(history.getState().canRedo).toBe(false);
+        });
+
+        it('is never merged into an edit of ours that came just before it', () => {
+            const first = createLine(point(0, 0), point(1000, 0), LAYER);
+            const theirs = createLine(point(0, 500), point(1000, 500), LAYER);
+            const second = createLine(point(0, 900), point(1000, 900), LAYER);
+
+            history.execute(addElements([first]));
+            history.apply(addElements([theirs]));
+            history.execute(addElements([second]));
+
+            history.undo();
+            history.undo();
+
+            expect(document.elements.map((element) => element.id)).toEqual([theirs.id]);
+        });
+    });
 });

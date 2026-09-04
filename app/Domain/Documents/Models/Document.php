@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property int $schema_version
  * @property int $revision
+ * @property int $operation_sequence
  * @property array<string, mixed> $data
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -45,6 +46,17 @@ class Document extends Model
             'schema_version' => 'integer',
             'revision' => 'integer',
         ];
+    }
+
+    /**
+     * Every edit made to this drawing, in the order it was accepted. Not what a version
+     * comparison reads — see the migration, and roadmap.md 9.5.
+     *
+     * @return HasMany<DocumentOperation, $this>
+     */
+    public function operations(): HasMany
+    {
+        return $this->hasMany(DocumentOperation::class)->orderBy('sequence');
     }
 
     /** @return BelongsTo<Project, $this> */

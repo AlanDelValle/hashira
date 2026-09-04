@@ -222,6 +222,14 @@ decoration: the server resolves a mention by matching a roster name in the text,
 to put an exact name where somebody would otherwise spell it and wonder why nothing happened.
 The client highlights what the server hands back and parses nothing.
 
+Every edit made here is posted to the log, which numbers it and sends it on to everybody else
+on the project's channel; each of them parses it with `parseCommand` and applies it through
+`history.apply`, which changes the drawing without the edit joining their undo stack — undo
+means "take back what I did". **The post is the write and the broadcast is delivery**, so a
+socket that is down turns co-editing into ordinary editing rather than into losing work. An
+envelope describes state and never intent, which is what makes two people editing different
+things converge without anybody negotiating, and what makes an echo harmless.
+
 A remote cursor arrives at pointer rate and is **not** React state: it lands in a plain map
 that the render loop reads, the same bargain a drag makes, so somebody else moving their mouse
 costs zero renders. Who is _here_ changes rarely and does live in a store, because a strip of
@@ -765,9 +773,9 @@ the mitres have to follow, so they are worked out again — but only then.
 ## 20. What is not here yet
 
 Anything that happens between two people at the same time: presence, cursors, live
-co-editing. What is here is everything but the shared edit: comparing two versions,
-roles and the membership a link grants, comments with mentions, and **presence** — who else has
-this drawing open, and where their pointer is. What is missing is an operation log, so a
-drawing is still saved whole against a revision and the second person to save gets a conflict.
-A mention still reaches nobody who is not already looking, which rides on the socket that now
+co-editing. What is here: comparing two versions, roles and the membership a
+link grants, comments with mentions, presence, and **live co-editing** — an edit made by one
+person reaching everybody else's drawing, in an order they all agree on. What is missing is
+undo reaching the other person, and what the interface says when the connection drops. A
+mention still reaches nobody who is not already looking, which rides on the socket that now
 exists and has simply not been built. See [roadmap.md](roadmap.md).

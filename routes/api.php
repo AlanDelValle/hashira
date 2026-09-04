@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BlockController;
 use App\Http\Controllers\Api\CommentReplyController;
 use App\Http\Controllers\Api\CommentThreadController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentOperationController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
@@ -79,6 +80,15 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.document.show');
     Route::put('projects/{project}/document', [DocumentController::class, 'update'])
         ->name('projects.document.update');
+
+    /*
+     * The edit log. Posting is the write and needs `update`; reading is how somebody who
+     * opened the drawing late catches up, and needs only `view`.
+     */
+    Route::get('projects/{project}/operations', [DocumentOperationController::class, 'index'])
+        ->name('projects.operations.index');
+    Route::post('projects/{project}/operations', [DocumentOperationController::class, 'store'])
+        ->name('projects.operations.store');
 
     Route::get('projects/{project}/underlays', [UnderlayController::class, 'index'])
         ->name('projects.underlays.index');

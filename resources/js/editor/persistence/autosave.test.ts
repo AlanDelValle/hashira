@@ -208,6 +208,73 @@ describe('autosave', () => {
         expect(controller.getStatus()).toMatchObject({ kind: 'conflict' });
     });
 
+    /*
+     * A conflict means somebody else's snapshot landed first. On its own that is unrecoverable
+     * — their work is not in this drawing and writing over it would lose it. While the edits
+     * are being logged it is the opposite: their change already arrived as an operation, so
+     * the only stale thing was the number.
+     */
+    it('writes again from the current revision when the edits are being logged', async () => {
+        // The suite's own controller is watching the same drawing; two savers would make
+        // "the last call" mean whichever of them went second.
+        controller.stop();
+
+        const coEditing = new AutosaveController(
+            server.gateway,
+            () => 1_000,
+            () => true,
+        );
+
+        coEditing.start('project-1', 4, useDocumentStore.getState().document);
+
+        let refused = false;
+
+        server.answerWith((revision) => {
+            if (!refused) {
+                refused = true;
+
+                return Promise.reject(
+                    new ApiError(409, 'Saved elsewhere', {}, { currentRevision: 9 }),
+                );
+            }
+
+            return Promise.resolve(revision + 1);
+        });
+
+        draw();
+        await vi.advanceTimersByTimeAsync(1_200);
+
+        expect(coEditing.getStatus()).toMatchObject({ kind: 'saved' });
+
+        // The second attempt is made from the number the server said was current.
+        expect(server.calls.at(-1)?.revision).toBe(9);
+
+        coEditing.stop();
+    });
+
+    it('gives up reconciling rather than racing for ever', async () => {
+        controller.stop();
+
+        const coEditing = new AutosaveController(
+            server.gateway,
+            () => 1_000,
+            () => true,
+        );
+
+        coEditing.start('project-1', 4, useDocumentStore.getState().document);
+
+        server.answerWith(() =>
+            Promise.reject(new ApiError(409, 'Saved elsewhere', {}, { currentRevision: 9 })),
+        );
+
+        draw();
+        await vi.advanceTimersByTimeAsync(1_200);
+
+        expect(coEditing.getStatus()).toMatchObject({ kind: 'conflict' });
+
+        coEditing.stop();
+    });
+
     it('lets go of the drawing when stopped', async () => {
         controller.stop();
 
