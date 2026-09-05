@@ -2,8 +2,10 @@ import type { CommandEnvelope } from '@/editor/commands/envelope';
 import { parseCommand } from '@/editor/commands/envelope';
 import { newId } from '@/editor/model/id';
 import { fetchOperationsAfter, sendOperation } from '@/editor/persistence/operations';
+import { onConnectionState, presenceIsConfigured } from '@/editor/presence/echo';
 import { onProjectChannel } from '@/editor/presence/presence';
-import { history, observeCommands } from '@/editor/store/documentStore';
+import { useCollaborationStore } from '@/editor/store/collaborationStore';
+import { history, observeEdits } from '@/editor/store/documentStore';
 
 /**
  * Two people drawing on one plan.
@@ -37,6 +39,18 @@ let projectId: string | null = null;
 let sequence = 0;
 let detach: (() => void) | null = null;
 
+/**
+ * Edits that could not be posted, oldest first.
+ *
+ * Without this a change made while the socket was down would reach the other person only when
+ * they next reloaded — it is in the snapshot the autosave writes, so it is not lost, but
+ * "not lost" and "arrives" are different promises. Bounded, because a browser left offline
+ * for an hour should stop hoarding rather than fill its own memory.
+ */
+const waiting: CommandEnvelope[] = [];
+
+const MAX_WAITING = 200;
+
 /** Whether edits are being logged at all — the autosave asks, before deciding what a conflict means. */
 export function isCoEditing(): boolean {
     return projectId !== null;
@@ -60,11 +74,27 @@ export function startCoEditing(id: string, from: number): void {
         channel.listen('.operation.applied', (payload) => receive(payload));
     });
 
-    const stopObserving = observeCommands((command) => recordOperation(command.describe()));
+    const stopObserving = observeEdits((envelope) => recordOperation(envelope));
+
+    /*
+     * Coming back after a drop: send what was made while away, then ask for what was missed.
+     * Ours first, so the log holds them in the order they were actually made here; either
+     * order converges, because an envelope is state rather than intent.
+     */
+    const stopWatchingConnection = onConnectionState((connected) => {
+        useCollaborationStore.getState().setStatus(connected ? 'live' : 'offline');
+
+        if (connected) {
+            void flushWaiting().then(catchUp);
+        }
+    });
+
+    useCollaborationStore.getState().setStatus(presenceIsConfigured() ? 'live' : 'off');
 
     detach = () => {
         leaveChannel();
         stopObserving();
+        stopWatchingConnection();
     };
 
     void catchUp();
@@ -75,6 +105,8 @@ export function stopCoEditing(): void {
     detach = null;
     projectId = null;
     sequence = 0;
+    waiting.length = 0;
+    useCollaborationStore.getState().reset();
 }
 
 /**
@@ -104,8 +136,56 @@ function recordOperation(envelope: CommandEnvelope): void {
      * log accepted them.
      */
     void sendOperation(id, envelope, origin).catch(() => {
-        /* 9.2b decides what the interface says here. The drawing itself is unharmed. */
+        /*
+         * The drawing is unharmed — the change is in it, and the autosave will carry it into
+         * the snapshot. What has not happened is anybody else seeing it, so it waits here and
+         * the interface says so.
+         */
+        hold(envelope);
     });
+}
+
+function hold(envelope: CommandEnvelope): void {
+    if (waiting.length >= MAX_WAITING) {
+        waiting.shift();
+    }
+
+    waiting.push(envelope);
+
+    const store = useCollaborationStore.getState();
+
+    store.setStatus('offline');
+    store.setWaiting(waiting.length);
+}
+
+/** Send what was made while the socket was down, oldest first, and stop at the first refusal. */
+async function flushWaiting(): Promise<void> {
+    const id = projectId;
+
+    if (id === null) {
+        return;
+    }
+
+    while (waiting.length > 0) {
+        const envelope = waiting[0];
+
+        if (envelope === undefined) {
+            break;
+        }
+
+        try {
+            await sendOperation(id, envelope, origin);
+        } catch {
+            // Still not going out. Leave the rest where they are rather than sending them
+            // out of order.
+            useCollaborationStore.getState().setStatus('offline');
+
+            return;
+        }
+
+        waiting.shift();
+        useCollaborationStore.getState().setWaiting(waiting.length);
+    }
 }
 
 async function catchUp(): Promise<void> {

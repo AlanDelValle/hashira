@@ -1,6 +1,7 @@
 import type { HashiraDocument } from '@/editor/model/types';
 
 import { coalesce, type Command } from './command';
+import type { CommandEnvelope } from './envelope';
 
 /** How the history reads and writes the document it is managing. */
 export interface DocumentPort {
@@ -31,6 +32,19 @@ export class HistoryStack {
     private listeners = new Set<() => void>();
 
     /*
+     * Whoever has to be told what this stack just did to the drawing.
+     *
+     * It lives here rather than beside `runCommand`, because undoing is an edit too: it
+     * changes the document, and everybody else has to see the change. What it is not is a
+     * rewind of a shared stack — the listener is handed the *inverse* of the local command,
+     * an edit like any other, which is the decision the phase parked and settled.
+     *
+     * `apply` deliberately never reaches it. That is somebody else's edit arriving; sending it
+     * back out would be an echo with a number of its own.
+     */
+    private edited: ((envelope: CommandEnvelope) => void) | null = null;
+
+    /*
      * Cached so that repeated reads return the same object. React's external-store hook
      * compares snapshots by identity, and a fresh object every call is an infinite loop.
      */
@@ -46,6 +60,17 @@ export class HistoryStack {
         private readonly port: DocumentPort,
         private readonly now: () => number = () => Date.now(),
     ) {}
+
+    /** Hear about every edit made *here*, as plain JSON, ready to be sent somewhere. */
+    observe(listener: (envelope: CommandEnvelope) => void): () => void {
+        this.edited = listener;
+
+        return () => {
+            if (this.edited === listener) {
+                this.edited = null;
+            }
+        };
+    }
 
     execute(command: Command): void {
         this.port.set(command.execute(this.port.get()));
@@ -68,6 +93,13 @@ export class HistoryStack {
         this.redoStack = [];
         this.lastExecutedAt = this.now();
         this.emit();
+
+        /*
+         * The incoming edit is what goes out, even when it was merged into its predecessor.
+         * Its `before` is the state the merged one left, so applying them in order lands on
+         * the same drawing — it is one message more than strictly needed, not a wrong one.
+         */
+        this.edited?.(command.describe());
     }
 
     /**
@@ -107,6 +139,8 @@ export class HistoryStack {
         this.lastExecutedAt = 0;
         this.emit();
 
+        this.edited?.(command.describeInverse());
+
         return true;
     }
 
@@ -121,6 +155,8 @@ export class HistoryStack {
         this.undoStack.push(command);
         this.lastExecutedAt = 0;
         this.emit();
+
+        this.edited?.(command.describe());
 
         return true;
     }

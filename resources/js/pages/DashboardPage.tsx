@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { formatRelativeTime } from '@/lib/time';
+import { MentionsMenu } from '@/mentions/MentionsMenu';
 import { useProjects } from '@/projects/useProjects';
 import { Button } from '@/ui/Button';
 import { Wordmark } from '@/ui/Logo';
@@ -65,18 +66,22 @@ export function DashboardPage() {
                 <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
                     <Wordmark />
 
-                    <Menu
-                        trigger={
-                            <button
-                                className="text-ink-muted hover:bg-sunken hover:text-ink rounded-md px-2 py-1 text-[13px]"
-                                aria-label="Account menu"
-                            >
-                                {user?.name}
-                            </button>
-                        }
-                    >
-                        <MenuItem onSelect={() => void logout()}>Sign out</MenuItem>
-                    </Menu>
+                    <div className="flex items-center gap-1">
+                        <MentionsMenu />
+
+                        <Menu
+                            trigger={
+                                <button
+                                    className="text-ink-muted hover:bg-sunken hover:text-ink rounded-md px-2 py-1 text-[13px]"
+                                    aria-label="Account menu"
+                                >
+                                    {user?.name}
+                                </button>
+                            }
+                        >
+                            <MenuItem onSelect={() => void logout()}>Sign out</MenuItem>
+                        </Menu>
+                    </div>
                 </div>
             </header>
 

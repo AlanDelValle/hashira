@@ -394,10 +394,10 @@ they grant** left in Phase 9.4: a project can now have a second person in it, wi
 a role and a way out. **Comments and mentions** left in Phase 9.3 — their own tables,
 anchored to a point in drawing millimetres, deliberately not in `documents.data`, with a
 surface of their own for somebody who may comment but not edit. **Presence** left in Phase 9.1 and **live
-co-editing** in 9.2a: a socket, a channel per project, who is here, where their pointer is, and
-an edit made by one person arriving in everybody else's drawing. What is still absent is undo
-reaching the other person, and what the interface says when the connection drops. Nothing tells
-you a mention happened yet either; that rides on the same socket and has not been built. Anything struck off here
+co-editing** in 9.2: a socket, a channel per project, who is here, where their pointer is, an
+edit made by one person arriving in everybody else's drawing — undo included — and a mention
+reaching somebody who is not looking at all. **Phase 9 is finished.** What the list still holds
+is real: no CRDT, no organisations, no plugin system. Anything struck off here
 belongs in the same commit as the feature that strikes it.
 
 ---

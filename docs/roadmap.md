@@ -217,7 +217,7 @@ Decisions taken at the start of the phase, so they are not re-argued halfway thr
   plotter. The same trade the SVG block importer made.
 - **DWG stays out.** It is Phase 10, and nothing in this phase is a step towards it.
 
-### Phase 9 — Collaboration `[~]`
+### Phase 9 — Collaboration `[x]`
 
 The first phase about more than one person. Everything before it assumes one: a drawing saved
 whole against a revision, one history stack, and authorization from the authenticated user.
@@ -350,6 +350,37 @@ What 9.3a settled:
 - **Resolved threads can still be answered.** "That is not quite right" is what somebody needs
   to say about a point closed too early, and a conversation that cannot be reopened by talking
   is one people work around by starting a second pin at the same place.
+
+**The phase is finished.** Every item is built: serialisable commands, presence and
+cursors, live co-editing, comments and mentions, share-link roles, version comparison.
+
+What 9.2b settled:
+
+- **A command can describe its own opposite.** `describeInverse()` sits beside `describe()`,
+  because undoing is an edit too: it changes the drawing and everybody else has to see the
+  change — as an edit like any other, not as a rewind of a shared stack. That is the decision
+  this phase parked in September, built.
+- **The opposite of a delete is not an add.** Paint order within a layer is array order, so
+  putting elements back at the end would restack the drawing for whoever received the undo,
+  and the two people would be looking at different plans. `restoreElements` carries where each
+  one was — a new envelope variant that exists for exactly this reason.
+- **An edit that could not be sent waits, and goes when the socket returns.** It was never
+  lost — it is in the drawing, and the autosave carries it into the snapshot — but "not lost"
+  and "arrives" are different promises. Ours are flushed before asking what was missed.
+- **The notice is not the save indicator.** One says the drawing is safe; the other says
+  whether anybody else is watching it change. They come apart, and somebody told "saved" would
+  otherwise carry on believing the person they are working with can see them.
+- **A mention is its own notification.** `read_at` on the row that already records who was
+  named, rather than a notifications table beside it — two rows for one fact is two things to
+  keep in step. It is delivered on a channel of the named person's own, because the whole point
+  is reaching somebody who is not looking at that drawing; the row is written first and the
+  broadcast only carries the news.
+- **Choosing a mention opens the thread it is about.** Being told you were asked something and
+  then having to hunt for it is most of the way to not being told.
+- **The log stayed chatty, on purpose.** One operation per command, including the ones the
+  history merges into their predecessor. Coalescing it would mean holding an edit back to see
+  whether another follows, and delaying what the other person sees to save messages is the
+  wrong trade in a tool whose whole promise here is liveness.
 
 What 9.2a settled:
 

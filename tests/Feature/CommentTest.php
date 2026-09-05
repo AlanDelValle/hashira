@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Comments\Models\Comment;
+use App\Domain\Comments\Models\CommentMention;
 use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Projects\Actions\CreateProject;
 use App\Domain\Projects\Models\Project;
@@ -388,4 +389,116 @@ it('lists who can be mentioned, without naming their accounts', function (): voi
     // A stranger cannot read the roster at all.
     signedIn();
     $this->getJson("/api/projects/{$project->id}/people")->assertNotFound();
+});
+
+/*
+ * Being told you were named. The mention row is the record and the broadcast is only the
+ * nudge, so a socket that is down costs somebody the nudge and never the mention.
+ */
+
+it('leaves a mention unread until it is looked at', function (): void {
+    $owner = User::factory()->create(['name' => 'The Owner']);
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $reviewer = signedIn();
+    joins($project, $reviewer, ShareRole::Commenter);
+
+    signedIn($owner);
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => "Have a look at this, {$reviewer->name}",
+    ])->assertCreated();
+
+    // Nothing yet: the owner named nobody with an `@`.
+    signedIn($reviewer);
+    $this->getJson('/api/mentions')->assertOk()->assertJsonCount(0, 'data');
+
+    signedIn($owner);
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => "@{$reviewer->name} is this wide enough?",
+    ])->assertCreated();
+
+    signedIn($reviewer);
+
+    $this->getJson('/api/mentions')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.projectName', 'Studio')
+        ->assertJsonPath('data.0.authorName', 'The Owner')
+        ->assertJsonPath('data.0.read', false);
+});
+
+it('shows nobody else what they were not named in', function (): void {
+    $owner = User::factory()->create();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $named = User::factory()->create(['name' => 'Ana']);
+    $bystander = signedIn();
+    joins($project, $named, ShareRole::Commenter);
+    joins($project, $bystander, ShareRole::Commenter);
+
+    signedIn($owner);
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana please check',
+    ])->assertCreated();
+
+    signedIn($bystander);
+    $this->getJson('/api/mentions')->assertOk()->assertJsonCount(0, 'data');
+
+    signedIn($named);
+    $this->getJson('/api/mentions')->assertOk()->assertJsonCount(1, 'data');
+});
+
+it('marks one as read, and then all of them', function (): void {
+    $owner = User::factory()->create();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $named = signedIn();
+    joins($project, $named, ShareRole::Commenter);
+
+    signedIn($owner);
+
+    foreach (['first', 'second', 'third'] as $which) {
+        $this->postJson("/api/projects/{$project->id}/comments", [
+            'x' => 0,
+            'y' => 0,
+            'body' => "@{$named->name} the {$which} one",
+        ])->assertCreated();
+    }
+
+    signedIn($named);
+
+    $id = $this->getJson('/api/mentions')->assertJsonCount(3, 'data')->json('data.0.id');
+
+    $this->patchJson("/api/mentions/{$id}")->assertNoContent();
+    $this->getJson('/api/mentions')->assertOk()->assertJsonCount(2, 'data');
+
+    $this->patchJson('/api/mentions')->assertNoContent();
+    $this->getJson('/api/mentions')->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('will not let somebody mark a mention that is not theirs', function (): void {
+    $owner = User::factory()->create();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $named = User::factory()->create(['name' => 'Ana']);
+    joins($project, $named, ShareRole::Commenter);
+
+    signedIn($owner);
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana look',
+    ])->assertCreated();
+
+    $id = CommentMention::query()->sole()->id;
+
+    // Not refused — not found. There is nothing else in scope for this query to see.
+    signedIn();
+    $this->patchJson("/api/mentions/{$id}")->assertNotFound();
 });

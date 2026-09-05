@@ -35,6 +35,19 @@ export interface Command {
 
     /** This edit as plain JSON, for anything that has to send it somewhere. */
     describe(): CommandEnvelope;
+
+    /**
+     * The edit that takes this one back, as plain JSON.
+     *
+     * Undo is local — it means "take back what I did", not "undo whatever happened last" —
+     * but the *result* still has to reach everybody else, and it reaches them as an edit like
+     * any other rather than as a rewind of a shared stack. So a command has to be able to
+     * describe its own opposite.
+     *
+     * Only meaningful once `execute` has run, for the same reason `undo` is: a delete does
+     * not know what it removed, or from where, until it has removed it.
+     */
+    describeInverse(): CommandEnvelope;
 }
 
 /** A command that swaps elements for edited copies: a move, a rotation, a property edit. */
@@ -68,6 +81,9 @@ export function addElements(added: readonly Element[], label = 'Add'): Command {
             ),
 
         describe: () => ({ type: 'addElements', label, elements: [...added] }),
+
+        // Adding is undone by deleting exactly what was added, wherever it has since moved to.
+        describeInverse: () => ({ type: 'deleteElements', label, ids: [...ids] }),
     };
 }
 
@@ -114,6 +130,60 @@ export function deleteElements(ids: readonly string[], label = 'Delete'): Comman
          * that would put them back in the right order there.
          */
         describe: () => ({ type: 'deleteElements', label, ids: [...ids] }),
+
+        /*
+         * The opposite of a delete is not an add: an add puts elements at the end, and paint
+         * order within a layer is array order. Somewhere else, an undo that restacked the
+         * drawing would leave two people looking at different plans — so where each element
+         * was travels with it, which is exactly what this command captured on the way out.
+         */
+        describeInverse: () => ({
+            type: 'restoreElements',
+            label,
+            entries: removed.map(({ index, element }) => ({ index, element })),
+        }),
+    };
+}
+
+/**
+ * Put elements back where they were. The exact opposite of a delete, and the only reason it
+ * exists: an undo has to be able to leave this browser, and "add these again" would quietly
+ * restack the drawing for whoever received it.
+ */
+export function restoreElements(
+    entries: readonly { index: number; element: Element }[],
+    label = 'Restore',
+): Command {
+    const ids = new Set(entries.map(({ element }) => element.id));
+
+    return {
+        label,
+        coalesceKey: null,
+
+        execute(document) {
+            const elements = [...document.elements];
+
+            // Ascending, so each splice lands on an index the earlier ones have made room for.
+            for (const { index, element } of [...entries].sort((a, b) => a.index - b.index)) {
+                elements.splice(Math.min(index, elements.length), 0, element);
+            }
+
+            return withElements(document, elements);
+        },
+
+        undo: (document) =>
+            withElements(
+                document,
+                document.elements.filter((element) => !ids.has(element.id)),
+            ),
+
+        describe: () => ({
+            type: 'restoreElements',
+            label,
+            entries: entries.map(({ index, element }) => ({ index, element })),
+        }),
+
+        describeInverse: () => ({ type: 'deleteElements', label, ids: [...ids] }),
     };
 }
 
@@ -154,6 +224,15 @@ export function replaceElements(
             coalesceKey,
             before: [...before],
             after: [...after],
+        }),
+
+        // An edit described by the two states it sits between is undone by swapping them.
+        describeInverse: () => ({
+            type: 'replaceElements',
+            label,
+            coalesceKey,
+            before: [...after],
+            after: [...before],
         }),
     };
 }
@@ -200,6 +279,13 @@ export function replaceLayers(
             before: [...before],
             after: [...after],
         }),
+
+        describeInverse: () => ({
+            type: 'replaceLayers',
+            label,
+            before: [...after],
+            after: [...before],
+        }),
     };
 }
 
@@ -232,6 +318,13 @@ export function replaceSheets(
             before: [...before],
             after: [...after],
         }),
+
+        describeInverse: () => ({
+            type: 'replaceSheets',
+            label,
+            before: [...after],
+            after: [...before],
+        }),
     };
 }
 
@@ -253,6 +346,8 @@ export function replaceSettings(
         undo: (document) => ({ ...document, settings: before }),
 
         describe: () => ({ type: 'replaceSettings', label, before, after }),
+
+        describeInverse: () => ({ type: 'replaceSettings', label, before: after, after: before }),
     };
 }
 
@@ -278,6 +373,14 @@ export function combine(label: string, commands: readonly Command[]): Command {
             type: 'combine',
             label,
             commands: commands.map((step) => step.describe()),
+        }),
+
+        // Each part inverted, and run backwards — the only order that returns the document to
+        // where it started, which is exactly what this command's own `undo` does.
+        describeInverse: () => ({
+            type: 'combine',
+            label,
+            commands: [...commands].reverse().map((step) => step.describeInverse()),
         }),
     };
 }
@@ -306,5 +409,7 @@ export function replaceDocument(
          * restore is a thing to announce, not a thing to stream.
          */
         describe: () => ({ type: 'replaceDocument', label, before, after }),
+
+        describeInverse: () => ({ type: 'replaceDocument', label, before: after, after: before }),
     };
 }

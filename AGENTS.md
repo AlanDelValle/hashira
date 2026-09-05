@@ -112,11 +112,16 @@ rather than reporting the list as passed.
 ## Scope discipline
 
 The scope, and everything deliberately excluded, is in [`docs/roadmap.md`](docs/roadmap.md).
-Do not implement 3D, BIM, DWG, generative features, multiplayer or a plugin system. If
-something seems worth adding, add it to the roadmap instead of the codebase.
+Do not implement 3D, BIM, DWG, generative features or a plugin system. If something seems
+worth adding, add it to the roadmap instead of the codebase.
 
-DXF was on that list until Phase 8, which is the phase that does it — from the scene and to
-R12 ASCII, with the reasoning in the roadmap. DWG is not the same thing and is still out.
+Two things have come off that list, and each left in the phase that does it. **DXF** in Phase
+8 — from the scene and to R12 ASCII. DWG is not the same thing and is still out. **Working
+with somebody else** in Phase 9: presence, live co-editing, comments, mentions and share-link
+roles. What that is _not_ is a CRDT — two people editing the same element resolve to whichever
+edit the log accepted last, per element, which is enough for two drafters on one plan and is
+not enough for merging two long offline sessions. Do not build one without a reason written
+down first.
 
 ## Design direction
 

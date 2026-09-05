@@ -225,7 +225,9 @@ The client highlights what the server hands back and parses nothing.
 Every edit made here is posted to the log, which numbers it and sends it on to everybody else
 on the project's channel; each of them parses it with `parseCommand` and applies it through
 `history.apply`, which changes the drawing without the edit joining their undo stack — undo
-means "take back what I did". **The post is the write and the broadcast is delivery**, so a
+means "take back what I did". Undoing is an edit too: what leaves this browser is the
+_inverse_ of the local command, described by the command itself, rather than a rewind of a
+shared stack. **The post is the write and the broadcast is delivery**, so a
 socket that is down turns co-editing into ordinary editing rather than into losing work. An
 envelope describes state and never intent, which is what makes two people editing different
 things converge without anybody negotiating, and what makes an echo harmless.
@@ -773,9 +775,11 @@ the mitres have to follow, so they are worked out again — but only then.
 ## 20. What is not here yet
 
 Anything that happens between two people at the same time: presence, cursors, live
-co-editing. What is here: comparing two versions, roles and the membership a
-link grants, comments with mentions, presence, and **live co-editing** — an edit made by one
-person reaching everybody else's drawing, in an order they all agree on. What is missing is
-undo reaching the other person, and what the interface says when the connection drops. A
-mention still reaches nobody who is not already looking, which rides on the socket that now
-exists and has simply not been built. See [roadmap.md](roadmap.md).
+co-editing. Phase 9 is finished: comparing two versions, roles and the
+membership a link grants, comments with mentions, presence, and live co-editing — an edit made
+by one person reaching everybody else's drawing in an order they all agree on, undo included.
+
+What is genuinely not here is a CRDT. Two people editing the same element resolve to whichever
+edit the log accepted last, per element, which is a rule you can explain to somebody and which
+is enough for two drafters working on one plan. It is not enough for merging two long offline
+sessions, and nothing here pretends otherwise. See [roadmap.md](roadmap.md).

@@ -105,6 +105,7 @@ comment_mentions
   comment_id        ulid fk → comments, cascade delete
   user_id           bigint fk → users, null on delete
   text              varchar(160)            -- the '@…' exactly as it was typed
+  read_at           timestamptz null        -- a mention is its own notification
   timestamps
   unique (comment_id, user_id)
   index (user_id)
@@ -184,6 +185,10 @@ Notes on the shape:
   tomorrow was still addressed today. `text` is what was actually typed, kept beside the id so
   that highlighting cannot quietly rewrite last month's conversation when a person renames
   their account.
+- **A mention is its own notification.** `read_at` is a column on the row that already
+  records who was named, rather than a notifications table beside it: inventing a second row
+  to point at the first would mean two things to keep in step and two answers to "was I asked
+  about this".
 - **An underlay belongs to a project, not to a person.** A survey is imported to draw one
   particular building on top of. Deleting the project deletes the pictures as well as the
   rows: a foreign key cascade has never deleted a file.
@@ -287,9 +292,19 @@ strings rather than parsing for itself: two copies of one matching rule is how t
 the record end up disagreeing about who was addressed. An `@` that names nobody on the project
 stays plain text, which is what "the door is at @900mm" needs.
 
-Nothing is delivered yet. Telling somebody they were named is a question of what carries it —
-mail, or something live in the page — and that is the same delivery problem as presence, so it
-waits for the socket in 9.1.
+A mention is delivered on a channel of the named person's own, `user.{id}`, rather than the
+project's — the whole point of one is reaching somebody who is _not_ looking at the drawing. The
+row is written first and the broadcast only carries the news, exactly as an operation is logged
+before it is sent on: a socket that is down costs somebody the nudge and never the mention.
+
+```
+GET    /api/mentions                          the ones not looked at yet
+PATCH  /api/mentions                          mark all of them read
+PATCH  /api/mentions/{mention}                mark one read
+```
+
+Every query is filtered by the authenticated user's own id, so there is no policy to ask: a
+mention belonging to somebody else is not refused, it is not found.
 
 Replying to a resolved thread is allowed on purpose: "that is not quite right" is exactly what
 somebody needs to say about a point that was closed too early.

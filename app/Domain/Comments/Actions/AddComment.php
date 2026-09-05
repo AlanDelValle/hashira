@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Comments\Actions;
 
+use App\Domain\Comments\Events\MentionReceived;
 use App\Domain\Comments\Mentions;
 use App\Domain\Comments\Models\Comment;
 use App\Domain\Comments\Models\CommentMention;
@@ -35,6 +36,10 @@ final class AddComment
                 $row->user_id = (int) $mention['user']->getKey();
                 $row->text = $mention['text'];
                 $row->save();
+
+                // The row is the record; this is only the nudge. A socket that is down costs
+                // somebody the nudge and never the mention.
+                MentionReceived::dispatch($row);
             }
 
             return $comment->load(['author', 'mentions.user']);

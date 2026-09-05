@@ -147,3 +147,18 @@ export interface CommentThread {
     createdAt: string;
     comments: DrawingComment[];
 }
+
+/**
+ * A remark you were named in, as it looks before you have opened it. The body arrives whole:
+ * where a line ends is a question about the width of a menu, and the server does not know that.
+ */
+export interface Mention {
+    id: string;
+    body: string;
+    authorName: string | null;
+    createdAt: string;
+    read: boolean;
+    projectId: string;
+    projectName: string;
+    threadId: string;
+}

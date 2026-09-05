@@ -87,3 +87,39 @@ export function echo(): Echo<'reverb'> | null {
 
     return instance;
 }
+
+/**
+ * Whether the socket is up, as it changes.
+ *
+ * Pusher's connection reports its own state — connecting, connected, unavailable, failed — and
+ * this passes that through as the one thing anybody here needs to know. A build with no socket
+ * never reports anything, and callers are written for that: silence is the same as "there is
+ * nobody to be disconnected from".
+ */
+export function onConnectionState(listener: (connected: boolean) => void): () => void {
+    const client = echo();
+
+    if (client === null) {
+        return () => {
+            /* Nothing was ever bound. */
+        };
+    }
+
+    const connection = (
+        client as unknown as {
+            connector?: { pusher?: { connection?: Pusher['connection'] } };
+        }
+    ).connector?.pusher?.connection;
+
+    if (connection === undefined) {
+        return () => {
+            /* Nothing was ever bound. */
+        };
+    }
+
+    const handler = ({ current }: { current: string }) => listener(current === 'connected');
+
+    connection.bind('state_change', handler);
+
+    return () => connection.unbind('state_change', handler);
+}

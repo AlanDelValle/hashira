@@ -34,3 +34,12 @@ Broadcast::channel('project.{project}', function (User $user, string $project): 
 
     return ['id' => $user->getKey(), 'name' => $user->name];
 });
+
+/**
+ * One person's own channel, for the things that have to reach them when they are *not* looking
+ * at a particular drawing — which is what a mention is for. Nobody else may listen: the answer
+ * is whether this is you, and there is no role that makes it somebody else's.
+ */
+Broadcast::channel('user.{userId}', function (User $user, string $userId): bool {
+    return (int) $user->getKey() === (int) $userId;
+});

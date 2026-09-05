@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CommentThreadController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentOperationController;
 use App\Http\Controllers\Api\DocumentVersionController;
+use App\Http\Controllers\Api\MentionController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberController;
@@ -66,6 +67,16 @@ Route::get('share/{token}', [SharedDocumentController::class, 'show'])
 Route::middleware('auth')->group(function (): void {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('user', AuthenticatedUserController::class)->name('user');
+
+    /*
+     * The remarks you were named in. Filtered by the authenticated user throughout, so there
+     * is no policy to ask: a mention belonging to somebody else is not refused, it is not
+     * found.
+     */
+    Route::get('mentions', [MentionController::class, 'index'])->name('mentions.index');
+    Route::patch('mentions', [MentionController::class, 'update'])->name('mentions.readAll');
+    Route::patch('mentions/{mention}', [MentionController::class, 'update'])
+        ->name('mentions.read');
 
     Route::apiResource('projects', ProjectController::class);
 

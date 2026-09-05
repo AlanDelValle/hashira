@@ -9,11 +9,12 @@ import {
     Undo2,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { CanvasHost } from '@/editor/react/CanvasHost';
 import { CommentDraft } from '@/editor/react/CommentDraft';
+import { CollaborationStatus } from '@/editor/react/CollaborationStatus';
 import { CommentsPanel } from '@/editor/react/CommentsPanel';
 import { PresenceStrip } from '@/editor/react/PresenceStrip';
 import { LibraryPanel } from '@/editor/react/LibraryPanel';
@@ -45,6 +46,7 @@ import { registerBlocks } from '@/projects/useBlocks';
 import { cn } from '@/lib/cn';
 import { formatChord } from '@/lib/keys';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { MentionsMenu } from '@/mentions/MentionsMenu';
 import type { ProjectRole } from '@/types/api';
 import { Button } from '@/ui/Button';
 import { FullPageSpinner } from '@/ui/FullPageSpinner';
@@ -63,6 +65,8 @@ function canEdit(role: ProjectRole | null): boolean {
 export function EditorPage() {
     const { projectId } = useParams<{ projectId: string }>();
     const { document: payload, loading, error, retry } = useDocument(projectId);
+    const [search] = useSearchParams();
+    const wantedThread = search.get('thread');
 
     const load = useDocumentStore((state) => state.load);
     const parseError = useDocumentStore((state) => state.error);
@@ -103,7 +107,19 @@ export function EditorPage() {
         comments.begin();
 
         void fetchThreads(projectId)
-            .then((threads) => useCommentsStore.getState().load(threads))
+            .then((threads) => {
+                useCommentsStore.getState().load(threads);
+
+                /*
+                 * Arrived from a mention. Being told you were asked something and then having
+                 * to hunt for it is most of the way to not being told, so the thread is opened
+                 * and the tool that shows the panel is picked.
+                 */
+                if (wantedThread !== null && threads.some((one) => one.id === wantedThread)) {
+                    useCommentsStore.getState().select(wantedThread);
+                    useEditorStore.getState().setTool('comment');
+                }
+            })
             .catch(() => useCommentsStore.getState().fail('Could not load the comments.'));
 
         // Who can be mentioned. No suggestions is a workable state, so nothing waits on it.
@@ -148,7 +164,7 @@ export function EditorPage() {
             leaveProject();
             useCommentsStore.getState().clear();
         };
-    }, [payload, projectId, load, user]);
+    }, [payload, projectId, load, user, wantedThread]);
 
     useEffect(() => {
         function warnIfUnsaved(event: BeforeUnloadEvent) {
@@ -334,7 +350,14 @@ function EditorHeader({
 
             <SaveStatusIndicator />
 
+            {/*
+             * Beside the save indicator and saying a different thing: that one is about the
+             * drawing being safe, this one about anybody else seeing it change.
+             */}
+            <CollaborationStatus />
+
             <div className="ml-auto flex items-center gap-3">
+                <MentionsMenu />
                 <PresenceStrip selfId={selfId} />
             </div>
 

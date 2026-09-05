@@ -248,3 +248,83 @@ describe('an envelope from somewhere else', () => {
         expect(result.command.execute(documentWith([])).schemaVersion).toBeGreaterThan(4);
     });
 });
+
+/**
+ * The inverse, down the wire and back. An undo has to leave this browser as an edit like any
+ * other, so what matters is that the described opposite, rebuilt somewhere else and run
+ * against that copy, lands on the drawing the edit started from.
+ */
+function undoesOverTheWire(command: Command, document: HashiraDocument) {
+    const done = command.execute(document);
+
+    const json: unknown = JSON.parse(JSON.stringify(command.describeInverse()));
+    const parsed = parseCommand(json);
+
+    if (!parsed.ok) {
+        throw new Error(`the inverse would not parse: ${parsed.reason}`);
+    }
+
+    expect(parsed.command.execute(done)).toEqual(document);
+}
+
+describe('an undo, sent to somebody else', () => {
+    it('takes back an add', () => {
+        undoesOverTheWire(addElements([line('a')]), documentWith([wall('w')]));
+    });
+
+    /*
+     * The one that is not a mirror image. Paint order within a layer is array order, so
+     * putting elements back at the end would restack the drawing for whoever received the
+     * undo — and the two people would be looking at different plans.
+     */
+    it('puts a deleted element back where it was, not at the end', () => {
+        const document = documentWith([line('a'), wall('w'), line('b')]);
+        const command = deleteElements(['w']);
+
+        undoesOverTheWire(command, document);
+
+        const done = command.execute(document);
+        const parsed = parseCommand(JSON.parse(JSON.stringify(command.describeInverse())));
+
+        if (!parsed.ok) throw new Error(parsed.reason);
+
+        expect(parsed.command.execute(done).elements.map((element) => element.id)).toEqual([
+            'a',
+            'w',
+            'b',
+        ]);
+    });
+
+    it('takes back an edit by swapping the two states it sat between', () => {
+        const before = wall('w');
+        const after = wall('w', point(6000, 0));
+
+        undoesOverTheWire(
+            replaceElements([before], [after], 'Move'),
+            documentWith([before, line('a')]),
+        );
+    });
+
+    it('takes back the parts of a combined edit, backwards', () => {
+        const document = documentWith([wall('w')]);
+
+        undoesOverTheWire(
+            combine('Import', [addElements([line('a')]), deleteElements(['w'])]),
+            document,
+        );
+    });
+
+    it('is itself undoable, so a restore can be taken back too', () => {
+        const document = documentWith([line('a'), wall('w')]);
+        const command = deleteElements(['w']);
+        const done = command.execute(document);
+
+        const parsed = parseCommand(JSON.parse(JSON.stringify(command.describeInverse())));
+
+        if (!parsed.ok) throw new Error(parsed.reason);
+
+        const restored = parsed.command.execute(done);
+
+        expect(parsed.command.undo(restored)).toEqual(done);
+    });
+});

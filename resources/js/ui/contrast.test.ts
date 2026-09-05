@@ -48,7 +48,11 @@ const TEXT_PAIRS: Pair[] = [
         bg: 'surface',
         where: 'confirmation copy, and an added element in a comparison',
     },
-    { fg: 'caution', bg: 'surface', where: 'an edited element in a version comparison' },
+    {
+        fg: 'caution',
+        bg: 'surface',
+        where: 'an edited element in a comparison, and the disconnected notice in the header',
+    },
     { fg: 'ink-inverse', bg: 'ink', where: 'the primary button' },
     { fg: 'ink-inverse', bg: 'danger', where: 'the destructive button' },
 ];

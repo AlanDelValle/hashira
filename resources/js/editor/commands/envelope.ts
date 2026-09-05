@@ -24,6 +24,7 @@ import {
     replaceLayers,
     replaceSettings,
     replaceSheets,
+    restoreElements,
     type Command,
 } from './command';
 
@@ -51,6 +52,17 @@ import {
 export type CommandEnvelope =
     | { type: 'addElements'; label: string; elements: Element[] }
     | { type: 'deleteElements'; label: string; ids: string[] }
+    /*
+     * The exact opposite of a delete, and it exists only because an undo has to be able to
+     * leave this browser. "Add these again" would put them at the end of the array, and paint
+     * order within a layer is array order — so an undo sent that way would restack the drawing
+     * for whoever received it, and the two people would be looking at different plans.
+     */
+    | {
+          type: 'restoreElements';
+          label: string;
+          entries: { index: number; element: Element }[];
+      }
     | {
           type: 'replaceElements';
           label: string;
@@ -109,6 +121,9 @@ function build(envelope: CommandEnvelope): Command {
 
         case 'deleteElements':
             return deleteElements(envelope.ids, envelope.label);
+
+        case 'restoreElements':
+            return restoreElements(envelope.entries, envelope.label);
 
         case 'replaceElements':
             return replaceElements(
@@ -172,6 +187,18 @@ const envelopeSchema: z.ZodType<CommandEnvelope> = z.lazy(() =>
             type: z.literal('addElements'),
             label: labelSchema,
             elements: z.array(elementSchema),
+        }),
+        z.object({
+            type: z.literal('restoreElements'),
+            label: labelSchema,
+            entries: z.array(
+                z.object({
+                    // Where it was. Clamped on the way in by the command itself, so a nonsense
+                    // index puts an element at the end rather than throwing an edit away.
+                    index: z.number().int().min(0),
+                    element: elementSchema,
+                }),
+            ),
         }),
         z.object({
             type: z.literal('deleteElements'),
