@@ -24,6 +24,38 @@ function signedIn(?User $user = null): User
 }
 
 /**
+ * Broadcasting configured, and pointed at a port nothing is listening on.
+ *
+ * The suite runs with `BROADCAST_CONNECTION=null`, which is why nothing here ever discovers
+ * what a real deployment does when the socket is down: `ShouldBroadcastNow` sends inside the
+ * request, and a refused connection comes back as an exception in the middle of one. This is
+ * the deployment the tests otherwise never see — a self-hosted instance whose Reverb container
+ * has stopped.
+ *
+ * Port 1 refuses immediately rather than hanging, and the timeouts are there so that a machine
+ * which decides to hang instead does not take the suite with it.
+ */
+function broadcastingToNowhere(): void
+{
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.reverb' => [
+            'driver' => 'reverb',
+            'key' => 'nowhere',
+            'secret' => 'nowhere',
+            'app_id' => 'nowhere',
+            'options' => [
+                'host' => '127.0.0.1',
+                'port' => 1,
+                'scheme' => 'http',
+                'useTLS' => false,
+            ],
+            'client_options' => ['connect_timeout' => 1, 'timeout' => 1],
+        ],
+    ]);
+}
+
+/**
  * The drawing as the database really holds it, for every document saved before 2026-09-04 —
  * with the empty strings turned to null by a middleware that had no business inside it.
  *

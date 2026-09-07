@@ -215,3 +215,23 @@ it('takes the log with the project', function (): void {
 
     expect(DocumentOperation::query()->count())->toBe(0);
 });
+
+/*
+ * Phase 10.1a. The POST is the write and the broadcast is only delivery, so a socket that is
+ * refusing connections has to cost people seeing the edit and never the edit itself. Until
+ * this test existed the suite ran with broadcasting turned off, so nothing here ever met the
+ * one thing a self-hosted instance meets: its own Reverb container being down.
+ */
+it('records an edit when the socket refuses the delivery', function (): void {
+    broadcastingToNowhere();
+
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $this->postJson("/api/projects/{$project->id}/operations", [
+        'envelope' => envelope(),
+        'origin' => 'browser-a',
+    ])->assertCreated();
+
+    expect(DocumentOperation::query()->count())->toBe(1);
+});

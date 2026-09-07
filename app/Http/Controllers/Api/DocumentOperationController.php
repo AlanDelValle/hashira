@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOperationRequest;
 use App\Http\Resources\DocumentOperationResource;
 use App\Models\User;
+use App\Support\Delivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -68,7 +69,7 @@ final class DocumentOperationController extends Controller
             origin: (string) $request->validated('origin'),
         );
 
-        OperationApplied::dispatch($project->id, $operation);
+        Delivery::attempt(fn () => OperationApplied::dispatch($project->id, $operation));
 
         return DocumentOperationResource::make($operation)
             ->response()

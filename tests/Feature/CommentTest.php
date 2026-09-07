@@ -502,3 +502,27 @@ it('will not let somebody mark a mention that is not theirs', function (): void 
     signedIn();
     $this->patchJson("/api/mentions/{$id}")->assertNotFound();
 });
+
+/*
+ * Phase 10.1a. The nudge is delivery; the mention is the record. This used to be the worse
+ * half of the same bug: the dispatch is inside `AddComment`'s transaction, so a socket that
+ * refused the connection did not merely fail to tell anybody — it rolled the comment back out
+ * of the drawing.
+ */
+it('keeps a mention when the socket refuses the nudge', function (): void {
+    broadcastingToNowhere();
+
+    $owner = signedIn();
+    $project = app(CreateProject::class)->handle($owner, 'Studio');
+
+    $editor = User::factory()->create(['name' => 'Ana Paula']);
+    joins($project, $editor, ShareRole::Editor);
+
+    $this->postJson("/api/projects/{$project->id}/comments", [
+        'x' => 0,
+        'y' => 0,
+        'body' => '@Ana Paula can you check this?',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.comments.0.mentions.0.userId', $editor->getKey());
+});

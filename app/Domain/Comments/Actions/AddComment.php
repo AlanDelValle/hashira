@@ -10,6 +10,7 @@ use App\Domain\Comments\Models\Comment;
 use App\Domain\Comments\Models\CommentMention;
 use App\Domain\Comments\Models\CommentThread;
 use App\Models\User;
+use App\Support\Delivery;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -38,8 +39,10 @@ final class AddComment
                 $row->save();
 
                 // The row is the record; this is only the nudge. A socket that is down costs
-                // somebody the nudge and never the mention.
-                MentionReceived::dispatch($row);
+                // somebody the nudge and never the mention — which it did, until `Delivery`
+                // held the failure: this dispatch is inside the transaction above, so an
+                // exception here used to take the comment out with it.
+                Delivery::attempt(fn () => MentionReceived::dispatch($row));
             }
 
             return $comment->load(['author', 'mentions.user']);
