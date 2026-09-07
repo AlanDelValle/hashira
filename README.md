@@ -163,14 +163,23 @@ other. Good first issues are labelled as such once Phase 1 lands.
 
 ## Licence
 
-[MIT](LICENSE).
+[AGPL-3.0-or-later](LICENSE) for the application, [MIT](resources/js/editor/LICENSE) for the
+editor core in `resources/js/editor/`. [LICENSING.md](LICENSING.md) says what that means in
+practice.
 
-MIT was chosen over a copyleft licence such as AGPL deliberately. The value of this project
-is the tool and the people who improve it, not licence leverage over people who host it.
-Permissive licensing also means the editor core — the geometry, document and command
-layers — can be lifted into other projects without a legal conversation, which is the most
-useful thing this codebase can offer. If the project ever grows a hosted commercial edition,
-that is a reason to add a separate licence for that edition, not to restrict this one.
+The short version. **Running it yourself is free and stays free** — there is no edition of
+Hashira with the drawing tools taken out of it, and there never will be; if this project ever
+charges for anything it charges for operating an instance, not for drawing on one. **Running
+it as a service other people use means publishing your changes**, which is the difference
+between the AGPL and the MIT this was under until Phase 10: MIT additionally hands out the
+right to run it as a competing service and give nothing back, and operating it is the only
+way the project ever pays for itself. **The editor core stays permissive** — the document
+model, geometry, commands, snapping, viewport and exporters can be lifted into anything,
+including something closed, which was the whole of the original argument for MIT and is still
+right about the part it was right about.
+
+Contributions come in under the [DCO](https://developercertificate.org/) (`git commit -s`).
+No CLA, no copyright assignment.
 
 ## Name
 

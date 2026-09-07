@@ -37,6 +37,23 @@ The other side of sharing that database: **do not run it at the same time as `co
 Pest truncates `hashira_testing` between tests, and it will happily do that underneath a
 browser halfway through drawing a wall. CI runs the two in separate jobs for the same reason.
 
+## Signing off
+
+Commits need a sign-off:
+
+```bash
+git commit -s -m "your message"
+```
+
+That appends a `Signed-off-by` line, and it means you agree to the
+[Developer Certificate of Origin](https://developercertificate.org/) — in plain terms, that
+you wrote the change or otherwise have the right to submit it under the project's licence.
+
+There is no CLA and no copyright assignment. You keep the copyright on what you write. What
+you are licensing it under depends on where it lands: `resources/js/editor/` is MIT and the
+rest is AGPL-3.0-or-later — see [LICENSING.md](LICENSING.md), which also says why it is split
+that way.
+
 ## What makes a change easy to merge
 
 - **One concern per pull request.** A refactor bundled with a feature is two reviews wearing

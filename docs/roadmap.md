@@ -492,15 +492,16 @@ whoever already has it open; this one is about the tool being somewhere, run by 
 is not its author, extended by somebody who cannot send a pull request, and paid for by
 something. It changes the licence and the deployment before it changes a line of geometry.
 
-- [~] **10.0 The decisions and the licence.** The decisions are registered below. What is left
-  is the files that carry them: `LICENSE` becomes AGPL-3.0-or-later, `resources/js/editor/`
-  gains an MIT `LICENSE` of its own, `LICENSING.md` explains the split in plain language,
-  the README's licence section is rewritten — it currently argues against the licence this
-  phase adopts — and `CONTRIBUTING.md` asks for a `Signed-off-by`. `AGENTS.md` also loses
-  `DWG` and `a plugin system` from the list of things not to implement, the way DXF and
-  collaboration left it in the phases that did them. It is an item rather than a preamble
-  because three of the four things below are decided by it, and because relicensing is a
-  short edit while the contributor list is one person and a negotiation afterwards
+- [x] **10.0 The decisions and the licence.** The decisions are registered below, and the files
+      that carry them are written: `LICENSE` is the AGPL-3.0 text, `resources/js/editor/` has an
+      MIT `LICENSE` of its own, `LICENSING.md` says where the boundary falls and what it does
+      not cover, the README's licence section no longer argues against the licence the project
+      is under, `CONTRIBUTING.md` asks for a `Signed-off-by`, and `composer.json` stops
+      declaring MIT. `AGENTS.md` still forbids DWG and a plugin system: that line is corrected
+      by the sub-phase that builds each, the way DXF and collaboration were corrected in the
+      phases that did them. It was an item rather than a preamble because three of the four
+      things below are decided by it, and because relicensing is a short edit while the
+      contributor list is one person and a negotiation afterwards
 - [ ] **10.1 Self-hosting: containers, backups, an upgrade path.** A production image and a
       compose file for the whole of it — app, PostgreSQL, the queue worker, the scheduler and
       Reverb — an `.env.production.example`, a documented backup of both things that hold work
@@ -541,7 +542,11 @@ Decisions taken at the start of the phase, so they are not re-argued halfway thr
   licence. What MIT everywhere _additionally_ grants is the right to run this as a competing
   service and give nothing back, which is the one thing the project cannot afford to hand over:
   operating it is the only way it will ever pay for itself. Self-hosting stays free in both
-  senses of the word. Selling it hosted means publishing what you changed.
+  senses of the word. Selling it hosted means publishing what you changed. The boundary is the
+  directory rather than a list of modules, because a boundary you have to look up is one that
+  drifts — and the single thing the core reaches for outside it, `lib/mark.ts`, stays behind on
+  purpose: it is the logo, drawn into the corner of a printed sheet, and a logo is not
+  something to hand out under MIT.
 - **Running it publicly means offering the source of what is running.** That is AGPL §13, and
   it is satisfied the cheap way: the footer carries the version and the commit it was built
   from, linked to the tag. It is also the first thing anybody debugging a self-hosted instance
