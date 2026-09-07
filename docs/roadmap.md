@@ -485,12 +485,116 @@ Decided before the rest of the phase started, so they are not re-argued halfway 
   Membership outlives the link that granted it, so re-issuing a link does not evict the
   people already inside; withdrawing access is its own control, on the share dialog.
 
-### Phase 10 — Platform
+### Phase 10 — Platform `[~]`
 
-- DWG support
-- Plugin system exposing the command and geometry APIs
-- Organisations, teams and granular permissions
-- Self-hosting improvements: containers, backups, upgrade path
+The first phase that is not about the drawing. Everything before it made the tool better for
+whoever already has it open; this one is about the tool being somewhere, run by somebody who
+is not its author, extended by somebody who cannot send a pull request, and paid for by
+something. It changes the licence and the deployment before it changes a line of geometry.
+
+- [~] **10.0 The decisions and the licence.** The decisions are registered below. What is left
+  is the files that carry them: `LICENSE` becomes AGPL-3.0-or-later, `resources/js/editor/`
+  gains an MIT `LICENSE` of its own, `LICENSING.md` explains the split in plain language,
+  the README's licence section is rewritten — it currently argues against the licence this
+  phase adopts — and `CONTRIBUTING.md` asks for a `Signed-off-by`. `AGENTS.md` also loses
+  `DWG` and `a plugin system` from the list of things not to implement, the way DXF and
+  collaboration left it in the phases that did them. It is an item rather than a preamble
+  because three of the four things below are decided by it, and because relicensing is a
+  short edit while the contributor list is one person and a negotiation afterwards
+- [ ] **10.1 Self-hosting: containers, backups, an upgrade path.** A production image and a
+      compose file for the whole of it — app, PostgreSQL, the queue worker, the scheduler and
+      Reverb — an `.env.production.example`, a documented backup of both things that hold work
+      (the database, and the private disk the underlays and blocks live on), a documented
+      upgrade, and the first tagged release the project has ever had. **Its acceptance test is
+      a deployment.** Not that a Dockerfile exists: that the tool is on the internet at a
+      domain, over HTTPS, sending its own password resets, backing itself up nightly, and
+      tagged `v0.10.0` — a number that says out loud that the schema 10.2 rewrites is still
+      ahead
+- [ ] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
+      something that can be an organisation rather than always a user, membership is inherited
+      from the organisation as well as granted per project, and somebody is invited by email
+      rather than only by holding a link. `project_members` was built to be written by this and
+      nothing that reads a role should have to change — but `projects.user_id` was not, and
+      moving it is the largest migration in the project's life. One sub-phase, with nothing
+      else in it
+- [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
+      is handed a read-only snapshot of the document, and can say one kind of thing back: a
+      command envelope, read by `parseCommand` like anything else that arrives from elsewhere.
+      Installed from a file or a URL. The API is versioned from its first line
+- [ ] **10.4 DWG import, through a converter that is not this program.** A `DwgConverter` runs
+      `dwg2dxf` as a separate process and hands what comes out to the DXF importer 8.4 already
+      built, so there is no new reader of a file and no new geometry anywhere. Without the
+      binary on the host, the import dialog does not offer DWG at all
+
+Taken **10.0 → 10.1 → 10.2 → 10.3 → 10.4**, by the rule the last two phases used: whatever
+needs least of the others goes next. 10.1 needs nothing and produces the thing every later item
+is delivered on. 10.2 comes before 10.3 because a plugin somebody installs is likely to be
+installed for an organisation rather than for a person. 10.4 is last because it is the only
+item here that can be dropped without leaving a hole.
+
+Decisions taken at the start of the phase, so they are not re-argued halfway through:
+
+- **The application is AGPL-3.0-or-later; the editor core stays MIT.** The README argued for
+  MIT on the ground that the geometry, document and command layers should be liftable into
+  somebody else's project without a legal conversation. That reason is untouched, because it is
+  an argument about the core — and the core is exactly the part that keeps the permissive
+  licence. What MIT everywhere _additionally_ grants is the right to run this as a competing
+  service and give nothing back, which is the one thing the project cannot afford to hand over:
+  operating it is the only way it will ever pay for itself. Self-hosting stays free in both
+  senses of the word. Selling it hosted means publishing what you changed.
+- **Running it publicly means offering the source of what is running.** That is AGPL §13, and
+  it is satisfied the cheap way: the footer carries the version and the commit it was built
+  from, linked to the tag. It is also the first thing anybody debugging a self-hosted instance
+  wants to know, so it would have been worth building without the obligation.
+- **Contributions arrive under a DCO, not a CLA.** `git commit -s`, one line in
+  `CONTRIBUTING.md`, nothing to administer and no service to pay for. What that gives up is the
+  option of selling somebody a proprietary exception later, and it is given up deliberately:
+  exercising that option needs a company, a contract and a lawyer, none of which exist, while a
+  CLA costs every casual contributor a signature before their first typo fix.
+- **There is one repository, and the hosted edition is a deployment rather than a codebase.**
+  No private fork, no `if (cloud)`. A second repository doubles the maintenance of a single
+  maintainer in order to hide code with nothing secret in it — what is secret is an `.env` on a
+  server — and a branch in the source for the hosted case is exactly how the self-hosted case
+  becomes the one nobody tests. Anything the hosted instance does differently is configuration.
+- **What is charged for is operating it, never drawing with it.** Everything phases 2 to 12
+  built — walls, openings, rooms, dimensions, layers, sheets, hatching, line types and every
+  export — is in the self-hosted instance and stays there. If money arrives it arrives for
+  running the thing for somebody: the backups, the socket, the conversion, the seats. A
+  drafting tool that withholds a dimension type in order to sell a plan is not open source with
+  a business model, it is a demo with a licence file.
+- **Production runs on a free tier, and the container is what makes that a safe bet.** One
+  always-free ARM instance with PostgreSQL on it, Let's Encrypt in front of it, and a free
+  transactional mail allowance for the handful of messages the app sends; no managed database,
+  because every free managed tier expires. Which provider is 10.1's documentation rather than
+  this list, because what matters is the property and not the vendor: nothing in the deployment
+  may require a card, and moving the whole of it onto a four-euro box has to be an afternoon.
+  That is the same property a self-hoster needs, which is why the hosted instance is a
+  self-host like any other — the only arrangement under which the self-hosting story stays
+  honest.
+- **Containers ship for deployment and not for development.** `AGENTS.md` says this project has
+  no Docker setup, and that stands for working on it: Herd remains how it is developed, and a
+  contributor never has to build an image. The image is a release artifact, produced by CI and
+  published for the people who want to run the thing rather than change it.
+- **DWG is read, never written, and by a program that is not this one.** The commercial
+  libraries need a membership costing more per year than this project will earn in several, and
+  the free one is GPL-3, which is not a licence this codebase can absorb. So it is not
+  absorbed: `dwg2dxf` is invoked as a separate process, which is aggregation rather than
+  linkage, and the DWG never becomes something this application has parsed — it becomes a DXF,
+  and 8.4's importer takes it from there. Compiling that library into the front-end bundle
+  would dissolve the boundary the whole arrangement rests on, so it is out, and the default
+  image does not carry the binary either: it is a compose profile, so that what is GPL is
+  something the operator installed on purpose. **Writing DWG is out permanently** — the free
+  implementation's writer cannot be trusted with somebody's drawing, and Phase 8 already
+  settled that R12 ASCII is the dialect that opens everywhere.
+- **A plugin is sandboxed, envelope-only, and there is no marketplace.** 9.0 already decided
+  the shape of what crosses the boundary: state, never intent, through one parser. What 10.3
+  adds is where it runs and how it is installed, and the answer to the second is "from a file
+  or a URL" for as long as that holds. A registry is a product rather than a feature — hosting
+  other people's code, reviewing it, and being blamed for it — and a single maintainer should
+  not own one before there is a plugin worth installing. The first plugin the API has to
+  satisfy is one written in this repository: something the editor already does, rebuilt on top
+  of it. If the DXF exporter cannot be a plugin, the API is wrong, and that is much cheaper to
+  learn from the inside.
 
 ### Phase 11 — Drafting depth `[x]`
 
