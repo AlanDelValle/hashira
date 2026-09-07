@@ -76,3 +76,35 @@ describe('runtimeConfig', () => {
         expect(runtimeConfig().reverb.key).toBe('first');
     });
 });
+
+describe('the source offer', () => {
+    it('carries the version and commit the image was built from', () => {
+        serve(
+            JSON.stringify({
+                source: {
+                    repository: 'https://example.com/fork',
+                    version: 'v0.10.0',
+                    commit: 'abc1234',
+                },
+            }),
+        );
+
+        expect(runtimeConfig().source).toEqual({
+            repository: 'https://example.com/fork',
+            version: 'v0.10.0',
+            commit: 'abc1234',
+        });
+    });
+
+    /*
+     * An image somebody built themselves knows neither, and saying so is the point: the footer
+     * then offers the repository rather than linking a commit that is not what is running.
+     */
+    it('claims no version when the build did not know one', () => {
+        serve(JSON.stringify({ reverb: { key: 'abc123' } }));
+
+        expect(runtimeConfig().source.version).toBe('');
+        expect(runtimeConfig().source.commit).toBe('');
+        expect(runtimeConfig().source.repository).toContain('github.com');
+    });
+});

@@ -63,8 +63,24 @@ unusual.
 | CI          | GitHub Actions                                                                 |
 
 Local development targets [Laravel Herd](https://herd.laravel.com), which already provides
-PHP, Nginx and PostgreSQL. Containers are on the roadmap for self-hosting, not required to
-contribute.
+PHP, Nginx and PostgreSQL. Containers are how it is **deployed**, not how it is developed: a
+contributor never has to build an image, and the image never has to be a development
+environment.
+
+## Running your own
+
+One machine, one `docker compose up`, and it obtains its own certificate:
+
+```bash
+git clone https://github.com/AlanDelValle/hashira.git
+cd hashira
+cp .env.production.example .env   # set your domain, a database password and an APP_KEY
+docker compose up -d
+```
+
+[`docs/self-hosting.md`](docs/self-hosting.md) is the whole of it — backups, upgrades, turning
+on presence, and what to do when a certificate will not issue. It runs on a free-tier instance;
+the only thing self-hosting costs is the domain name.
 
 ## Running it locally
 

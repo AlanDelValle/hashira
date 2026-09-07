@@ -1,0 +1,129 @@
+# Hashira, self-hosted.
+#
+#   cp .env.production.example .env
+#   docker compose run --rm --no-deps app php artisan key:generate --show   # paste into .env
+#   docker compose up -d
+#
+# `docs/self-hosting.md` says the rest — backups, upgrades, and what to do when a certificate
+# will not issue.
+
+name: hashira
+
+services:
+  app:
+    image: ghcr.io/alandelvalle/hashira:${HASHIRA_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # One container migrates, and it is this one. Two containers running `migrate` at
+      # the same moment is how the same migration gets applied twice.
+      RUN_MIGRATIONS: 'true'
+      # So that the restore in docs/self-hosting.md is the command it claims to be. This is the
+      # secret the container already holds as DB_PASSWORD, under the name `pg_restore` looks
+      # for — without it that command stops to ask for a password, which a non-interactive
+      # shell cannot answer. Found by running the documented restore rather than reading it.
+      PGPASSWORD: ${DB_PASSWORD}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      # Drawings are rows in PostgreSQL, but the underlays somebody traces over and the
+      # blocks they saved are files. This is the second of the two things that hold work.
+      - storage:/app/storage
+      # Not written from here — the scheduler does that — but mounted so that restoring
+      # one is `docker compose exec app`, in the container that has `pg_restore`.
+      - backups:/backups
+      # The certificate Caddy obtained. Without this it asks for a new one on every
+      # restart, and Let's Encrypt stops answering after a handful of those in a week.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-hashira}
+      POSTGRES_USER: ${DB_USERNAME:-hashira}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-hashira} -d ${DB_DATABASE:-hashira}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Nightly backups, and nothing else yet. It is a container rather than a cron entry on the
+  # host so that a machine which has only Docker on it is a machine this runs on.
+  scheduler:
+    image: ghcr.io/alandelvalle/hashira:${HASHIRA_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    command: ['php', 'artisan', 'schedule:work']
+    # The image's own check asks a web server on port 80 whether it is up, and this container
+    # is not one. Left in place it reports unhealthy for ever, which teaches an operator to
+    # ignore the column that is supposed to tell them something.
+    healthcheck:
+      disable: true
+    volumes:
+      - storage:/app/storage
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Presence, live co-editing and the nudge when somebody names you. Optional, and off unless
+  # you ask for it:
+  #
+  #   docker compose --profile presence up -d
+  #
+  # With it off, `BROADCAST_CONNECTION` stays `null`, the browser is handed an empty key and
+  # never opens a connection, and the editor is exactly what it was — which is the promise the
+  # rest of the application is written to keep.
+  reverb:
+    profiles: ['presence']
+    image: ghcr.io/alandelvalle/hashira:${HASHIRA_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    command: ['php', 'artisan', 'reverb:start', '--host=0.0.0.0', '--port=8080']
+    # Its own check, for the same reason: the image's asks about a web server this container
+    # does not run. A socket server either has the port open or it does not.
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 8080']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Nothing is published: the browser reaches it through the app container on 443, which
+    # is what the `@reverb` route in the Caddyfile is for. One port open, one certificate.
+    expose:
+      - '8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+# There is no queue worker, deliberately. Nothing in this application is queued today — the two
+# events it broadcasts are `ShouldBroadcastNow`, chosen so an editor feels live without a worker
+# running — so `QUEUE_CONNECTION=sync` in the example environment is the honest setting, and a
+# container waiting on an empty table is one more thing to keep alive for no reason. When
+# something here is genuinely queued, this is where the worker goes.
+
+volumes:
+  postgres:
+  storage:
+  backups:
+  caddy-data:
+  caddy-config:

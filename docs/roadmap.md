@@ -503,8 +503,8 @@ something. It changes the licence and the deployment before it changes a line of
       things below are decided by it, and because relicensing is a short edit while the
       contributor list is one person and a negotiation afterwards
 - [~] **10.1 Self-hosting: containers, backups, an upgrade path.** A production image and a
-  compose file for the whole of it — app, PostgreSQL, the queue worker, the scheduler and
-  Reverb — an `.env.production.example`, a documented backup of both things that hold work (the
+  compose file for the whole of it — app, PostgreSQL, the scheduler, and Reverb behind a
+  profile — an `.env.production.example`, a documented backup of both things that hold work (the
   database, and the private disk the underlays and blocks live on), a documented upgrade, and
   the first tagged release the project has ever had. **Its acceptance test is a deployment.**
   Not that a Dockerfile exists: that the tool is on the internet at a domain, over HTTPS,
@@ -513,8 +513,29 @@ something. It changes the licence and the deployment before it changes a line of
   writing the Dockerfile first would have shipped an image that could not do the one thing it
   is for. **10.1a is done:** what the browser is told is read from the page at run time rather
   than inlined into the bundle, and a socket that is down can no longer take an edit with it.
-  **10.1b** is the image, the compose, the §13 footer and `docs/self-hosting.md`. **10.1c** is
-  CI publishing the image, the tag, and the deployment itself
+  **10.1b is done:** the image, the compose file, the §13 footer, nightly backups and
+  `docs/self-hosting.md` — walked in containers, including signing in and watching the socket
+  connect through the front door on one port, and restoring a dump over a deliberately emptied
+  table. **10.1c** is CI publishing the image, the tag, and the deployment itself.
+
+  Two things 10.1b decided against what was written here. **There is no queue worker**, because
+  nothing in this application is queued — the two events it broadcasts are `ShouldBroadcastNow`
+  precisely so that an editor feels live without one — and a container waiting on an empty table
+  is a thing to keep alive for no reason. `QUEUE_CONNECTION=sync` is the honest setting until
+  something here is genuinely queued. **And the web server is FrankenPHP rather than nginx and
+  PHP-FPM**: two processes, a second configuration file describing which paths are PHP, and a
+  certificate renewed on a timer are three things that can be misconfigured, and all three exist
+  to serve `public/`. One container obtains its own certificate, which is the difference between
+  a self-hosting story somebody follows and one they abandon.
+
+  Three things only running it could have found, and each is the reason the acceptance test is a
+  deployment rather than a file. `GLOB_BRACE` does not exist in musl, so the backup's prune died
+  in Alpine and nowhere else. `php artisan db:show`, which the entrypoint used to decide the
+  database was up, formats a number through an extension the image does not carry — and only
+  once there are tables to count, so it worked on a first boot and failed on every one after it.
+  And the restore this repository documents needed a password it did not say it needed, which
+  reading the paragraph would never have shown
+
 - [ ] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
       something that can be an organisation rather than always a user, membership is inherited
       from the organisation as well as granted per project, and somebody is invited by email

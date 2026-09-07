@@ -1,0 +1,39 @@
+{
+	# Caddy asks Let's Encrypt for a certificate on its own, for whatever `SERVER_NAME` says.
+	# Set that to your domain and there is nothing else to do about TLS — no certbot, no timer,
+	# no renewal that expires while somebody is on holiday. Set it to `:80` instead and you get
+	# plain HTTP, which is the right answer when something else in front is terminating TLS.
+	{$CADDY_GLOBAL_OPTIONS}
+
+	frankenphp
+}
+
+{$SERVER_NAME:localhost} {
+	log {
+		# To the container's log, where `docker compose logs` finds it.
+		output stdout
+		format {$CADDY_LOG_FORMAT:console}
+		level {$CADDY_LOG_LEVEL:INFO}
+	}
+
+	root /app/public
+
+	encode zstd br gzip
+
+	# Vite writes a hash into every asset filename, so a build's files can be cached for as long
+	# as the browser cares to. `index.html` is not among them: this application has no HTML file
+	# to serve, only the Blade shell PHP renders.
+	@immutable path /build/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# The socket server, on the same host and port as everything else. Reverb listens on 8080
+	# inside the compose network, and putting it here means the browser opens `wss://` on 443
+	# like every other request — no second port to open in a firewall, and no certificate of its
+	# own. `REVERB_CLIENT_*` in the environment is what tells the browser to come this way.
+	@reverb path /app /app/* /apps/*
+	handle @reverb {
+		reverse_proxy {$REVERB_UPSTREAM:reverb:8080}
+	}
+
+	php_server
+}

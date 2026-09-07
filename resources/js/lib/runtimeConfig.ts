@@ -23,10 +23,23 @@ export interface RuntimeConfig {
         port: number;
         scheme: string;
     };
+    /**
+     * Which source this instance is running, for the offer the AGPL asks us to make.
+     *
+     * `version` and `commit` are empty in a checkout and in an image somebody built for
+     * themselves, which is the honest answer: the offer then points at the repository without
+     * claiming to know what is deployed.
+     */
+    source: {
+        repository: string;
+        version: string;
+        commit: string;
+    };
 }
 
 const FALLBACK: RuntimeConfig = {
     reverb: { key: '', host: 'localhost', port: 8080, scheme: 'http' },
+    source: { repository: 'https://github.com/AlanDelValle/hashira', version: '', commit: '' },
 };
 
 const ELEMENT_ID = 'hashira-config';
@@ -79,20 +92,31 @@ function merge(parsed: unknown): RuntimeConfig {
         return FALLBACK;
     }
 
-    const reverb = (parsed as { reverb?: unknown }).reverb;
-
-    if (typeof reverb !== 'object' || reverb === null) {
-        return FALLBACK;
-    }
-
-    const source = reverb as Record<string, unknown>;
+    const reverb = fields(parsed, 'reverb');
+    const source = fields(parsed, 'source');
 
     return {
         reverb: {
-            key: typeof source.key === 'string' ? source.key : FALLBACK.reverb.key,
-            host: typeof source.host === 'string' ? source.host : FALLBACK.reverb.host,
-            port: typeof source.port === 'number' ? source.port : FALLBACK.reverb.port,
-            scheme: typeof source.scheme === 'string' ? source.scheme : FALLBACK.reverb.scheme,
+            key: text(reverb.key, FALLBACK.reverb.key),
+            host: text(reverb.host, FALLBACK.reverb.host),
+            port: typeof reverb.port === 'number' ? reverb.port : FALLBACK.reverb.port,
+            scheme: text(reverb.scheme, FALLBACK.reverb.scheme),
+        },
+        source: {
+            repository: text(source.repository, FALLBACK.source.repository),
+            version: text(source.version, FALLBACK.source.version),
+            commit: text(source.commit, FALLBACK.source.commit),
         },
     };
+}
+
+/** @returns the named object's fields, or none, so a missing block reads as every field absent. */
+function fields(parsed: object, name: string): Record<string, unknown> {
+    const value = (parsed as Record<string, unknown>)[name];
+
+    return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function text(value: unknown, fallback: string): string {
+    return typeof value === 'string' ? value : fallback;
 }

@@ -22,7 +22,45 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backups
+    |--------------------------------------------------------------------------
+    |
+    | `hashira:backup` writes here and the scheduler runs it nightly. The default is inside
+    | `storage/`, which is the volume a self-hosted instance already keeps — but the compose
+    | file points it at a volume of its own, so that a dump survives the application container
+    | being replaced by an upgrade.
+    |
+    */
+
+    'backup' => [
+        'path' => (string) (env('BACKUP_PATH') ?: storage_path('backups')),
+        'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Which source this is
+    |--------------------------------------------------------------------------
+    |
+    | The AGPL asks that people using this over a network be offered the source of the version
+    | they are using, and an offer that points at `main` is not that — `main` is not what they
+    | are talking to. The release workflow bakes both of these into the image as build
+    | arguments, and the footer turns them into a link at that exact commit.
+    |
+    | Empty is honest for an image somebody built themselves: the footer then offers the
+    | repository without claiming to know which version is running.
+    |
+    */
+
     'client' => [
+
+        'source' => [
+            'repository' => 'https://github.com/AlanDelValle/hashira',
+            'version' => (string) env('APP_VERSION', ''),
+            'commit' => (string) env('APP_COMMIT', ''),
+        ],
 
         'reverb' => [
 

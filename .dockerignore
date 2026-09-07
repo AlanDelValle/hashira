@@ -1,0 +1,44 @@
+# What the image does not need, and in two cases must not have.
+#
+# `vendor` and `node_modules` are rebuilt inside the image from the lock files, so sending a
+# host's copies costs a slow upload and risks a native extension built for the wrong platform.
+# `.env` is the one that matters: it holds a machine's secrets, and an image is something people
+# publish.
+
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+.git
+.github
+node_modules
+vendor
+public/build
+public/hot
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# Written by whichever Laravel ran here last, and about that machine's packages rather than the
+# image's. Left in, a stale manifest is baked in and believed; left out, the container writes
+# its own on first boot.
+bootstrap/cache/*.php
+storage/backups
+test-results
+playwright-report
+.claude
+docs/images
+
+# Nothing that only runs in development or CI.
+e2e
+tests
+phpunit.xml
+phpstan.neon
+eslint.config.js
+vitest.config.ts
+playwright.config.ts
+.editorconfig
+.prettierrc.json
+.prettierignore
