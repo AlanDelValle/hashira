@@ -502,15 +502,19 @@ something. It changes the licence and the deployment before it changes a line of
       phases that did them. It was an item rather than a preamble because three of the four
       things below are decided by it, and because relicensing is a short edit while the
       contributor list is one person and a negotiation afterwards
-- [ ] **10.1 Self-hosting: containers, backups, an upgrade path.** A production image and a
-      compose file for the whole of it — app, PostgreSQL, the queue worker, the scheduler and
-      Reverb — an `.env.production.example`, a documented backup of both things that hold work
-      (the database, and the private disk the underlays and blocks live on), a documented
-      upgrade, and the first tagged release the project has ever had. **Its acceptance test is
-      a deployment.** Not that a Dockerfile exists: that the tool is on the internet at a
-      domain, over HTTPS, sending its own password resets, backing itself up nightly, and
-      tagged `v0.10.0` — a number that says out loud that the schema 10.2 rewrites is still
-      ahead
+- [~] **10.1 Self-hosting: containers, backups, an upgrade path.** A production image and a
+  compose file for the whole of it — app, PostgreSQL, the queue worker, the scheduler and
+  Reverb — an `.env.production.example`, a documented backup of both things that hold work (the
+  database, and the private disk the underlays and blocks live on), a documented upgrade, and
+  the first tagged release the project has ever had. **Its acceptance test is a deployment.**
+  Not that a Dockerfile exists: that the tool is on the internet at a domain, over HTTPS,
+  sending its own password resets, backing itself up nightly, and tagged `v0.10.0` — a number
+  that says out loud that the schema 10.2 rewrites is still ahead. Split in three, because
+  writing the Dockerfile first would have shipped an image that could not do the one thing it
+  is for. **10.1a is done:** what the browser is told is read from the page at run time rather
+  than inlined into the bundle, and a socket that is down can no longer take an edit with it.
+  **10.1b** is the image, the compose, the §13 footer and `docs/self-hosting.md`. **10.1c** is
+  CI publishing the image, the tag, and the deployment itself
 - [ ] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
       something that can be an organisation rather than always a user, membership is inherited
       from the organisation as well as granted per project, and somebody is invited by email

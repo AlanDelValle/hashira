@@ -20,19 +20,29 @@ npm run dev
 Reverb and requires it, so a PHP without it cannot resolve the dependencies — Herd's own PHP
 has it, a standalone build on the `PATH` may not. Everything else is unaffected: the generated
 platform check only asserts the PHP version, so `composer test`, `analyse`, `lint` and every
-artisan command run fine either way. Nothing in the application calls curl at runtime, because
-nothing here broadcasts from PHP.
+artisan command run fine either way. **It is also needed at runtime once broadcasting is on**:
+9.2a made this application send from PHP — an edit and a mention both go out over HTTP to
+Reverb — so a production image without `ext-curl` serves a drawing that nobody else can watch
+being drawn.
 
-Presence — seeing who else is on a drawing, and their cursor — needs a websocket server:
+Presence and live co-editing — seeing who else is on a drawing, their cursor, and their edits
+arriving — need a websocket server:
 
 ```bash
 php artisan reverb:start
 ```
 
-**It is optional and the editor must stay that way.** With no `VITE_REVERB_APP_KEY` the client
-never opens a connection, nobody sees anybody, and everything else works exactly as it did —
-which is what a fresh clone and CI both get. A drafting tool that will not start because a
-socket is down is a worse tool than one that quietly has nobody else in it.
+**It is optional and the editor must stay that way.** With `BROADCAST_CONNECTION=null`, which
+is what a fresh clone and CI both get, the client is handed an empty key, never opens a
+connection, nobody sees anybody, and everything else works exactly as it did. A drafting tool
+that will not start because a socket is down is a worse tool than one that quietly has nobody
+else in it — and a socket that is configured and then _stops_ costs the news and never the
+work, which is `App\Support\Delivery` and is tested for.
+
+**What the browser is told is read at run time, never built into the bundle.**
+`config/hashira.php` is printed into the page and read by `lib/runtimeConfig.ts`. A `VITE_`
+variable is inlined when the assets are built, and from Phase 10.1 the assets are built once,
+by CI, for every instance — so anything that varies per deployment has to arrive this way.
 
 `guzzlehttp/guzzle` is held at 7.x rather than 8.x, and not by choice: Reverb pins
 `guzzlehttp/psr7 ^2.6` and Guzzle 8 requires `^3.1`. Nothing in the application uses Guzzle

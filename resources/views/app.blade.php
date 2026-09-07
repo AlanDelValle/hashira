@@ -22,6 +22,14 @@
         than framing it in white. --}}
         <meta name="theme-color" content="#f4f3f0" />
 
+        {{-- What this deployment is, read once by `lib/runtimeConfig.ts`. It is here rather than in
+        the bundle because the bundle is built by CI, before any operator exists — see
+        `config/hashira.php`. Anything printed here is public by definition: it is what the browser
+        is about to be told, so it holds a socket's app key and never its secret. --}}
+        <script id="hashira-config" type="application/json">
+            @json(config('hashira.client'))
+        </script>
+
         {{-- React Refresh's preamble, and it must come before the app script. Without it
         @vitejs/plugin-react throws while evaluating the first module and nothing mounts — a blank
         page in dev only, since the production build has no refresh runtime at all. The directive

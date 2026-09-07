@@ -2,15 +2,20 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 import { api } from '@/lib/api';
+import { runtimeConfig } from '@/lib/runtimeConfig';
 
 /**
  * The socket, if there is one.
  *
- * **Presence is optional and the editor must not notice its absence.** A checkout with no
- * `VITE_REVERB_APP_KEY` — which is what a fresh clone and CI both get — never opens a
- * connection at all, and everything else works exactly as it did. That is deliberate: a
- * drawing tool that will not start because a websocket server is down is a worse tool than one
- * that quietly has nobody else in it.
+ * **Presence is optional and the editor must not notice its absence.** An instance with no
+ * `REVERB_APP_KEY` — which is what a fresh clone and CI both get — never opens a connection at
+ * all, and everything else works exactly as it did. That is deliberate: a drawing tool that
+ * will not start because a websocket server is down is a worse tool than one that quietly has
+ * nobody else in it.
+ *
+ * The key is read from the page rather than from `import.meta.env`, because a build is not a
+ * deployment: one published image serves every operator, and each of them has a different
+ * answer. See `lib/runtimeConfig.ts`.
  *
  * So this hands back `null` rather than throwing, and every caller is written to accept that.
  *
@@ -34,9 +39,9 @@ interface AuthResponse {
 let instance: Echo<'reverb'> | null = null;
 let attempted = false;
 
-/** Whether this build was given a socket to talk to at all. */
+/** Whether this instance was given a socket to talk to at all. */
 export function presenceIsConfigured(): boolean {
-    return String(import.meta.env.VITE_REVERB_APP_KEY ?? '') !== '';
+    return runtimeConfig().reverb.key !== '';
 }
 
 export function echo(): Echo<'reverb'> | null {
@@ -52,15 +57,15 @@ export function echo(): Echo<'reverb'> | null {
 
     window.Pusher = Pusher;
 
-    const scheme = String(import.meta.env.VITE_REVERB_SCHEME ?? 'http');
+    const { key, host, port, scheme } = runtimeConfig().reverb;
 
     try {
         instance = new Echo({
             broadcaster: 'reverb',
-            key: String(import.meta.env.VITE_REVERB_APP_KEY),
-            wsHost: String(import.meta.env.VITE_REVERB_HOST ?? 'localhost'),
-            wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
-            wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
+            key,
+            wsHost: host,
+            wsPort: port,
+            wssPort: port,
             forceTLS: scheme === 'https',
             enabledTransports: ['ws', 'wss'],
             authorizer: (channel: { name: string }) => ({
