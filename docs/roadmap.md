@@ -540,25 +540,27 @@ something. It changes the licence and the deployment before it changes a line of
   And the restore this repository documents needed a password it did not say it needed, which
   reading the paragraph would never have shown
 
-- [~] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
-  something that can be an organisation rather than always a user, membership is inherited from
-  the organisation as well as granted per project, and somebody is invited by email rather than
-  only by holding a link. `project_members` was built to be written by this and nothing that
-  reads a role should have to change — but `projects.user_id` was not, and moving it is the
-  largest migration in the project's life. Split in three, each of which is a thing you can walk
-  in a browser rather than a migration nobody can see. **10.2a is done:** organisations exist,
-  they can own projects, and the policy answers about both kinds of owner — `administeredBy` for
-  "may act as its owner" and `effectiveRole` for "what may this person do to the drawing", which
-  is the row on the project if there is one and the organisation's default if there is not.
-  **10.2b is done:** inviting by email — an address rather than an account, because requiring
-  one first means telling a colleague to go and register before they can be asked — the offer
-  taken up by the person it was written to and nobody else, the member list, promoting and
-  removing, and leaving. **10.2c is done:** a project the organisation cannot open by default, and
-  naming who may. Teams are not in it — Alan ruled them out at the start of the sub-phase, and
-  the case they were for is covered: restricting a project and naming people on it is what an
-  office actually needs for the competition entry and the client nobody junior is on. A team
-  would be a way of naming several people at once, which is worth having when somebody is doing
-  it often enough to complain
+- [x] **10.2 Organisations and granular permissions.** A project's owner becomes
+      something that can be an organisation rather than always a user, membership is inherited from
+      the organisation as well as granted per project, and somebody is invited by email rather than
+      only by holding a link. `project_members` was built to be written by this and nothing that
+      reads a role should have to change — but `projects.user_id` was not, and moving it is the
+      largest migration in the project's life. Split in three, each of which is a thing you can walk
+      in a browser rather than a migration nobody can see. **10.2a is done:** organisations exist,
+      they can own projects, and the policy answers about both kinds of owner — `administeredBy` for
+      "may act as its owner" and `effectiveRole` for "what may this person do to the drawing", which
+      is the row on the project if there is one and the organisation's default if there is not.
+      **10.2b is done:** inviting by email — an address rather than an account, because requiring
+      one first means telling a colleague to go and register before they can be asked — the offer
+      taken up by the person it was written to and nobody else, the member list, promoting and
+      removing, and leaving. **10.2c is done:** a project the organisation cannot open by default, and
+      naming who may. **Teams came out of the title, and this is the record of why:** they were ruled
+      out at the start of 10.2c, and the case they were for turned out to be covered — restricting a
+      project and naming people on it is what an office actually needs for the competition entry and
+      the client nobody junior is on. What a team would add is naming several people at once, which
+      is a convenience over a mechanism that already works and is worth building when somebody is
+      doing it often enough to complain. Until then it is a feature with no missing behaviour behind
+      it, which is the kind this roadmap exists to keep out of the codebase
 - [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
       is handed a read-only snapshot of the document, and can say one kind of thing back: a
       command envelope, read by `parseCommand` like anything else that arrives from elsewhere.
