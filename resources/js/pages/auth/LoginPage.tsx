@@ -46,7 +46,11 @@ export function LoginPage() {
             footer={
                 <>
                     No account yet?{' '}
-                    <Link to="/register" className="text-ink rounded-sm font-medium underline">
+                    <Link
+                        to="/register"
+                        state={location.state as RedirectState | null}
+                        className="text-ink rounded-sm font-medium underline"
+                    >
                         Create one
                     </Link>
                 </>

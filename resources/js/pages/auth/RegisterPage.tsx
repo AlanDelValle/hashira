@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { ApiError } from '@/lib/api';
@@ -8,9 +8,20 @@ import { TextField } from '@/ui/TextField';
 
 import { AuthLayout } from './AuthLayout';
 
+interface LocationState {
+    from?: string;
+}
+
 export function RegisterPage() {
     const { register } = useAuth();
     const navigate = useNavigate();
+
+    /*
+     * Where they were headed before being asked to sign in. It matters here and not only on the
+     * sign-in page because of invitations: somebody invited to a firm by email usually has no
+     * account yet, so the page they were sent to is on the far side of registering.
+     */
+    const state = useLocation().state as LocationState | null;
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -26,7 +37,7 @@ export function RegisterPage() {
 
         try {
             await register(name, email, password, confirmation);
-            await navigate('/projects', { replace: true });
+            await navigate(state?.from ?? '/projects', { replace: true });
         } catch (caught) {
             setError(
                 caught instanceof ApiError ? caught : new ApiError(0, 'Could not create account.'),
