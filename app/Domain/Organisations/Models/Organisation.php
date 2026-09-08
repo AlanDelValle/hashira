@@ -47,6 +47,12 @@ class Organisation extends Model
         return $this->hasMany(OrganisationMember::class);
     }
 
+    /** @return HasMany<OrganisationInvitation, $this> */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(OrganisationInvitation::class);
+    }
+
     /** @return HasMany<Project, $this> */
     public function projects(): HasMany
     {
@@ -62,6 +68,26 @@ class Organisation extends Model
     public function roleFor(User $user): ?OrganisationRole
     {
         return $this->membershipFor($user)?->role;
+    }
+
+    /**
+     * Whether this person is the only admin left.
+     *
+     * The invariant everything about membership has to defend: a firm with no admin is a firm
+     * nobody can rename, invite into, or delete — its drawings are reachable and its
+     * administration is not. It is the one state from which there is no way back through the
+     * interface, so it is refused at every door that leads to it: demoting, removing, leaving.
+     */
+    public function isLastAdmin(User $user): bool
+    {
+        if ($this->roleFor($user)?->administers() !== true) {
+            return false;
+        }
+
+        return $this->members()
+            ->where('role', OrganisationRole::Admin->value)
+            ->where('user_id', '!=', $user->getKey())
+            ->doesntExist();
     }
 
     public function membershipFor(User $user): ?OrganisationMember

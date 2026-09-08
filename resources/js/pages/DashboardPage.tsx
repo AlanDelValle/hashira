@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { formatRelativeTime } from '@/lib/time';
 import { MentionsMenu } from '@/mentions/MentionsMenu';
+import { useInvitations } from '@/projects/useInvitations';
 import { useOrganisations } from '@/projects/useOrganisations';
 import { useProjects } from '@/projects/useProjects';
 import { Button } from '@/ui/Button';
@@ -26,6 +27,7 @@ export function DashboardPage() {
     const { projects, loading, error, reload, create, rename, duplicate, remove, leave } =
         useProjects();
     const { organisations, create: createOrganisation } = useOrganisations();
+    const { invitations, answer } = useInvitations();
     const navigate = useNavigate();
 
     const [pending, setPending] = useState<Pending>(null);
@@ -96,6 +98,17 @@ export function DashboardPage() {
                                 </button>
                             }
                         >
+                            {organisations.map((organisation) => (
+                                <MenuItem
+                                    key={organisation.id}
+                                    onSelect={() =>
+                                        void navigate(`/organisations/${organisation.id}`)
+                                    }
+                                >
+                                    {organisation.name}
+                                </MenuItem>
+                            ))}
+                            {organisations.length > 0 && <MenuSeparator />}
                             <MenuItem onSelect={openNewOrganisation}>New organisation…</MenuItem>
                             <MenuItem onSelect={() => void logout()}>Sign out</MenuItem>
                         </Menu>
@@ -104,6 +117,44 @@ export function DashboardPage() {
             </header>
 
             <main id="content" className="mx-auto max-w-4xl px-6 py-10 sm:py-12">
+                {invitations.length > 0 && (
+                    <ul className="border-line mb-8 border-t">
+                        {invitations.map((invitation) => (
+                            <li
+                                key={invitation.id}
+                                className="border-line flex flex-wrap items-center justify-between gap-3 border-b py-3.5"
+                            >
+                                <p className="text-ink text-sm">
+                                    <span className="font-medium">
+                                        {invitation.invitedByName ?? 'Somebody'}
+                                    </span>{' '}
+                                    invited you to{' '}
+                                    <span className="font-medium">
+                                        {invitation.organisationName ?? 'an organisation'}
+                                    </span>
+                                    .
+                                </p>
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() => void answer(invitation, 'accept')}
+                                    >
+                                        Accept
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => void answer(invitation, 'decline')}
+                                    >
+                                        Decline
+                                    </Button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
                 <div className="flex items-baseline justify-between">
                     <h1 className="text-ink text-lg font-semibold tracking-tight">Projects</h1>
 

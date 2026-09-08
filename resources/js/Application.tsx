@@ -31,6 +31,8 @@ const EditorPage = route(() => import('@/pages/EditorPage'), 'EditorPage');
 const ReviewPage = route(() => import('@/pages/ReviewPage'), 'ReviewPage');
 const SharedPlanPage = route(() => import('@/pages/SharedPlanPage'), 'SharedPlanPage');
 const DashboardPage = route(() => import('@/pages/DashboardPage'), 'DashboardPage');
+const OrganisationPage = route(() => import('@/pages/OrganisationPage'), 'OrganisationPage');
+const InvitationPage = route(() => import('@/pages/InvitationPage'), 'InvitationPage');
 
 export function Application() {
     return (
@@ -56,6 +58,17 @@ export function Application() {
                              * sends them here rather than opening with its tools taken away.
                              */}
                             <Route path="/projects/:projectId/review" element={<ReviewPage />} />
+
+                            <Route
+                                path="/organisations/:organisationId"
+                                element={<OrganisationPage />}
+                            />
+                            {/*
+                             * Where the link in an invitation email lands. Behind the gate on
+                             * purpose: RequireAuth remembers the destination, so signing in — or
+                             * registering, which is the usual case — returns them here.
+                             */}
+                            <Route path="/invitations/:token" element={<InvitationPage />} />
                         </Route>
 
                         <Route path="*" element={<NotFoundPage />} />

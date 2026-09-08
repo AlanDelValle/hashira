@@ -550,8 +550,10 @@ something. It changes the licence and the deployment before it changes a line of
   they can own projects, and the policy answers about both kinds of owner — `administeredBy` for
   "may act as its owner" and `effectiveRole` for "what may this person do to the drawing", which
   is the row on the project if there is one and the organisation's default if there is not.
-  **10.2b** is people: inviting somebody by email whether or not they already have an account,
-  the member list, and leaving. **10.2c** is narrowing: a project the organisation cannot open by
+  **10.2b is done:** inviting by email — an address rather than an account, because requiring
+  one first means telling a colleague to go and register before they can be asked — the offer
+  taken up by the person it was written to and nobody else, the member list, promoting and
+  removing, and leaving. **10.2c** is narrowing: a project the organisation cannot open by
   default, per-project overrides, and teams
 - [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
       is handed a read-only snapshot of the document, and can say one kind of thing back: a
@@ -685,6 +687,28 @@ What 10.2a found, which the rest of the phase should keep in mind:
   `owner` in both, so the resource sends the organisation's name for a firm's project even to
   somebody who administers it — the one case where "only worth saying about somebody else's
   drawing" was the wrong rule.
+
+What 10.2b settled, and what walking it found:
+
+- **An invitation is addressed, not merely tokenised.** The token gets somebody to the page; the
+  signed-in account's address is what lets them take it up. A forwarded email therefore admits
+  the person it was written to and nobody else, which is the difference between inviting
+  somebody and publishing a way in. It is also why the admin's list never carries the token and
+  the invitee's own does — they have it in their inbox already.
+- **A firm always has an admin, and that is defended at every door.** Demoting, removing and
+  leaving all refuse the last one, each with the sentence saying what to do instead. A firm with
+  no admin can still be worked in and can never be administered again, and nothing in the
+  interface offers a way out of it.
+- **The page an email links to never accepts on arrival.** Mail clients prefetch links, so
+  joining on a GET would mean a scanner somewhere joining a firm on somebody's behalf. It shows
+  the offer and waits for a click.
+- **`RedirectIfAuthenticated` was throwing away the destination, and had been all along.** The
+  session appearing re-renders that guard at the same moment the sign-in page runs its own
+  `navigate`, so the two raced; the guard sent everybody to the dashboard unconditionally and
+  sometimes won. Walking an invitation is what surfaced it — somebody with no account, sent from
+  an email to a page behind the gate, registered and landed on the dashboard instead of the
+  invitation they had been asked to answer. Both now read the same remembered destination, which
+  removes the race rather than trying to win it.
 
 ### Phase 11 — Drafting depth `[x]`
 

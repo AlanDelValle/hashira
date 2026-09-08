@@ -9,8 +9,11 @@ use App\Http\Controllers\Api\CommentThreadController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentOperationController;
 use App\Http\Controllers\Api\DocumentVersionController;
+use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\MentionController;
 use App\Http\Controllers\Api\OrganisationController;
+use App\Http\Controllers\Api\OrganisationInvitationController;
+use App\Http\Controllers\Api\OrganisationMemberController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberController;
@@ -85,6 +88,45 @@ Route::middleware('auth')->group(function (): void {
      */
     Route::apiResource('organisations', OrganisationController::class)
         ->only(['index', 'store', 'update', 'destroy']);
+
+    /*
+     * Who is in a firm. Listing is for anybody in it — knowing who else works on the drawings
+     * you work on is not privileged — and changing anything is for its admins.
+     */
+    Route::get('organisations/{organisation}/members', [OrganisationMemberController::class, 'index'])
+        ->name('organisations.members.index');
+    Route::patch('organisations/{organisation}/members/{member}', [OrganisationMemberController::class, 'update'])
+        ->name('organisations.members.update');
+    Route::delete('organisations/{organisation}/members/{member}', [OrganisationMemberController::class, 'destroy'])
+        ->name('organisations.members.destroy');
+
+    Route::get('organisations/{organisation}/invitations', [OrganisationInvitationController::class, 'index'])
+        ->name('organisations.invitations.index');
+    Route::post('organisations/{organisation}/invitations', [OrganisationInvitationController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('organisations.invitations.store');
+    /*
+     * Bound by id and not by token, which is the model's own route key. An admin's list
+     * deliberately never carries the token — a token in a list is a token in a screenshot and
+     * a support conversation — so the one route they call has to address it another way.
+     */
+    Route::delete('organisations/{organisation}/invitations/{invitation:id}', [OrganisationInvitationController::class, 'destroy'])
+        ->name('organisations.invitations.destroy');
+
+    /*
+     * The invitee's side. Authorized by the address the invitation was written to rather than
+     * by any standing in the firm — somebody accepting is by definition not in it yet.
+     */
+    Route::get('invitations', [InvitationController::class, 'index'])->name('invitations.index');
+    Route::get('invitations/{invitation}', [InvitationController::class, 'show'])
+        ->middleware('throttle:30,1')
+        ->name('invitations.show');
+    Route::post('invitations/{invitation}/accept', [InvitationController::class, 'accept'])
+        ->middleware('throttle:30,1')
+        ->name('invitations.accept');
+    Route::post('invitations/{invitation}/decline', [InvitationController::class, 'decline'])
+        ->middleware('throttle:30,1')
+        ->name('invitations.decline');
 
     Route::apiResource('projects', ProjectController::class);
 

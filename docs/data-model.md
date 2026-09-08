@@ -30,6 +30,20 @@ organisation_members
   unique (organisation_id, user_id)
   index (user_id)
 
+organisation_invitations
+  id                ulid pk
+  organisation_id   ulid fk → organisations, cascade delete
+  email             varchar          -- lowercased; the invitee may have no account yet
+  role              varchar(16)      -- 'admin' | 'member'
+  token             char(43) unique  -- 32 random bytes, base64url, like share_links.token
+  invited_by        bigint fk → users, null on delete
+  expires_at        timestamptz null
+  accepted_at       timestamptz null
+  revoked_at        timestamptz null
+  timestamps
+  index (email)
+  unique (organisation_id, email) where accepted_at is null and revoked_at is null
+
 projects
   id                ulid pk
   user_id           bigint fk → users, cascade delete, null           -- one of these two
@@ -240,6 +254,26 @@ GET    /api/organisations               the firms the caller is in
 POST   /api/organisations               { name } — the caller becomes its first admin
 PATCH  /api/organisations/{id}          { name } — admins only
 DELETE /api/organisations/{id}          admins only; takes the firm's projects with it
+
+GET    /api/organisations/{id}/members              anybody in the firm
+PATCH  /api/organisations/{id}/members/{member}     { role } — admins only
+DELETE /api/organisations/{id}/members/{member}     an admin removing, or anybody leaving
+
+GET    /api/organisations/{id}/invitations          admins only; never carries the token
+POST   /api/organisations/{id}/invitations          { email, role } — renews an open one
+DELETE /api/organisations/{id}/invitations/{id}     withdrawing an offer
+```
+
+### Invitations, from the invitee's side
+
+Authorized by the address the invitation was written to rather than by any standing in the
+firm — somebody accepting is by definition not in it yet. A token alone is not enough.
+
+```
+GET    /api/invitations                 what is open for the signed-in address
+GET    /api/invitations/{token}         one of them, for the page the email links to
+POST   /api/invitations/{token}/accept  writes the membership row
+POST   /api/invitations/{token}/decline
 ```
 
 ### Projects

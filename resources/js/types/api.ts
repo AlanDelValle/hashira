@@ -43,6 +43,32 @@ export interface Organisation {
     memberCount?: number;
 }
 
+export type OrganisationRole = 'admin' | 'member';
+
+/** One person in a firm, as an admin deciding about them sees it. */
+export interface OrganisationMember {
+    id: string;
+    userId: number;
+    name: string;
+    email: string;
+    role: OrganisationRole;
+    joinedAt: string;
+}
+
+/** An offer to join a firm that has not been taken up. Never carries the token. */
+export interface OrganisationInvitation {
+    id: string;
+    email: string;
+    role: OrganisationRole;
+    invitedAt: string;
+    expiresAt: string | null;
+    /** Present when the person being told is the one who was invited. */
+    organisationName?: string;
+    invitedByName?: string | null;
+    /** Also only for the addressee, who already has it in their inbox. */
+    token?: string;
+}
+
 /** Somebody who was let into a project, as their owner sees them. */
 export interface ProjectMember {
     id: string;
