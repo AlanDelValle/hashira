@@ -516,9 +516,11 @@ something. It changes the licence and the deployment before it changes a line of
   **10.1b is done:** the image, the compose file, the §13 footer, nightly backups and
   `docs/self-hosting.md` — walked in containers, including signing in and watching the socket
   connect through the front door on one port, and restoring a dump over a deliberately emptied
-  table. **10.1c** is CI publishing the image, the tag, and the deployment itself — the
-  workflow is written and requires the whole of CI before it pushes anything; what is left is
-  the tag and the machine.
+  table. **10.1c is published:** `v0.10.0` is tagged and
+  `ghcr.io/alandelvalle/hashira` carries it and `latest`, built for `linux/amd64` and
+  `linux/arm64` and pullable by anybody. What is left of the whole sub-phase is the one thing
+  that cannot be written down — the machine it runs on, and a domain resolving to it before the
+  first `up`, because that is what a certificate is issued against.
 
   Two things 10.1b decided against what was written here. **There is no queue worker**, because
   nothing in this application is queued — the two events it broadcasts are `ShouldBroadcastNow`

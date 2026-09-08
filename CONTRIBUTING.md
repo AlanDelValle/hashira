@@ -123,10 +123,16 @@ is what lets a running instance offer the source of the version it is actually r
 `workflow_dispatch` on the same workflow builds without pushing, for proving a change to the
 Dockerfile without spending a version number on it.
 
-**One thing has to be done by hand, once.** A package published from Actions is private no
-matter how public the repository is, so after the first release, open the package's settings on
-GitHub and make it public. Until that is done `docker compose pull` asks a stranger to
-authenticate against a registry in order to run free software.
+**Check the package is public after the first release, once.** It should be — a package pushed
+from Actions is linked to the repository and inherits its visibility, and `v0.10.0` came out
+anonymously pullable without anybody touching a setting. Worth confirming rather than assuming,
+because the failure is quiet in the wrong direction: `docker compose pull` would ask a stranger
+to authenticate against a registry in order to run free software, and the person it happens to
+is never you.
+
+```bash
+docker logout ghcr.io && docker pull ghcr.io/alandelvalle/hashira:latest
+```
 
 ## Reporting bugs
 

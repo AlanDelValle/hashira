@@ -44,10 +44,11 @@ jobs:
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
-      # A package published this way starts private, whatever the repository is, and stays that
-      # way until somebody changes it once in the package's own settings. Until then
-      # `docker compose pull` asks a stranger to log in to a registry to run free software.
-      # It is a single click and it is not something this workflow can do for itself.
+      # The package is linked to the repository and inherits its visibility, so a public
+      # repository publishes a publicly pullable image without anybody touching a setting —
+      # confirmed against v0.10.0. Worth checking after a first release all the same: if it ever
+      # comes out private, `docker compose pull` asks a stranger to log in to a registry in
+      # order to run free software, and the person that happens to is never the maintainer.
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
