@@ -35,7 +35,11 @@ const TEXT_PAIRS: Pair[] = [
     { fg: 'ink-muted', bg: 'canvas', where: 'body copy on the landing page' },
     { fg: 'ink-muted', bg: 'surface', where: 'property labels, menu items, header buttons' },
     { fg: 'ink-muted', bg: 'sunken', where: 'keys in the shortcut reference' },
-    { fg: 'ink-subtle', bg: 'canvas', where: 'the loading label and landing footnotes' },
+    {
+        fg: 'ink-subtle',
+        bg: 'canvas',
+        where: 'the loading label, landing footnotes, and what a project card says about its drawing',
+    },
     { fg: 'ink-subtle', bg: 'surface', where: 'the status bar, section headings, field hints' },
     { fg: 'ink-subtle', bg: 'accent-soft', where: 'a hidden layer on the active layer row' },
     { fg: 'accent', bg: 'surface', where: 'the active tool and the active layer' },

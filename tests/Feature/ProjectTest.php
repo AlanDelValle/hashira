@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Documents\DocumentSchema;
 use App\Domain\Projects\Models\Project;
 use App\Models\User;
@@ -96,4 +97,99 @@ describe('another user', function (): void {
 
 it('refuses every project route to a guest', function (): void {
     $this->getJson('/api/projects')->assertUnauthorized();
+});
+
+describe('what the list says about each drawing', function (): void {
+    it('counts the drawing in the database rather than sending it', function (): void {
+        $owner = signedIn();
+        $project = Project::factory()->for($owner, 'owner')->create(['name' => 'Studio']);
+
+        $data = DocumentSchema::blank('Studio');
+        $data['elements'] = [
+            ['id' => 'a', 'type' => 'line'],
+            ['id' => 'b', 'type' => 'line'],
+            ['id' => 'c', 'type' => 'line'],
+        ];
+        $data['settings']['sheets'][0]['size'] = 'A1';
+        $data['settings']['sheets'][0]['scale'] = 100;
+
+        $project->documents()->create([
+            'name' => 'Studio',
+            'schema_version' => DocumentSchema::CURRENT_VERSION,
+            'data' => $data,
+        ]);
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonPath('data.0.drawing.sheet', 'A1')
+            ->assertJsonPath('data.0.drawing.scale', 100)
+            ->assertJsonPath('data.0.drawing.elements', 3)
+            ->assertJsonPath('data.0.drawing.layers', 5)
+            ->assertJsonPath('data.0.drawing.sheets', 1);
+    });
+
+    it('summarises a project that has no drawing as nothing at all', function (): void {
+        $owner = signedIn();
+        Project::factory()->for($owner, 'owner')->create();
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonPath('data.0.drawing', null);
+    });
+
+    /*
+     * The counts are taken with jsonb_array_length, which raises rather than answering null
+     * when what it is pointed at is not an array. The envelope guarantees `elements` and
+     * `layers`; nothing guarantees the interior of `settings`, and a list that will not load
+     * because one drawing is odd is worse than a card missing a figure.
+     */
+    it('still lists a drawing whose settings cannot be read', function (): void {
+        $owner = signedIn();
+        $project = Project::factory()->for($owner, 'owner')->create();
+
+        $data = DocumentSchema::blank('Odd');
+        $data['settings']['sheets'] = 'not a list';
+
+        $project->documents()->create([
+            'name' => 'Odd',
+            'schema_version' => DocumentSchema::CURRENT_VERSION,
+            'data' => $data,
+        ]);
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonPath('data.0.drawing.sheets', null)
+            ->assertJsonPath('data.0.drawing.sheet', null)
+            ->assertJsonPath('data.0.drawing.elements', 0);
+    });
+
+    it('says what an active share link hands out, and counts the open conversations', function (): void {
+        $owner = signedIn();
+        $project = Project::factory()->for($owner, 'owner')->create();
+
+        $this->postJson("/api/projects/{$project->id}/share", ['role' => 'editor'])
+            ->assertCreated();
+
+        $this->postJson("/api/projects/{$project->id}/comments", [
+            'x' => 0,
+            'y' => 0,
+            'body' => 'Still open.',
+        ])->assertCreated();
+
+        $this->postJson("/api/projects/{$project->id}/comments", [
+            'x' => 1,
+            'y' => 1,
+            'body' => 'Settled.',
+        ])->assertCreated();
+
+        $settled = CommentThread::query()->latest('created_at')->firstOrFail();
+        $this->patchJson("/api/projects/{$project->id}/comments/{$settled->id}", [
+            'resolved' => true,
+        ])->assertOk();
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonPath('data.0.sharedRole', 'editor')
+            ->assertJsonPath('data.0.openComments', 1);
+    });
 });

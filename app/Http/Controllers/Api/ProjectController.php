@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Documents\DrawingSummary;
 use App\Domain\Organisations\OrganisationRole;
 use App\Domain\Projects\Actions\CreateProject;
 use App\Domain\Projects\Models\Project;
@@ -13,6 +14,7 @@ use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -65,7 +67,37 @@ final class ProjectController extends Controller
                             });
                     });
             })
-            ->with(['document', 'activeShareLink', 'members', 'owner', 'organisation.members'])
+            ->with([
+                /*
+                 * Columns rather than the row: `data` is the whole drawing, and this relation
+                 * exists here only so the card can carry the document's id. Loading a plan per
+                 * project in order to print an identifier is how a list gets slow quietly —
+                 * what the card actually says about the drawing is counted below, in the
+                 * database. `created_at` is selected because `oldestOfMany` orders by it, and
+                 * every name is qualified because it joins the table to itself to do so.
+                 */
+                'document' => fn (Relation $document) => $document->select([
+                    'documents.id',
+                    'documents.project_id',
+                    'documents.created_at',
+                ]),
+                'activeShareLink',
+                'members',
+                'owner',
+                'organisation.members',
+            ])
+            // What the drawing is — page, scale and how much is on it. See DrawingSummary:
+            // PostgreSQL counts, and about a hundred bytes per project comes back.
+            ->addSelect(['drawing_summary' => DrawingSummary::subquery()])
+            /*
+             * Conversations still waiting for an answer. A resolved thread is history and
+             * belongs in the panel that holds it; an open one is something the drawing owes
+             * somebody, which is worth saying on the card you decide what to open from.
+             */
+            ->withCount([
+                'commentThreads as open_comments_count' => fn (Builder $threads) => $threads
+                    ->whereNull('resolved_at'),
+            ])
             ->orderByDesc('updated_at')
             ->get();
 

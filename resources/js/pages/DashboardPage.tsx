@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { formatRelativeTime } from '@/lib/time';
 import { MentionsMenu } from '@/mentions/MentionsMenu';
+import { describeAccess, describeDrawing } from '@/projects/card';
 import { useInvitations } from '@/projects/useInvitations';
 import { useOrganisations } from '@/projects/useOrganisations';
 import { useProjects } from '@/projects/useProjects';
@@ -204,7 +205,7 @@ export function DashboardPage() {
                             {projects.map((project) => (
                                 <li
                                     key={project.id}
-                                    className="group border-line flex items-center justify-between border-b"
+                                    className="group border-line flex items-center justify-between gap-1 border-b"
                                 >
                                     <Link
                                         /*
@@ -218,27 +219,18 @@ export function DashboardPage() {
                                                 ? `/projects/${project.id}/review`
                                                 : `/projects/${project.id}`
                                         }
-                                        className="flex-1 rounded-sm py-3.5 pr-4"
+                                        className="min-w-0 flex-1 rounded-sm py-3.5 pr-4"
                                     >
-                                        <span className="text-ink text-sm font-medium">
-                                            {project.name}
+                                        <span className="flex items-baseline justify-between gap-4">
+                                            <span className="text-ink truncate text-sm font-medium">
+                                                {project.name}
+                                            </span>
+                                            <span className="text-ink-subtle shrink-0 text-xs">
+                                                Updated {formatRelativeTime(project.updatedAt)}
+                                            </span>
                                         </span>
-                                        <span className="text-ink-subtle mt-0.5 block text-xs">
-                                            Updated {formatRelativeTime(project.updatedAt)}
-                                            {project.role === 'owner' ? (
-                                                <>
-                                                    {(project.organisationId ?? null) !== null &&
-                                                        ` · ${project.ownerName ?? 'A firm'}`}
-                                                    {project.isShared === true && ' · Shared'}
-                                                </>
-                                            ) : (
-                                                ` · ${project.ownerName ?? 'Somebody else'}’s, ${
-                                                    project.role === 'editor'
-                                                        ? 'you can edit'
-                                                        : 'you can comment'
-                                                }`
-                                            )}
-                                        </span>
+
+                                        <ProjectMeta project={project} />
                                     </Link>
 
                                     <Menu
@@ -381,6 +373,34 @@ export function DashboardPage() {
 }
 
 /**
+ * The line under a project's name.
+ *
+ * Two halves in two faces: what the drawing is, in the monospaced figures every measurement in
+ * this product is set in, and who can reach it, in words. Either half can be missing — a
+ * project whose drawing has never been saved has nothing to count, and your own unshared
+ * drawing has nothing to say about access — and when both are, the line is not drawn at all
+ * rather than left as an empty row of whitespace.
+ *
+ * It wraps rather than truncating. A name is cut off because the date beside it matters more
+ * and the name is on the row above anyway; there is nothing above this line, and an ellipsis
+ * here would hide a fact — that the drawing is restricted, say — with no way to ask for it.
+ */
+function ProjectMeta({ project }: { project: ProjectSummary }) {
+    const drawing = describeDrawing(project.drawing);
+    const access = describeAccess(project);
+
+    if (drawing === null && access.length === 0) return null;
+
+    return (
+        <span className="text-ink-subtle mt-1 block text-[11px]">
+            {drawing !== null && <span className="font-mono">{drawing}</span>}
+            {drawing !== null && access.length > 0 && ' · '}
+            {access.join(' · ')}
+        </span>
+    );
+}
+
+/**
  * The wait for the list.
  *
  * Rows rather than a spinner, because the shape of what is coming is already known and a
@@ -392,9 +412,9 @@ function ProjectsSkeleton() {
             <span className="sr-only">Loading your projects…</span>
 
             {[0, 1, 2].map((row) => (
-                <div key={row} className="border-line flex flex-col gap-2 border-b py-4">
+                <div key={row} className="border-line flex flex-col gap-2 border-b py-3.5">
                     <span className="bg-line block h-3 w-48 rounded-sm" />
-                    <span className="bg-line block h-2.5 w-28 rounded-sm opacity-60" />
+                    <span className="bg-line block h-2.5 w-64 rounded-sm opacity-60" />
                 </div>
             ))}
         </div>

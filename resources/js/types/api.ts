@@ -16,6 +16,23 @@ export type ShareRole = 'viewer' | 'commenter' | 'editor';
 /** What somebody holds in a project. Viewing is never a standing — it is what a link does. */
 export type ProjectRole = 'owner' | 'commenter' | 'editor';
 
+/**
+ * What is in a drawing, without the drawing.
+ *
+ * Counted by PostgreSQL out of the document's JSONB column — see DrawingSummary on the server
+ * — so that a list of forty projects costs forty small numbers rather than forty plans. Every
+ * figure is nullable because none of them is guaranteed: a card leaves out what it cannot say.
+ */
+export interface DrawingSummary {
+    /** The first sheet's page size — 'A3'. */
+    sheet: string | null;
+    /** The denominator of that sheet's plotted scale: 50 means 1:50. */
+    scale: number | null;
+    elements: number | null;
+    layers: number | null;
+    sheets: number | null;
+}
+
 export interface ProjectSummary {
     id: string;
     name: string;
@@ -23,7 +40,11 @@ export interface ProjectSummary {
     createdAt: string;
     updatedAt: string;
     documentId?: string | null;
-    isShared?: boolean;
+    /** What the active share link hands out, when there is one. */
+    sharedRole?: ShareRole | null;
+    /** Only the list asks for these two; absent means nobody asked, not that there is none. */
+    drawing?: DrawingSummary | null;
+    openComments?: number;
     /** What the person reading this holds here. */
     role: ProjectRole | null;
     /** Only present on somebody else's project — a person's name, or a firm's. */

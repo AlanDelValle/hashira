@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Documents\DrawingSummary;
 use App\Domain\Projects\Models\Project;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -27,9 +28,33 @@ final class ProjectResource extends JsonResource
             'createdAt' => $this->created_at->toIso8601String(),
             'updatedAt' => $this->updated_at->toIso8601String(),
             'documentId' => $this->whenLoaded('document', fn () => $this->document?->id),
-            'isShared' => $this->whenLoaded(
+            /*
+             * Whether there is a link out, and what it hands out — one field, because a role
+             * that is there says both. 9.4 gave a link a role and the card has been saying
+             * "Shared" ever since, which is the one thing about a link that was never in
+             * question: what an owner wants to know at a glance is whether they published a
+             * drawing or handed somebody the pen.
+             */
+            'sharedRole' => $this->whenLoaded(
                 'activeShareLink',
-                fn () => $this->activeShareLink !== null,
+                fn () => $this->activeShareLink?->role->value,
+            ),
+
+            /*
+             * What the drawing is, counted in the database rather than read out of it — page
+             * size, plotted scale, and how much is on it. Only the list asks for this, so it
+             * is absent everywhere else rather than null: a card that knows nothing about the
+             * drawing and a project that has none are different states.
+             */
+            'drawing' => $this->whenHas(
+                'drawing_summary',
+                fn () => DrawingSummary::fromJson($this->drawing_summary)?->toArray(),
+            ),
+
+            // Conversations still open on it, for the same list and by the same rule.
+            'openComments' => $this->whenHas(
+                'open_comments_count',
+                fn () => (int) $this->open_comments_count,
             ),
 
             /*

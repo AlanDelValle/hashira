@@ -44,6 +44,13 @@ use Illuminate\Support\Facades\Storage;
  * @property Carbon|null $restricted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ *
+ * Two things the projects list selects alongside the row, and nothing else does — see
+ * ProjectController::index. They are attributes rather than columns, so they are present on
+ * exactly one query and absent from every other; the resource asks whether they are there
+ * rather than assuming.
+ * @property-read string|null $drawing_summary
+ * @property-read int|null $open_comments_count
  */
 #[Fillable(['name', 'description'])]
 #[UseFactory(ProjectFactory::class)]
