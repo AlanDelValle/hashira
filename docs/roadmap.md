@@ -1032,6 +1032,70 @@ Decisions taken before the phase starts, so they are not re-argued halfway throu
   opens it assigns a linetype at the scale they are actually plotting — the same arrival job as
   hatching a wall's poché.
 
+### Phase 13 — The way in `[x]`
+
+The one screen that is not the editor. Everything from Phase 2 onward made the tool better for
+whoever already had a drawing open; this is about the page they arrive on, which had been a
+list of names and dates since Phase 1 and had stopped resembling the product it opens. The
+editor is dense and precise — panels in small caps, `A3 · 1:50`, `14 elements` along the status
+bar — and the list beside it said none of what the document already knew.
+
+- [x] **13.1 What the card says.** Page size, plotted scale, how much is on it, in the
+      vocabulary and the monospaced figures the status bar already uses. Counted by PostgreSQL
+      out of `documents.data` rather than read out of it, so forty cards cost forty small
+      objects rather than forty plans — and the list stopped eager loading whole drawings in
+      order to print an id nobody read. `restricted` had been in the payload since 10.2c and on
+      no screen at all; it says so now, and `isShared` became `sharedRole`, because 9.4 gave a
+      link a role and "Shared" was the one thing about a link that was never in question
+- [x] **13.2 Sections, a filter, and a shelf.** Whose a drawing is has been a fact in the
+      database since 10.2 and a grey suffix on the end of a sentence ever since; it is a
+      heading now — your own work, each firm's, then what somebody handed you. Filtering and
+      sorting appear from eight projects, because a search field over three rows has never once
+      been faster than reading them. And `projects.archived_at`, in the schema since Phase 1
+      and written by nothing, became the feature it was always for
+- [x] **13.3 The drawing itself, the size of a postage stamp.** Drawn by the editor from the
+      same scene every export comes out of — rule 10 applied to a screen rather than to the
+      README — written beside the autosave and never inside it, and served as an image so the
+      browser lazy loads what is off screen and revalidates the rest into 304s
+- [x] **13.4 The frame.** The width the landing page uses, tabular figures, a firm's heading
+      leading to the firm, and the AGPL's §13 offer in the list's own footer — because somebody
+      working in a self-hosted instance signs in once and may never see the landing page again
+
+What 13.2 settled about archiving, which is the only item here that added behaviour rather than
+saying what was already true:
+
+- **It is not a soft delete and does not pretend to be one.** An archived drawing opens at its
+  own address, exports, and keeps its share links and its conversations. What changes is where
+  the list puts it. A drafting office finishes jobs, and last year's should not sit between two
+  that are live.
+- **It is an owner's act, on a route of its own.** `PATCH /projects/{project}` is gated on
+  `update`, which an editor holds, and taking a drawing off everybody's list is not an editor's
+  act — the same reason restriction has its own route and its own ability. The ability is its
+  own rather than a second caller of `delete`, because the two differ in the way that matters
+  to whoever is refused: one is reversible and the other is not, and the sentence has to say so.
+- **Archiving twice does not move the date.** It records when the work was put away, and a
+  second click from a card that had not caught up would otherwise rewrite it.
+- **A dead column was kept rather than dropped.** `archived_at` was the same kind of thing
+  `style.strokeWidth` was before Phase 12 removed it — in the schema, written by nothing, read
+  by nothing. The difference is that a list is what this one was for, and the list had finally
+  grown long enough to need it.
+
+Two things the rest of the phase settled that later work should not re-argue:
+
+- **A picture is never worth risking a drawing for.** The thumbnail has its own timer, its own
+  request and its own silence: every failure is swallowed, because the worst case is a card
+  falling back to the line of text 13.1 already gives it. It is also why it is not part of the
+  save.
+- **A blank frame over a drawing of fourteen elements is a lie.** White paper is the truth only
+  when the drawing is empty, which the card knows because it counts. One that has been drawn on
+  and not yet photographed gets a plain tile, claiming to be no sheet at all.
+
+**What was proposed and deliberately not built: a firm switcher beside the wordmark.** The
+ground moved under it in 13.2 — sections put every firm's name on the page, next to its
+drawings, which is the whole of what the switcher was for. Beside a list already grouped by
+firm it would switch nothing and navigate to what is already on screen. 13.4's heading link is
+that idea at the size it turned out to be worth.
+
 ### Only after all of the above
 
 **Project and drawing templates.** Started Phase 8 and taken back out of it, because the

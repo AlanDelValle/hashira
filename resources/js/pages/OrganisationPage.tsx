@@ -230,7 +230,9 @@ export function OrganisationPage() {
                         )}
 
                         <div className="border-line mt-10 border-t pt-6">
-                            <Button onClick={() => void leave()}>Leave this organisation</Button>
+                            <Button variant="danger" onClick={() => void leave()}>
+                                Leave this organisation
+                            </Button>
                             <p className="text-ink-subtle mt-2 text-[12px]">
                                 You lose access to its drawings. Its work stays with it.
                             </p>
