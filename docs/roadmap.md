@@ -540,13 +540,17 @@ something. It changes the licence and the deployment before it changes a line of
   And the restore this repository documents needed a password it did not say it needed, which
   reading the paragraph would never have shown
 
-- [ ] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
-      something that can be an organisation rather than always a user, membership is inherited
-      from the organisation as well as granted per project, and somebody is invited by email
-      rather than only by holding a link. `project_members` was built to be written by this and
-      nothing that reads a role should have to change — but `projects.user_id` was not, and
-      moving it is the largest migration in the project's life. One sub-phase, with nothing
-      else in it
+- [~] **10.2 Organisations, teams and granular permissions.** A project's owner becomes
+  something that can be an organisation rather than always a user, membership is inherited from
+  the organisation as well as granted per project, and somebody is invited by email rather than
+  only by holding a link. `project_members` was built to be written by this and nothing that
+  reads a role should have to change — but `projects.user_id` was not, and moving it is the
+  largest migration in the project's life. Split in three, each of which is a thing you can walk
+  in a browser rather than a migration nobody can see. **10.2a** is ownership: organisations
+  exist, they can own projects, and the policy answers about both kinds of owner. **10.2b** is
+  people: inviting somebody by email whether or not they already have an account, the member
+  list, and leaving. **10.2c** is narrowing: a project the organisation cannot open by default,
+  per-project overrides, and teams
 - [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
       is handed a read-only snapshot of the document, and can say one kind of thing back: a
       command envelope, read by `parseCommand` like anything else that arrives from elsewhere.
@@ -629,6 +633,38 @@ Decisions taken at the start of the phase, so they are not re-argued halfway thr
   satisfy is one written in this repository: something the editor already does, rebuilt on top
   of it. If the DXF exporter cannot be a plugin, the API is wrong, and that is much cheaper to
   learn from the inside.
+
+What 10.2 settled before any of it was built, since it decides a schema and how the product
+feels rather than only how it is coded:
+
+- **An owner is two nullable columns and a check, not a polymorphic pair.** `projects.user_id`
+  becomes nullable and `organisation_id` joins it, with
+  `CHECK (num_nonnulls(user_id, organisation_id) = 1)`. Laravel's `morphTo` would have been one
+  column and a type string, and it would also have been a foreign key this project promised not
+  to enforce: users are `bigint` and organisations are ULIDs, so the shared column has to be
+  text, and text does not cascade. Deleting a user already takes their projects with them and
+  will go on doing so. The migration adds and never moves — every existing row is already
+  correct, which is a gentler thing to hand a self-hosted instance than the release notes for
+  `v0.10.0` warned it would be.
+- **Somebody working alone never meets the word "organisation".** That is the whole reason the
+  owner can still be a user. A drafting tool that makes one person create a company before they
+  can draw a floor plan has misunderstood who it is for, and an organisation nobody can see is
+  a lie that leaks the first time a screen has to name one.
+- **Being in an organisation is access to its projects.** A member opens them as an editor by
+  default, an admin administers them. The alternative — an organisation that groups people and
+  grants nothing — makes "team" a word for an address book, and leaves an office adding forty
+  people to forty projects by hand. What a firm draws belongs to the firm.
+- **A row on the project wins over the organisation, in both directions.** `project_members` is
+  the override: it can raise somebody the organisation admitted as an editor, and it is what
+  10.2c narrows with. Reading it that way means the policy gains one lookup and loses none of
+  what Phase 9 built.
+- **Organisation roles are `admin` and `member`, and there is no third.** Billing does not exist
+  and a role invented for it now would be a role with no behaviour. When there is something to
+  bill, that is when to find out whether it needs an owner distinct from an admin.
+- **The block library follows whoever may edit, not whoever owns.** `ReferencedBlocks` already
+  gathers the owner's blocks and every editor's; an organisation's members arrive as editors, so
+  the rule generalises without being rewritten. A library that belonged to the organisation
+  itself would be a fourth place blocks can live, and Phase 7 deliberately gave them one.
 
 ### Phase 11 — Drafting depth `[x]`
 
