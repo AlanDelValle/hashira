@@ -39,6 +39,8 @@ export interface ProjectSummary {
     description: string | null;
     createdAt: string;
     updatedAt: string;
+    /** When it was put away. Null while it is live; an archived drawing still opens. */
+    archivedAt?: string | null;
     documentId?: string | null;
     /** What the active share link hands out, when there is one. */
     sharedRole?: ShareRole | null;

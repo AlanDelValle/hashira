@@ -63,13 +63,21 @@ export function describeDrawing(drawing: DrawingSummary | null | undefined): str
  * a phrase rather than a badge — the colour in this interface means selection, and a row of
  * tinted pills is the look this product is deliberately not.
  */
-export function describeAccess(project: ProjectSummary): string[] {
+export function describeAccess(
+    project: ProjectSummary,
+    /**
+     * Set when the row sits under a heading that is already the owner's name. Found by looking:
+     * every row of a firm's section was ending with the name of the firm written directly above
+     * it, which is the kind of noise a list gets one word at a time.
+     */
+    { ownerNamed = false }: { ownerNamed?: boolean } = {},
+): string[] {
     const parts: string[] = [];
 
     if (project.role === 'owner') {
         // Whose, when it is not simply yours. An admin holds `owner` in the firm's work as
         // well as in their own, and could not otherwise tell the two apart on one list.
-        if ((project.organisationId ?? null) !== null) {
+        if (!ownerNamed && (project.organisationId ?? null) !== null) {
             parts.push(project.ownerName ?? 'A firm');
         }
     } else {

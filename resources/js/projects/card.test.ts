@@ -94,6 +94,28 @@ describe('what a card says about who can reach it', () => {
         ]);
     });
 
+    /*
+     * Found by looking: every row of a firm's section ended with the name of the firm written
+     * directly above it. What the heading says, the row does not repeat.
+     */
+    it('does not repeat a firm’s name under a heading that is the firm’s name', () => {
+        const firmProject = project({
+            organisationId: 'o1',
+            ownerName: 'Ateliê Norte',
+            restricted: true,
+        });
+
+        expect(describeAccess(firmProject, { ownerNamed: true })).toEqual(['named people only']);
+        expect(describeAccess(firmProject)).toEqual(['Ateliê Norte', 'named people only']);
+    });
+
+    // "Shared with you" is not an owner's name, and holds several owners' drawings at once.
+    it('still says whose it is when the heading is not a name', () => {
+        expect(
+            describeAccess(project({ role: 'editor', ownerName: 'Ana' }), { ownerNamed: true }),
+        ).toEqual(['Ana’s', 'you can edit']);
+    });
+
     it('says what the link hands out rather than only that there is one', () => {
         expect(describeAccess(project({ sharedRole: 'editor' }))).toEqual(['link · editor']);
         expect(describeAccess(project({ sharedRole: 'viewer' }))).toEqual(['link · viewer']);

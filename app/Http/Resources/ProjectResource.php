@@ -27,6 +27,13 @@ final class ProjectResource extends JsonResource
             'description' => $this->description,
             'createdAt' => $this->created_at->toIso8601String(),
             'updatedAt' => $this->updated_at->toIso8601String(),
+
+            /*
+             * When it was put away, or null while it is live. A date rather than a flag, like
+             * `restricted_at` and `revoked_at`: the same state, plus the one question anybody
+             * asks about an archive, which is how long ago.
+             */
+            'archivedAt' => $this->archived_at?->toIso8601String(),
             'documentId' => $this->whenLoaded('document', fn () => $this->document?->id),
             /*
              * Whether there is a link out, and what it hands out — one field, because a role

@@ -1,11 +1,21 @@
-import { MoreHorizontal, Plus } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
+import { cn } from '@/lib/cn';
 import { formatRelativeTime } from '@/lib/time';
 import { MentionsMenu } from '@/mentions/MentionsMenu';
 import { describeAccess, describeDrawing } from '@/projects/card';
+import {
+    arrangeProjects,
+    CONTROLS_FROM,
+    isArchived,
+    ORDER_LABEL,
+    orderProjects,
+    partitionArchived,
+    type ProjectOrder,
+} from '@/projects/list';
 import { useInvitations } from '@/projects/useInvitations';
 import { useOrganisations } from '@/projects/useOrganisations';
 import { useProjects } from '@/projects/useProjects';
@@ -25,7 +35,7 @@ type Pending =
 
 export function DashboardPage() {
     const { user, logout } = useAuth();
-    const { projects, loading, error, reload, create, rename, duplicate, remove, leave } =
+    const { projects, loading, error, reload, create, rename, duplicate, remove, leave, archive } =
         useProjects();
     const { organisations, create: createOrganisation } = useOrganisations();
     const { invitations, answer } = useInvitations();
@@ -38,6 +48,49 @@ export function DashboardPage() {
 
     /** Empty means the person themselves; otherwise the id of the firm it goes into. */
     const [destination, setDestination] = useState('');
+
+    const [query, setQuery] = useState('');
+    const [order, setOrder] = useState<ProjectOrder>('updated');
+    const [openedArchive, setOpenedArchive] = useState(false);
+
+    const { live, archived } = useMemo(() => partitionArchived(projects), [projects]);
+    const groups = useMemo(() => arrangeProjects(live, { query, order }), [live, query, order]);
+    const shelf = useMemo(
+        () => orderProjects(archived, { query, order }),
+        [archived, query, order],
+    );
+
+    const filtering = query.trim() !== '';
+    const shown = groups.reduce((total, group) => total + group.projects.length, 0);
+
+    /*
+     * Nothing above the shelf, and why. A filter that matched only archived drawings is not one
+     * of these: the shelf below is open and holding them, so saying "nothing here" over the top
+     * of an answer would be the page contradicting itself.
+     */
+    const emptyBecause: 'filter' | 'archive' | null =
+        projects.length === 0 || shown > 0
+            ? null
+            : filtering
+              ? shelf.length === 0
+                  ? 'filter'
+                  : null
+              : 'archive';
+
+    /*
+     * Looking for something means looking everywhere. Half an answer behind a disclosure is
+     * how a filter comes to report that a drawing is not here when it is.
+     */
+    const archiveOpen = openedArchive || filtering;
+
+    const actions = {
+        rename: openRename,
+        duplicate: (project: ProjectSummary) => void duplicate(project.id),
+        archive: (project: ProjectSummary) => void archive(project.id, !isArchived(project)),
+        remove: setConfirming,
+        leave: (project: ProjectSummary) =>
+            project.membershipId !== undefined && void leave(project.id, project.membershipId),
+    };
 
     function openCreate() {
         setName('Untitled plan');
@@ -156,13 +209,47 @@ export function DashboardPage() {
                     </ul>
                 )}
 
-                <div className="flex items-baseline justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-ink text-lg font-semibold tracking-tight">Projects</h1>
 
-                    <Button variant="primary" size="sm" onClick={openCreate}>
-                        <Plus className="size-3.5" aria-hidden />
-                        New project
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {/*
+                         * Only once there is enough here to lose something in. See CONTROLS_FROM:
+                         * a filter over three rows has never been faster than reading them.
+                         */}
+                        {projects.length >= CONTROLS_FROM && (
+                            <>
+                                <input
+                                    type="search"
+                                    value={query}
+                                    onChange={(event) => setQuery(event.target.value)}
+                                    aria-label="Filter projects by name"
+                                    placeholder="Filter"
+                                    className="border-line-strong bg-surface text-ink placeholder:text-ink-subtle hover:border-ink-subtle focus:border-accent h-8 w-28 rounded-sm border px-2 text-[13px] transition-colors sm:w-40"
+                                />
+
+                                <select
+                                    aria-label="Order projects by"
+                                    value={order}
+                                    onChange={(event) =>
+                                        setOrder(event.target.value as ProjectOrder)
+                                    }
+                                    className="border-line-strong bg-surface text-ink hover:border-ink-subtle focus:border-accent h-8 rounded-sm border px-1.5 text-[13px] transition-colors"
+                                >
+                                    {Object.entries(ORDER_LABEL).map(([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+
+                        <Button variant="primary" size="sm" onClick={openCreate}>
+                            <Plus className="size-3.5" aria-hidden />
+                            New project
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="mt-6">
@@ -200,90 +287,104 @@ export function DashboardPage() {
                         </div>
                     )}
 
-                    {projects.length > 0 && (
-                        <ul className="border-line border-t">
-                            {projects.map((project) => (
-                                <li
-                                    key={project.id}
-                                    className="group border-line flex items-center justify-between gap-1 border-b"
+                    {!loading && error === null && emptyBecause !== null && (
+                        <div className="border-line border-t py-20 text-center">
+                            {emptyBecause === 'filter' ? (
+                                <>
+                                    <p className="text-ink text-sm">
+                                        Nothing here is called “{query.trim()}”.
+                                    </p>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        className="mt-5"
+                                        onClick={() => setQuery('')}
+                                    >
+                                        Clear the filter
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-ink text-sm">
+                                        Everything here has been put away.
+                                    </p>
+                                    <p className="text-ink-muted mx-auto mt-1.5 max-w-sm text-sm">
+                                        Your archived projects are below, and any of them can be
+                                        taken back out.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {groups.map((group, index) => (
+                        <section key={group.id}>
+                            {/*
+                             * One section is not a section. Somebody working alone on their own
+                             * drawings sees the list they have always seen, which is the whole
+                             * reason a project can still belong to a person rather than a firm.
+                             */}
+                            {groups.length > 1 && (
+                                <h2
+                                    className={cn(
+                                        'text-ink-subtle border-line border-b pb-2 font-mono text-[11px] tracking-[0.08em] uppercase',
+                                        index > 0 && 'mt-9',
+                                    )}
                                 >
-                                    <Link
-                                        /*
-                                         * A project you cannot edit opens on the review
-                                         * surface. The editor would only redirect here
-                                         * anyway; going straight there saves a round trip
-                                         * through a page that is not for you.
-                                         */
-                                        to={
-                                            project.role === 'commenter'
-                                                ? `/projects/${project.id}/review`
-                                                : `/projects/${project.id}`
-                                        }
-                                        className="min-w-0 flex-1 rounded-sm py-3.5 pr-4"
-                                    >
-                                        <span className="flex items-baseline justify-between gap-4">
-                                            <span className="text-ink truncate text-sm font-medium">
-                                                {project.name}
-                                            </span>
-                                            <span className="text-ink-subtle shrink-0 text-xs">
-                                                Updated {formatRelativeTime(project.updatedAt)}
-                                            </span>
-                                        </span>
+                                    {group.name} · {group.projects.length}
+                                </h2>
+                            )}
 
-                                        <ProjectMeta project={project} />
-                                    </Link>
+                            <ul className={cn(groups.length === 1 && 'border-line border-t')}>
+                                {group.projects.map((project) => (
+                                    <ProjectRow
+                                        key={project.id}
+                                        project={project}
+                                        actions={actions}
+                                        ownerNamed={groups.length > 1 && group.namesOwner}
+                                    />
+                                ))}
+                            </ul>
+                        </section>
+                    ))}
 
-                                    <Menu
-                                        trigger={
-                                            <button
-                                                className="text-ink-subtle hover:bg-sunken hover:text-ink rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 max-sm:opacity-100"
-                                                aria-label={`Actions for ${project.name}`}
-                                            >
-                                                <MoreHorizontal className="size-4" aria-hidden />
-                                            </button>
-                                        }
-                                    >
-                                        {project.role === 'owner' && (
-                                            <MenuItem onSelect={() => openRename(project)}>
-                                                Rename
-                                            </MenuItem>
-                                        )}
+                    {/*
+                     * The shelf. `projects.archived_at` has been in the schema since Phase 1
+                     * with nothing writing it; what it was always for is this — a drafting
+                     * office finishes jobs, and last year's should not sit between two live
+                     * ones. Nothing is hidden: an archived drawing opens, exports and keeps
+                     * its links, and the row here is the same row as above.
+                     */}
+                    {!loading && error === null && shelf.length > 0 && (
+                        <div className={cn(shown > 0 ? 'mt-9' : 'mt-6')}>
+                            <button
+                                type="button"
+                                aria-expanded={archiveOpen}
+                                onClick={() => setOpenedArchive(!archiveOpen)}
+                                className="text-ink-subtle hover:text-ink border-line flex w-full items-center gap-1.5 rounded-sm border-b pb-2 font-mono text-[11px] tracking-[0.08em] uppercase transition-colors"
+                            >
+                                <ChevronRight
+                                    className={cn(
+                                        'size-3 transition-transform',
+                                        archiveOpen && 'rotate-90',
+                                    )}
+                                    aria-hidden
+                                />
+                                Archived · {shelf.length}
+                            </button>
 
-                                        {project.role !== 'commenter' && (
-                                            <MenuItem onSelect={() => void duplicate(project.id)}>
-                                                Duplicate
-                                            </MenuItem>
-                                        )}
-
-                                        <MenuSeparator />
-
-                                        {project.role === 'owner' ? (
-                                            <MenuItem
-                                                destructive
-                                                onSelect={() => setConfirming(project)}
-                                            >
-                                                Delete
-                                            </MenuItem>
-                                        ) : (
-                                            /*
-                                             * Leaving, not deleting. Removing yourself from
-                                             * somebody else's project takes nothing away from
-                                             * them, so it does not ask twice.
-                                             */
-                                            <MenuItem
-                                                destructive
-                                                onSelect={() =>
-                                                    project.membershipId !== undefined &&
-                                                    void leave(project.id, project.membershipId)
-                                                }
-                                            >
-                                                Leave
-                                            </MenuItem>
-                                        )}
-                                    </Menu>
-                                </li>
-                            ))}
-                        </ul>
+                            {archiveOpen && (
+                                <ul>
+                                    {shelf.map((project) => (
+                                        <ProjectRow
+                                            key={project.id}
+                                            project={project}
+                                            actions={actions}
+                                        />
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     )}
                 </div>
             </main>
@@ -372,6 +473,104 @@ export function DashboardPage() {
     );
 }
 
+interface RowActions {
+    rename: (project: ProjectSummary) => void;
+    duplicate: (project: ProjectSummary) => void;
+    archive: (project: ProjectSummary) => void;
+    remove: (project: ProjectSummary) => void;
+    leave: (project: ProjectSummary) => void;
+}
+
+/**
+ * One project, wherever it is listed.
+ *
+ * The archived shelf shows the same row as the live list rather than a quieter version of it:
+ * a drawing that has been put away is not a lesser drawing, and dimming it would say it was.
+ * What differs is one word in the menu.
+ */
+function ProjectRow({
+    project,
+    actions,
+    ownerNamed = false,
+}: {
+    project: ProjectSummary;
+    actions: RowActions;
+    /** Whether the heading above this row is already the name of whoever owns it. */
+    ownerNamed?: boolean;
+}) {
+    const archived = isArchived(project);
+
+    return (
+        <li className="group border-line flex items-center justify-between gap-1 border-b">
+            <Link
+                /*
+                 * A project you cannot edit opens on the review surface. The editor would only
+                 * redirect here anyway; going straight there saves a round trip through a page
+                 * that is not for you.
+                 */
+                to={
+                    project.role === 'commenter'
+                        ? `/projects/${project.id}/review`
+                        : `/projects/${project.id}`
+                }
+                className="min-w-0 flex-1 rounded-sm py-3.5 pr-4"
+            >
+                <span className="flex items-baseline justify-between gap-4">
+                    <span className="text-ink truncate text-sm font-medium">{project.name}</span>
+                    <span className="text-ink-subtle shrink-0 text-xs">
+                        {archived
+                            ? `Archived ${formatRelativeTime(project.archivedAt ?? project.updatedAt)}`
+                            : `Updated ${formatRelativeTime(project.updatedAt)}`}
+                    </span>
+                </span>
+
+                <ProjectMeta project={project} ownerNamed={ownerNamed} />
+            </Link>
+
+            <Menu
+                trigger={
+                    <button
+                        className="text-ink-subtle hover:bg-sunken hover:text-ink rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 max-sm:opacity-100"
+                        aria-label={`Actions for ${project.name}`}
+                    >
+                        <MoreHorizontal className="size-4" aria-hidden />
+                    </button>
+                }
+            >
+                {project.role === 'owner' && (
+                    <MenuItem onSelect={() => actions.rename(project)}>Rename</MenuItem>
+                )}
+
+                {project.role !== 'commenter' && (
+                    <MenuItem onSelect={() => actions.duplicate(project)}>Duplicate</MenuItem>
+                )}
+
+                {project.role === 'owner' && (
+                    <MenuItem onSelect={() => actions.archive(project)}>
+                        {archived ? 'Take out of the archive' : 'Archive'}
+                    </MenuItem>
+                )}
+
+                <MenuSeparator />
+
+                {project.role === 'owner' ? (
+                    <MenuItem destructive onSelect={() => actions.remove(project)}>
+                        Delete
+                    </MenuItem>
+                ) : (
+                    /*
+                     * Leaving, not deleting. Removing yourself from somebody else's project
+                     * takes nothing away from them, so it does not ask twice.
+                     */
+                    <MenuItem destructive onSelect={() => actions.leave(project)}>
+                        Leave
+                    </MenuItem>
+                )}
+            </Menu>
+        </li>
+    );
+}
+
 /**
  * The line under a project's name.
  *
@@ -385,9 +584,9 @@ export function DashboardPage() {
  * and the name is on the row above anyway; there is nothing above this line, and an ellipsis
  * here would hide a fact — that the drawing is restricted, say — with no way to ask for it.
  */
-function ProjectMeta({ project }: { project: ProjectSummary }) {
+function ProjectMeta({ project, ownerNamed }: { project: ProjectSummary; ownerNamed: boolean }) {
     const drawing = describeDrawing(project.drawing);
-    const access = describeAccess(project);
+    const access = describeAccess(project, { ownerNamed });
 
     if (drawing === null && access.length === 0) return null;
 

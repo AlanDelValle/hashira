@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Domain\Comments\Models\CommentThread;
 use App\Domain\Documents\DocumentSchema;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Models\ProjectMember;
+use App\Domain\Sharing\ShareRole;
 use App\Models\User;
 
 it('creates a project together with a blank drawing', function (): void {
@@ -191,5 +193,72 @@ describe('what the list says about each drawing', function (): void {
             ->assertOk()
             ->assertJsonPath('data.0.sharedRole', 'editor')
             ->assertJsonPath('data.0.openComments', 1);
+    });
+});
+
+describe('putting a project away', function (): void {
+    it('archives and takes back out, without moving the date it was put away', function (): void {
+        $owner = signedIn();
+        $project = Project::factory()->for($owner, 'owner')->create();
+
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => true])
+            ->assertOk()
+            ->assertJsonPath('data.archivedAt', fn (?string $at): bool => $at !== null);
+
+        $archivedAt = $project->refresh()->archived_at;
+
+        // Asked twice, from a card that had not caught up. The date says when the work was put
+        // away and a second click must not rewrite it.
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => true])->assertOk();
+
+        expect($project->refresh()->archived_at?->toIso8601String())
+            ->toBe($archivedAt?->toIso8601String());
+
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => false])
+            ->assertOk()
+            ->assertJsonPath('data.archivedAt', null);
+
+        expect($project->refresh()->archived_at)->toBeNull();
+    });
+
+    // Off the list, not out of the account: it is still listed, and it still opens.
+    it('keeps an archived project reachable', function (): void {
+        $owner = signedIn();
+        $project = Project::factory()->for($owner, 'owner')->create(['name' => 'Finished job']);
+
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => true])->assertOk();
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Finished job');
+
+        $this->getJson("/api/projects/{$project->id}")->assertOk();
+    });
+
+    it('is the owner’s to do, and not an editor’s', function (): void {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner, 'owner')->create();
+        $editor = signedIn(User::factory()->create());
+
+        $membership = new ProjectMember;
+        $membership->project_id = $project->id;
+        $membership->user_id = (int) $editor->getKey();
+        $membership->role = ShareRole::Editor;
+        $membership->joined_at = now();
+        $membership->save();
+
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => true])
+            ->assertForbidden();
+
+        expect($project->refresh()->archived_at)->toBeNull();
+    });
+
+    it('tells a stranger nothing', function (): void {
+        $project = Project::factory()->create();
+        signedIn(User::factory()->create());
+
+        $this->putJson("/api/projects/{$project->id}/archive", ['archived' => true])
+            ->assertNotFound();
     });
 });

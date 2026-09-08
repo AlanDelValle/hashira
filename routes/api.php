@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\MentionController;
 use App\Http\Controllers\Api\OrganisationController;
 use App\Http\Controllers\Api\OrganisationInvitationController;
 use App\Http\Controllers\Api\OrganisationMemberController;
+use App\Http\Controllers\Api\ProjectArchiveController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberAdmissionController;
@@ -149,6 +150,11 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.restriction.update');
     Route::post('projects/{project}/members', [ProjectMemberAdmissionController::class, 'store'])
         ->name('projects.members.store');
+
+    // Off the list, not out of the account. Its own route for the same reason restriction has
+    // one: putting a drawing away is an owner's act and renaming it is an editor's.
+    Route::put('projects/{project}/archive', [ProjectArchiveController::class, 'update'])
+        ->name('projects.archive.update');
 
     Route::get('projects/{project}/document', [DocumentController::class, 'show'])
         ->name('projects.document.show');

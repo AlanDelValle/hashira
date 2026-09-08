@@ -79,6 +79,19 @@ final class ProjectPolicy
         return $this->ownerOnly($user, $project, 'Only the owner can manage who has access.');
     }
 
+    /**
+     * Putting the project away, and taking it back out.
+     *
+     * An owner's act rather than an editor's, and for the same reason restriction is: archiving
+     * takes a drawing off everybody's list, not off yours. It is its own ability rather than a
+     * second caller of `delete`, because the two differ in every way that matters to whoever is
+     * refused — one is reversible and the other is not, and the sentence has to say so.
+     */
+    public function archive(User $user, Project $project): Response
+    {
+        return $this->ownerOnly($user, $project, 'Only the owner can archive this project.');
+    }
+
     private function ownerOnly(User $user, Project $project, string $message): Response
     {
         if (! $this->hasAccess($user, $project)) {

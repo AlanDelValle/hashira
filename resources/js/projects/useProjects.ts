@@ -15,6 +15,8 @@ interface ProjectsState {
     remove: (id: string) => Promise<void>;
     /** Show yourself out of a project somebody else owns. */
     leave: (id: string, membershipId: string) => Promise<void>;
+    /** Put a finished project away, or take it back out. */
+    archive: (id: string, archived: boolean) => Promise<void>;
 }
 
 /**
@@ -86,5 +88,30 @@ export function useProjects(): ProjectsState {
         setProjects((current) => current.filter((project) => project.id !== id));
     }, []);
 
-    return { projects, loading, error, reload, create, rename, duplicate, remove, leave };
+    /*
+     * Replaced in place rather than removed. An archived project is still one of yours — it has
+     * moved to the shelf at the bottom of the same page, and dropping it out of the array here
+     * would empty that shelf as fast as it filled it.
+     */
+    const archive = useCallback(async (id: string, archived: boolean) => {
+        const response = await api.put<Envelope<ProjectSummary>>(`/api/projects/${id}/archive`, {
+            archived,
+        });
+        setProjects((current) =>
+            current.map((project) => (project.id === id ? response.data : project)),
+        );
+    }, []);
+
+    return {
+        projects,
+        loading,
+        error,
+        reload,
+        create,
+        rename,
+        duplicate,
+        remove,
+        leave,
+        archive,
+    };
 }
