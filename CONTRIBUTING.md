@@ -105,6 +105,29 @@ mature library over a hand-rolled implementation when the problem is genuinely h
 (accessibility primitives, PDF writing), and we prefer twenty lines of our own code over a
 package when the problem is not (distance from a point to a segment).
 
+## Releasing
+
+For whoever maintains this. A release is a tag and nothing else:
+
+```bash
+git tag -a v0.10.0 -m "..."
+git push origin v0.10.0
+```
+
+That runs `.github/workflows/release.yml`, which requires the whole of CI to pass and then
+builds the image for `linux/amd64` and `linux/arm64` and pushes it to GHCR as that tag and, for
+a non-prerelease, as `latest`. The version and the commit are baked in as build arguments, which
+is what lets a running instance offer the source of the version it is actually running — see
+[LICENSING.md](LICENSING.md).
+
+`workflow_dispatch` on the same workflow builds without pushing, for proving a change to the
+Dockerfile without spending a version number on it.
+
+**One thing has to be done by hand, once.** A package published from Actions is private no
+matter how public the repository is, so after the first release, open the package's settings on
+GitHub and make it public. Until that is done `docker compose pull` asks a stranger to
+authenticate against a registry in order to run free software.
+
 ## Reporting bugs
 
 Include what you did, what you expected, what happened, your browser and OS, and — if it is

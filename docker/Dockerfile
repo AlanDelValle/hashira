@@ -14,8 +14,13 @@
 
 # ---------------------------------------------------------------------------------------------
 # The browser's half. Built first because it changes least often and nothing else needs it.
+#
+# Pinned to the platform doing the building rather than the one being built for. A release is
+# built for amd64 and arm64 at once, and under emulation this stage is the slowest thing in the
+# file — for output that is identical either way, because a JavaScript bundle does not have an
+# architecture.
 # ---------------------------------------------------------------------------------------------
-FROM node:22-alpine AS assets
+FROM --platform=$BUILDPLATFORM node:22-alpine AS assets
 
 WORKDIR /build
 
@@ -30,8 +35,11 @@ RUN npm run build
 
 # ---------------------------------------------------------------------------------------------
 # PHP's half. `--no-dev`, so nothing that only a test run needs is in the image somebody serves.
+#
+# Native for the same reason as the assets: what comes out is PHP source and a classmap, and
+# nothing here builds a compiled extension.
 # ---------------------------------------------------------------------------------------------
-FROM composer:2 AS vendor
+FROM --platform=$BUILDPLATFORM composer:2 AS vendor
 
 WORKDIR /build
 

@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # So that Release can require this rather than repeat it. A published image is something
+  # other people run, and the one thing worse than a release that fails is one that works and
+  # is wrong.
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -1,0 +1,101 @@
+name: Release
+
+# A tag is the only thing that publishes an image. Pushing to `main` builds nothing anybody
+# runs, which is what keeps `latest` a thing somebody chose rather than a thing that happened.
+on:
+  push:
+    tags: ['v*']
+  # For proving the build without spending a version number on it. Nothing is pushed.
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # The same checks `main` gets, required before anything is published rather than assumed
+  # because the tag was cut from a commit that once passed them.
+  verify:
+    name: Verify
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish the image
+    needs: verify
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # GHCR takes a lowercase path and `github.repository` preserves the owner's case, so a
+      # push of `AlanDelValle/hashira` is rejected on a name it will not admit to having.
+      # Derived rather than hardcoded so that a fork publishes to its own namespace.
+      - name: Work out where this goes
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      # Only the runtime stage is emulated: the assets and vendor stages are pinned to the
+      # native platform in the Dockerfile, because JavaScript bundles and PHP source are the
+      # same files whichever machine will run them.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      # A package published this way starts private, whatever the repository is, and stays that
+      # way until somebody changes it once in the package's own settings. Until then
+      # `docker compose pull` asks a stranger to log in to a registry to run free software.
+      # It is a single click and it is not something this workflow can do for itself.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Name the versions
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          # The git tag verbatim, so that `HASHIRA_VERSION=v0.10.0` in somebody's `.env` is the
+          # tag they read in the release notes. `latest` follows the newest non-prerelease.
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          # A dispatch run builds and throws the result away: it proves the Dockerfile without
+          # spending a version number.
+          push: ${{ github.ref_type == 'tag' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # What the footer offers as the source of what is running. This is the whole of the
+          # §13 answer: an image that cannot say which commit it is gets to say nothing.
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+            APP_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Say what was published
+        if: github.ref_type == 'tag'
+        run: |
+          {
+            echo "### Published"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Built for linux/amd64 and linux/arm64, from ${GITHUB_SHA:0:7}."
+            echo
+            echo "To run it: \`HASHIRA_VERSION=${GITHUB_REF_NAME}\` in an instance's \`.env\`,"
+            echo "then \`docker compose pull && docker compose up -d\`."
+          } >> "$GITHUB_STEP_SUMMARY"
