@@ -26,6 +26,7 @@ import { UnderlayDialog } from '@/editor/react/UnderlayDialog';
 import { VersionsDialog } from '@/editor/react/VersionsDialog';
 import { startCoEditing, stopCoEditing } from '@/editor/collaboration/coediting';
 import { autosave } from '@/editor/persistence/autosave';
+import { thumbnails } from '@/editor/persistence/thumbnail';
 import { fetchPeople, fetchThreads } from '@/editor/persistence/comments';
 import { joinProject, leaveProject } from '@/editor/presence/presence';
 import { listUnderlays } from '@/editor/persistence/underlays';
@@ -143,6 +144,13 @@ export function EditorPage() {
             autosave.start(projectId, payload.revision, state.document);
 
             /*
+             * And keep the projects list's picture of this drawing current. Beside the save
+             * rather than inside it: a picture is never worth risking a drawing for, so it has
+             * its own timer, its own request and its own silence when it fails.
+             */
+            thumbnails.start(projectId);
+
+            /*
              * And log what is drawn here, from the sequence this snapshot was written at.
              * Anything after it happened while the drawing was in flight and is fetched
              * rather than waited for.
@@ -160,6 +168,7 @@ export function EditorPage() {
 
         return () => {
             autosave.stop();
+            thumbnails.stop();
             stopCoEditing();
             leaveProject();
             useCommentsStore.getState().clear();

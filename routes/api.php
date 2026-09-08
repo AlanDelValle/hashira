@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberAdmissionController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectPeopleController;
+use App\Http\Controllers\Api\ProjectPreviewController;
 use App\Http\Controllers\Api\ProjectRestrictionController;
 use App\Http\Controllers\Api\SharedDocumentController;
 use App\Http\Controllers\Api\ShareLinkAcceptanceController;
@@ -150,6 +151,16 @@ Route::middleware('auth')->group(function (): void {
         ->name('projects.restriction.update');
     Route::post('projects/{project}/members', [ProjectMemberAdmissionController::class, 'store'])
         ->name('projects.members.store');
+
+    /*
+     * The picture of the drawing, for the list. Served as an image rather than sent in the
+     * list's payload so that the browser does what it is already good at: lazy loading what is
+     * off screen, and revalidating the rest into 304s.
+     */
+    Route::get('projects/{project}/preview', [ProjectPreviewController::class, 'show'])
+        ->name('projects.preview.show');
+    Route::put('projects/{project}/preview', [ProjectPreviewController::class, 'update'])
+        ->name('projects.preview.update');
 
     // Off the list, not out of the account. Its own route for the same reason restriction has
     // one: putting a drawing away is an owner's act and renaming it is an editor's.

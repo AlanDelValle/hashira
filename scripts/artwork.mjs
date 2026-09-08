@@ -29,6 +29,9 @@ const OUT_DIR = 'docs/images';
 const LANDING_SVG = 'resources/js/pages/landing/plan.svg';
 const PORT = Number(process.env.CDP_PORT ?? 9222);
 
+/** The projects list has rendered when it is holding links to projects. */
+const LISTED = 'document.querySelectorAll("main a[href^=\'/projects/\']").length > 0';
+
 /** A wide laptop: enough sheet to be worth photographing, not so wide the panels look lost. */
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 };
 
@@ -93,12 +96,9 @@ async function main() {
 
         await signIn(page);
 
-        await capture(
-            page,
-            `${BASE_URL}/projects`,
-            'dashboard',
-            'document.querySelectorAll("main a[href^=\'/projects/\']").length > 0',
-        );
+        // The list used to be photographed here, and photographing it is what waited for it
+        // to render. It is taken last now, so this waits on its own behalf.
+        await waitFor(page, LISTED);
 
         // A picture of the editor wants a drawing in it, and the account has an empty project
         // as well. Each is opened in turn until one has something on the sheet, rather than
@@ -110,6 +110,14 @@ async function main() {
 
         await captureFirstDrawing(page, projects);
         await exportPlanSvg(page);
+
+        /*
+         * The list is photographed last, and the order is not incidental: the picture on
+         * each card is drawn by the editor a few seconds after the drawing is opened, so
+         * the list cannot show what the product looks like until the product has been run.
+         * Rule 10, one step further along than it used to reach.
+         */
+        await capture(page, `${BASE_URL}/projects`, 'dashboard', LISTED);
 
         console.log(
             `Wrote ${OUT_DIR}/landing.png, ${OUT_DIR}/editor.png, ${OUT_DIR}/dashboard.png` +
@@ -150,6 +158,10 @@ async function captureFirstDrawing(page, projects) {
         }
 
         await capture(page, `${BASE_URL}${project}`, 'editor', drawn);
+
+        // Long enough for the editor to have written this drawing's thumbnail, which it does a
+        // few seconds after opening. What the list is then photographed showing comes from here.
+        await pause(6_000);
 
         return;
     }

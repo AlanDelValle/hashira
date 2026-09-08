@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int $revision
  * @property int $operation_sequence
  * @property array<string, mixed> $data
+ * @property string|null $preview
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */

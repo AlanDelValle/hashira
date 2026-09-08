@@ -31,6 +31,8 @@ final readonly class DrawingSummary
         public ?int $elements,
         public ?int $layers,
         public ?int $sheets,
+        /** Whether a picture of it has been written. See ProjectPreviewController. */
+        public bool $preview,
     ) {}
 
     /**
@@ -51,6 +53,9 @@ final readonly class DrawingSummary
             "'sheets', ".self::length("data->'settings'->'sheets'"),
             "'sheet', {$sheet}->>'size'",
             "'scale', {$sheet}->>'scale'",
+            // Whether there is a picture of it, rather than the picture: the card asks for the
+            // image itself over its own request, so that forty of them lazy load and revalidate.
+            "'preview', preview is not null",
         ]);
 
         return Document::query()
@@ -75,10 +80,15 @@ final readonly class DrawingSummary
             elements: self::count($decoded['elements'] ?? null),
             layers: self::count($decoded['layers'] ?? null),
             sheets: self::count($decoded['sheets'] ?? null),
+            preview: ($decoded['preview'] ?? null) === true,
         );
     }
 
-    /** @return array{sheet: ?string, scale: ?float, elements: ?int, layers: ?int, sheets: ?int} */
+    /**
+     * @return array{
+     *     sheet: ?string, scale: ?float, elements: ?int, layers: ?int, sheets: ?int, preview: bool
+     * }
+     */
     public function toArray(): array
     {
         return [
@@ -87,6 +97,7 @@ final readonly class DrawingSummary
             'elements' => $this->elements,
             'layers' => $this->layers,
             'sheets' => $this->sheets,
+            'preview' => $this->preview,
         ];
     }
 

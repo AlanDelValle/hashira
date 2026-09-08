@@ -179,6 +179,42 @@ export function pdfPageCount(document: HashiraDocument, options: ExportOptions =
     ).length;
 }
 
+/**
+ * Pixels along the longer edge of the picture the projects list shows.
+ *
+ * Larger than the card draws it, so the same picture survives a retina screen and a bigger card
+ * later — and small enough that the file is a few kilobytes whether the plan holds fourteen
+ * elements or fourteen hundred. That constant cost is the reason this is a raster: an SVG of a
+ * large drawing is a large SVG, and a thumbnail of one is the same postage stamp either way.
+ */
+export const THUMBNAIL_PX = 320;
+
+/**
+ * A small picture of the drawing, for the list that chooses between drawings.
+ *
+ * The same scene, the same palette and the same exporter as a full-size PNG — nothing about
+ * the drawing is re-described for it, which is what keeps the card from being able to advertise
+ * something the editor cannot draw. The underlay is absent because it is absent from the scene,
+ * not because this leaves it out.
+ *
+ * Null when there is nothing drawn: an empty sheet has no extent to frame, and a blank rectangle
+ * pretending to be a plan is worse than a card with no picture on it.
+ */
+export async function documentThumbnail(document: HashiraDocument): Promise<Blob | null> {
+    const bounds = documentBounds(document);
+
+    if (bounds === null) {
+        return null;
+    }
+
+    return await sceneToPng(sceneFor(document), {
+        bounds,
+        longestEdgePx: THUMBNAIL_PX,
+        background: PAPER,
+        margin: 0.06,
+    });
+}
+
 /** Null when there is nothing to export — an empty drawing has no extent to frame. */
 export async function exportDocument(
     document: HashiraDocument,

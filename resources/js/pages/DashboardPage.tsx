@@ -473,6 +473,45 @@ export function DashboardPage() {
     );
 }
 
+/**
+ * The drawing, the size of a postage stamp.
+ *
+ * Drawn by the editor from the same scene every export comes out of, so what a card shows is
+ * the plan rather than an illustration of one — rule 10 of AGENTS.md, applied to a screen. The
+ * image is its own request rather than part of the list's payload: forty of these are forty
+ * things the browser already knows how to lazy load and revalidate into 304s.
+ *
+ * Without a picture the frame is still drawn, so the column of names stays a column — but which
+ * frame depends on why there is none, because the two reasons are not the same statement. A
+ * drawing with nothing on it gets paper, since a blank sheet is exactly what it has. One that
+ * has been drawn on but not yet photographed gets a plain tile: the picture is written a few
+ * seconds after somebody opens the plan, so an existing drawing has none until it is next
+ * looked at, and showing fourteen elements as an empty sheet would be the card saying something
+ * false about the drawing behind it.
+ *
+ * `alt` is empty on purpose. The name is the next thing on the row, and "a thumbnail of
+ * Bedroom" read out before the word "Bedroom" is noise rather than a description.
+ */
+function ProjectThumbnail({ project }: { project: ProjectSummary }) {
+    const frame = 'border-line h-11 w-16 shrink-0 rounded-sm border';
+
+    if (project.drawing?.preview !== true) {
+        const empty = project.drawing?.elements === 0;
+
+        return <span aria-hidden className={cn(frame, empty ? 'bg-surface' : 'bg-sunken')} />;
+    }
+
+    return (
+        <img
+            src={`/api/projects/${project.id}/preview`}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={cn(frame, 'bg-surface object-contain')}
+        />
+    );
+}
+
 interface RowActions {
     rename: (project: ProjectSummary) => void;
     duplicate: (project: ProjectSummary) => void;
@@ -513,18 +552,24 @@ function ProjectRow({
                         ? `/projects/${project.id}/review`
                         : `/projects/${project.id}`
                 }
-                className="min-w-0 flex-1 rounded-sm py-3.5 pr-4"
+                className="flex min-w-0 flex-1 items-center gap-3.5 rounded-sm py-3 pr-4"
             >
-                <span className="flex items-baseline justify-between gap-4">
-                    <span className="text-ink truncate text-sm font-medium">{project.name}</span>
-                    <span className="text-ink-subtle shrink-0 text-xs">
-                        {archived
-                            ? `Archived ${formatRelativeTime(project.archivedAt ?? project.updatedAt)}`
-                            : `Updated ${formatRelativeTime(project.updatedAt)}`}
-                    </span>
-                </span>
+                <ProjectThumbnail project={project} />
 
-                <ProjectMeta project={project} ownerNamed={ownerNamed} />
+                <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-4">
+                        <span className="text-ink truncate text-sm font-medium">
+                            {project.name}
+                        </span>
+                        <span className="text-ink-subtle shrink-0 text-xs">
+                            {archived
+                                ? `Archived ${formatRelativeTime(project.archivedAt ?? project.updatedAt)}`
+                                : `Updated ${formatRelativeTime(project.updatedAt)}`}
+                        </span>
+                    </span>
+
+                    <ProjectMeta project={project} ownerNamed={ownerNamed} />
+                </span>
             </Link>
 
             <Menu

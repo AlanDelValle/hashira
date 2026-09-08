@@ -4,7 +4,15 @@ import { describeAccess, describeDrawing } from '@/projects/card';
 import type { DrawingSummary, ProjectSummary } from '@/types/api';
 
 function drawing(overrides: Partial<DrawingSummary> = {}): DrawingSummary {
-    return { sheet: 'A3', scale: 50, elements: 14, layers: 5, sheets: 1, ...overrides };
+    return {
+        sheet: 'A3',
+        scale: 50,
+        elements: 14,
+        layers: 5,
+        sheets: 1,
+        preview: false,
+        ...overrides,
+    };
 }
 
 function project(overrides: Partial<ProjectSummary> = {}): ProjectSummary {
@@ -61,6 +69,7 @@ describe('what a card says about the drawing', () => {
                 elements: null,
                 layers: null,
                 sheets: null,
+                preview: false,
             }),
         ).toBeNull();
     });

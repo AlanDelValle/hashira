@@ -31,6 +31,8 @@ export interface DrawingSummary {
     elements: number | null;
     layers: number | null;
     sheets: number | null;
+    /** Whether a picture of it exists at /api/projects/{id}/preview. */
+    preview: boolean;
 }
 
 export interface ProjectSummary {

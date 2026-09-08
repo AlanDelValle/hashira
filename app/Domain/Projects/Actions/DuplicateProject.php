@@ -32,11 +32,16 @@ final class DuplicateProject
             $source = $project->loadMissing('document')->document;
 
             if ($source !== null) {
-                $copy->documents()->create([
+                $document = $copy->documents()->create([
                     'name' => $source->name,
                     'schema_version' => $source->schema_version,
                     'data' => $source->data,
                 ]);
+
+                // The same drawing looks the same. Without this the copy sits in the list with
+                // no picture until somebody opens it, which reads as a copy that failed.
+                $document->preview = $source->preview;
+                $document->save();
             }
 
             return $copy->load('document');
