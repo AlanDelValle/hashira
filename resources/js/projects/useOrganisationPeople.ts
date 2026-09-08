@@ -10,10 +10,15 @@ interface PeopleState {
     error: string | null;
     /** Whatever the server refused, in its own words. */
     refusal: string | null;
-    invite: (email: string, role: OrganisationRole) => Promise<void>;
-    revoke: (invitationId: string) => Promise<void>;
-    setRole: (memberId: string, role: OrganisationRole) => Promise<void>;
-    remove: (memberId: string) => Promise<void>;
+    /*
+     * Each of these answers whether the server accepted it. A caller that only wants the list
+     * to catch up can ignore the answer — the refusal is already on screen — but one that does
+     * something further, like leaving the page it is written on, has to know.
+     */
+    invite: (email: string, role: OrganisationRole) => Promise<boolean>;
+    revoke: (invitationId: string) => Promise<boolean>;
+    setRole: (memberId: string, role: OrganisationRole) => Promise<boolean>;
+    remove: (memberId: string) => Promise<boolean>;
 }
 
 /**
@@ -79,15 +84,26 @@ export function useOrganisationPeople(organisationId: string, canManage: boolean
         };
     }, [organisationId, canManage, reloads]);
 
-    /** Run something that the server may refuse, and keep the refusal to show. */
+    /**
+     * Run something the server may refuse, keep the refusal to show, and say which happened.
+     *
+     * The answer exists because swallowing the rejection here is only half of not throwing it
+     * at the console: a caller that carries on regardless — navigating away, say — leaves the
+     * sentence written on a page nobody is looking at any more, which is the button that does
+     * nothing this was written to prevent.
+     */
     const attempt = useCallback(async (act: () => Promise<unknown>) => {
         setRefusal(null);
 
         try {
             await act();
             setReloads((current) => current + 1);
+
+            return true;
         } catch (caught) {
             setRefusal(refusalFrom(caught));
+
+            return false;
         }
     }, []);
 

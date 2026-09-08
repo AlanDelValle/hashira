@@ -58,8 +58,16 @@ export function OrganisationPage() {
 
         if (mine === undefined) return;
 
-        await remove(mine.id);
-        await navigate('/projects');
+        /*
+         * Only once it has actually happened. Leaving is refused when you are the firm's last
+         * admin — a firm with nobody to administer it can never be administered again — and
+         * the refusal says what to do instead. Navigating regardless used to write that
+         * sentence onto a page the reader was being taken off at the same moment, which left a
+         * button that appeared to do nothing at all.
+         */
+        if (await remove(mine.id)) {
+            await navigate('/projects');
+        }
     }
 
     if (!loadingFirms && organisation === undefined) {
