@@ -24,6 +24,7 @@ import { Wordmark } from '@/ui/Logo';
 import { Menu, MenuItem, MenuSeparator } from '@/ui/Menu';
 import { Modal } from '@/ui/Modal';
 import { SkipLink } from '@/ui/SkipLink';
+import { SourceOffer } from '@/ui/SourceOffer';
 import { TextField } from '@/ui/TextField';
 import type { ProjectSummary } from '@/types/api';
 
@@ -136,7 +137,7 @@ export function DashboardPage() {
             <SkipLink />
 
             <header className="border-line bg-surface border-b">
-                <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
+                <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
                     <Wordmark />
 
                     <div className="flex items-center gap-1">
@@ -170,7 +171,7 @@ export function DashboardPage() {
                 </div>
             </header>
 
-            <main id="content" className="mx-auto max-w-4xl px-6 py-10 sm:py-12">
+            <main id="content" className="mx-auto max-w-5xl px-6 py-10 sm:py-12">
                 {invitations.length > 0 && (
                     <ul className="border-line mb-8 border-t">
                         {invitations.map((invitation) => (
@@ -331,7 +332,25 @@ export function DashboardPage() {
                                         index > 0 && 'mt-9',
                                     )}
                                 >
-                                    {group.name} · {group.projects.length}
+                                    {/*
+                                     * A firm's heading leads to the firm — who is in it, and
+                                     * who may be invited. It used to be reachable only from
+                                     * inside the account menu, next to "Sign out", which reads
+                                     * as a setting rather than as somewhere work happens. The
+                                     * menu keeps the full list, because a firm you have no
+                                     * drawings in has no heading here to click.
+                                     */}
+                                    {group.organisationId === null ? (
+                                        group.name
+                                    ) : (
+                                        <Link
+                                            to={`/organisations/${group.organisationId}`}
+                                            className="hover:text-ink rounded-sm transition-colors"
+                                        >
+                                            {group.name}
+                                        </Link>
+                                    )}{' '}
+                                    <span className="tabular-nums">· {group.projects.length}</span>
                                 </h2>
                             )}
 
@@ -370,7 +389,7 @@ export function DashboardPage() {
                                     )}
                                     aria-hidden
                                 />
-                                Archived · {shelf.length}
+                                <span className="tabular-nums">Archived · {shelf.length}</span>
                             </button>
 
                             {archiveOpen && (
@@ -388,6 +407,17 @@ export function DashboardPage() {
                     )}
                 </div>
             </main>
+
+            {/*
+             * What this instance is, and the offer the AGPL asks for. It is on the landing page
+             * too — but somebody working in a self-hosted instance signs in once and may never
+             * see that page again, and an offer nobody can reach is not one.
+             */}
+            <footer className="border-line mx-auto max-w-5xl border-t px-6 py-6">
+                <p className="text-ink-subtle text-[11px]">
+                    <SourceOffer />
+                </p>
+            </footer>
 
             <Modal
                 open={pending !== null}
@@ -636,7 +666,7 @@ function ProjectMeta({ project, ownerNamed }: { project: ProjectSummary; ownerNa
     if (drawing === null && access.length === 0) return null;
 
     return (
-        <span className="text-ink-subtle mt-1 block text-[11px]">
+        <span className="text-ink-subtle mt-1 block text-[11px] tabular-nums">
             {drawing !== null && <span className="font-mono">{drawing}</span>}
             {drawing !== null && access.length > 0 && ' · '}
             {access.join(' · ')}

@@ -111,6 +111,18 @@ describe('the sections a person thinks in', () => {
         expect(names(groups[1]?.projects ?? [])).toEqual(['Warehouse']);
     });
 
+    // The heading of a firm's section leads to the firm; the other two lead nowhere, because
+    // "Yours" and "Shared with you" are not places.
+    it('carries the firm a section is, and nothing for the sections that are not one', () => {
+        const groups = arrangeProjects([
+            project({ name: 'Bedroom' }),
+            project({ name: 'Warehouse', organisationId: 'o1', ownerName: 'Ateliê Norte' }),
+            project({ name: 'Ana’s flat', role: 'editor', ownerName: 'Ana' }),
+        ]);
+
+        expect(groups.map((group) => group.organisationId)).toEqual([null, 'o1', null]);
+    });
+
     // Which headings are somebody's name, so the rows under them need not say it again.
     it('marks the sections whose heading is the owner’s name', () => {
         const groups = arrangeProjects([

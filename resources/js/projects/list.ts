@@ -38,6 +38,8 @@ export interface ProjectGroup {
      * second holds drawings belonging to several different people, so those rows still say.
      */
     namesOwner: boolean;
+    /** The firm this section is, when it is one — so its heading can lead to it. */
+    organisationId: string | null;
     projects: ProjectSummary[];
 }
 
@@ -115,6 +117,7 @@ export function arrangeProjects(
         const group = firms.get(firm) ?? {
             id: `firm:${firm}`,
             namesOwner: true,
+            organisationId: firm,
             // Sent for every firm's project, including to the admins who hold `owner` in it —
             // which is the one case where "only worth saying about somebody else's" was wrong.
             name: project.ownerName ?? 'A firm',
@@ -126,9 +129,15 @@ export function arrangeProjects(
     }
 
     return [
-        { id: 'yours', name: 'Yours', namesOwner: false, projects: yours },
+        { id: 'yours', name: 'Yours', namesOwner: false, organisationId: null, projects: yours },
         ...[...firms.values()].sort((a, b) => a.name.localeCompare(b.name)),
-        { id: 'shared', name: 'Shared with you', namesOwner: false, projects: shared },
+        {
+            id: 'shared',
+            name: 'Shared with you',
+            namesOwner: false,
+            organisationId: null,
+            projects: shared,
+        },
     ].filter((group) => group.projects.length > 0);
 }
 
