@@ -26,10 +26,21 @@ export interface ProjectSummary {
     isShared?: boolean;
     /** What the person reading this holds here. */
     role: ProjectRole | null;
-    /** Only present on somebody else's project. */
+    /** Only present on somebody else's project — a person's name, or a firm's. */
     ownerName?: string;
+    /** Which firm's it is, or null for somebody's own drawing. */
+    organisationId?: string | null;
     /** Their own membership row — what they delete in order to leave. */
     membershipId?: string;
+}
+
+/** A firm, and what the person reading holds in it. */
+export interface Organisation {
+    id: string;
+    name: string;
+    createdAt: string;
+    role: 'admin' | 'member' | null;
+    memberCount?: number;
 }
 
 /** Somebody who was let into a project, as their owner sees them. */

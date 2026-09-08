@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\DB;
  * capability URL coexist with a policy that only ever answers about an authenticated user.
  *
  * A viewer link writes nothing. Viewing is anonymous by decision, so there is nobody to
- * record, and recording the owner of the project in their own project would be a second,
- * weaker answer to a question `isOwnedBy` already answers.
+ * record, and recording somebody who already administers the project would be a second, weaker
+ * answer to a question `administeredBy` already answers.
  */
 final class AcceptShareLink
 {
@@ -28,30 +28,38 @@ final class AcceptShareLink
             return null;
         }
 
-        if ($link->loadMissing('project')->project->isOwnedBy($user)) {
+        $project = $link->loadMissing('project')->project;
+
+        if ($project->administeredBy($user)) {
             return null;
         }
 
-        return DB::transaction(function () use ($link, $user): ProjectMember {
+        return DB::transaction(function () use ($link, $project, $user): ?ProjectMember {
             $member = ProjectMember::query()
                 ->where('project_id', $link->project_id)
                 ->where('user_id', $user->getKey())
                 ->lockForUpdate()
                 ->first();
 
+            /*
+             * What they already hold, from wherever it comes. Asking the row alone was right
+             * while a row was the only way to hold anything; since 10.2 an organisation grants
+             * editing on its own projects, and a commenter link taken up by somebody in the
+             * firm would have written a row that *narrowed* them — because a row on the project
+             * is exactly what overrides the organisation. Accepting a link has never taken
+             * access away and must not start here.
+             */
+            $held = $member === null ? $project->effectiveRole($user) : $member->role;
+
+            if ($held !== null && ! $link->role->atLeast($held)) {
+                return $member;
+            }
+
             if ($member === null) {
                 $member = new ProjectMember;
                 $member->project_id = $link->project_id;
                 $member->user_id = (int) $user->getKey();
                 $member->joined_at = now();
-            } elseif (! $link->role->atLeast($member->role)) {
-                /*
-                 * Somebody already here opening a weaker link keeps what they have. An owner
-                 * issuing a commenter link is inviting more people, not demoting the editor
-                 * who is halfway through a drawing; taking access away is a deliberate act
-                 * and it has its own control.
-                 */
-                return $member;
             }
 
             $member->role = $link->role;

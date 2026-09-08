@@ -9,7 +9,7 @@ interface ProjectsState {
     error: string | null;
     /** Ask for the list again after a failure. */
     reload: () => void;
-    create: (name: string) => Promise<ProjectSummary>;
+    create: (name: string, organisationId?: string | null) => Promise<ProjectSummary>;
     rename: (id: string, name: string) => Promise<void>;
     duplicate: (id: string) => Promise<void>;
     remove: (id: string) => Promise<void>;
@@ -54,8 +54,11 @@ export function useProjects(): ProjectsState {
         };
     }, [attempt]);
 
-    const create = useCallback(async (name: string) => {
-        const response = await api.post<Envelope<ProjectSummary>>('/api/projects', { name });
+    const create = useCallback(async (name: string, organisationId?: string | null) => {
+        const response = await api.post<Envelope<ProjectSummary>>('/api/projects', {
+            name,
+            organisationId: organisationId ?? null,
+        });
         setProjects((current) => [response.data, ...current]);
 
         return response.data;

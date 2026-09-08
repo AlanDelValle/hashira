@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Domain\Organisations\Models\OrganisationMember;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectMember;
 use Database\Factories\UserFactory;
@@ -37,6 +38,17 @@ class User extends Authenticatable
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /**
+     * The firms this person is in. Their projects are reached through the organisation rather
+     * than from here, because being in an organisation is a standing, not a list of drawings.
+     *
+     * @return HasMany<OrganisationMember, $this>
+     */
+    public function organisationMemberships(): HasMany
+    {
+        return $this->hasMany(OrganisationMember::class);
     }
 
     /**

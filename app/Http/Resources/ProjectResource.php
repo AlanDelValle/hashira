@@ -18,7 +18,7 @@ final class ProjectResource extends JsonResource
         /** @var User|null $user */
         $user = $request->user();
 
-        $owned = $user !== null && $this->isOwnedBy($user);
+        $administered = $user !== null && $this->administeredBy($user);
 
         return [
             'id' => $this->id,
@@ -37,18 +37,28 @@ final class ProjectResource extends JsonResource
              * yours before it says anything else about it, and the editor refuses to open a
              * drawing this does not permit changing.
              */
-            'role' => $owned ? 'owner' : ($user === null ? null : $this->memberRole($user)?->value),
+            'role' => $administered
+                ? 'owner'
+                : ($user === null ? null : $this->effectiveRole($user)?->value),
 
-            // Only worth saying about somebody else's drawing.
+            /*
+             * Whose it is, when that is worth saying. Somebody else's drawing, obviously — and
+             * also a firm's own, because an admin holds 'owner' in it and would otherwise be
+             * unable to tell the firm's work from their own on the same list.
+             */
             'ownerName' => $this->when(
-                ! $owned && $this->relationLoaded('owner'),
-                fn () => $this->owner?->name,
+                ! $administered || $this->organisation_id !== null,
+                fn () => $this->ownerName(),
             ),
+
+            // Which firm's it is, when it is a firm's. Null for somebody's own drawing, which
+            // is what lets the dashboard group without asking a second question.
+            'organisationId' => $this->organisation_id,
 
             // Their own membership, which is the thing they delete in order to leave. Nobody
             // should be stuck in somebody else's project because they once opened a link.
             'membershipId' => $this->when(
-                ! $owned && $user !== null,
+                ! $administered && $user !== null,
                 fn () => $this->membershipFor($user)?->id,
             ),
         ];

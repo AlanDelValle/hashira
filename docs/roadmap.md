@@ -546,11 +546,13 @@ something. It changes the licence and the deployment before it changes a line of
   only by holding a link. `project_members` was built to be written by this and nothing that
   reads a role should have to change — but `projects.user_id` was not, and moving it is the
   largest migration in the project's life. Split in three, each of which is a thing you can walk
-  in a browser rather than a migration nobody can see. **10.2a** is ownership: organisations
-  exist, they can own projects, and the policy answers about both kinds of owner. **10.2b** is
-  people: inviting somebody by email whether or not they already have an account, the member
-  list, and leaving. **10.2c** is narrowing: a project the organisation cannot open by default,
-  per-project overrides, and teams
+  in a browser rather than a migration nobody can see. **10.2a is done:** organisations exist,
+  they can own projects, and the policy answers about both kinds of owner — `administeredBy` for
+  "may act as its owner" and `effectiveRole` for "what may this person do to the drawing", which
+  is the row on the project if there is one and the organisation's default if there is not.
+  **10.2b** is people: inviting somebody by email whether or not they already have an account,
+  the member list, and leaving. **10.2c** is narrowing: a project the organisation cannot open by
+  default, per-project overrides, and teams
 - [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
       is handed a read-only snapshot of the document, and can say one kind of thing back: a
       command envelope, read by `parseCommand` like anything else that arrives from elsewhere.
@@ -665,6 +667,24 @@ feels rather than only how it is coded:
   gathers the owner's blocks and every editor's; an organisation's members arrive as editors, so
   the rule generalises without being rewritten. A library that belonged to the organisation
   itself would be a fourth place blocks can live, and Phase 7 deliberately gave them one.
+
+What 10.2a found, which the rest of the phase should keep in mind:
+
+- **A row on the project overriding the organisation cuts both ways, and one direction was a
+  bug.** `AcceptShareLink` compared a link against the membership row and nothing else, which
+  was right while a row was the only way to hold anything. Once an organisation grants editing,
+  a commenter link taken up by somebody in the firm would have written a row that _narrowed_
+  them. It now compares against `effectiveRole`, so what somebody already holds is what is
+  defended, wherever it came from. Accepting a link has never taken access away.
+- **The whole of the existing suite passed before a single new test was written.** 132 of them,
+  across authorization, sharing and comments — because ownership was asked in one method and the
+  policy asked it in one place. That is what the room `ProjectMember` left was for, and it is
+  worth saying out loud that leaving that room cost nothing at the time and saved the largest
+  migration in the project's life from touching anything else.
+- **An admin cannot tell the firm's work from their own unless the card says so.** They hold
+  `owner` in both, so the resource sends the organisation's name for a firm's project even to
+  somebody who administers it — the one case where "only worth saying about somebody else's
+  drawing" was the wrong rule.
 
 ### Phase 11 — Drafting depth `[x]`
 

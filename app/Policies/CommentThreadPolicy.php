@@ -40,7 +40,7 @@ final class CommentThreadPolicy
             return Response::allow();
         }
 
-        return $thread->project->isOwnedBy($user)
+        return $thread->project->administeredBy($user)
             ? Response::allow()
             : Response::deny('Only the person who started this thread, or the owner, can delete it.');
     }

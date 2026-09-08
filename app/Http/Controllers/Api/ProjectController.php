@@ -26,9 +26,13 @@ final class ProjectController extends Controller
         $user = $request->user();
 
         /*
-         * Everything this person can reach: what they own, and what a share link let them
-         * into. `members` is eager loaded because the resource asks each project what role
-         * the reader holds in it, and a query per card is how a list gets slow quietly.
+         * Everything this person can reach, which since 10.2 has three sources: what they own,
+         * what a share link let them into, and what belongs to a firm they are in.
+         *
+         * `members` and the organisation's members are eager loaded because the resource asks
+         * each project what role the reader holds in it, and a query per card is how a list
+         * gets slow quietly. The organisation is loaded for the same reason its name is
+         * printed on somebody else's card.
          */
         $projects = Project::query()
             ->where(function (Builder $query) use ($user): void {
@@ -36,9 +40,13 @@ final class ProjectController extends Controller
                     ->orWhereHas(
                         'members',
                         fn (Builder $member) => $member->where('user_id', $user->getKey()),
+                    )
+                    ->orWhereHas(
+                        'organisation.members',
+                        fn (Builder $member) => $member->where('user_id', $user->getKey()),
                     );
             })
-            ->with(['document', 'activeShareLink', 'members', 'owner'])
+            ->with(['document', 'activeShareLink', 'members', 'owner', 'organisation.members'])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -50,10 +58,22 @@ final class ProjectController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        /*
+         * Into a firm, when one was named. The policy is asked rather than the membership
+         * checked here: authorization about an organisation belongs in one place, and this is
+         * not it.
+         */
+        $organisation = $request->organisation();
+
+        if ($organisation !== null) {
+            Gate::authorize('createProject', $organisation);
+        }
+
         $project = $createProject->handle(
             owner: $user,
             name: $request->validated('name'),
             description: $request->validated('description'),
+            organisation: $organisation,
         );
 
         return ProjectResource::make($project)

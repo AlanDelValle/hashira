@@ -21,7 +21,7 @@ final class CommentPolicy
             return Response::allow();
         }
 
-        return $comment->thread->project->isOwnedBy($user)
+        return $comment->thread->project->administeredBy($user)
             ? Response::allow()
             : Response::deny('Only the person who wrote this, or the owner, can delete it.');
     }

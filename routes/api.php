@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentOperationController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\MentionController;
+use App\Http\Controllers\Api\OrganisationController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
 use App\Http\Controllers\Api\ProjectMemberController;
@@ -77,6 +78,13 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('mentions', [MentionController::class, 'update'])->name('mentions.readAll');
     Route::patch('mentions/{mention}', [MentionController::class, 'update'])
         ->name('mentions.read');
+
+    /*
+     * Firms. There is no `show`: an organisation is only ever met through the list, and a
+     * route nobody calls is a route nobody maintains.
+     */
+    Route::apiResource('organisations', OrganisationController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
 
     Route::apiResource('projects', ProjectController::class);
 

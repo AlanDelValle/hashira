@@ -11,10 +11,16 @@ use Illuminate\Auth\Access\Response;
 /**
  * Who may do what to a project, answered here and nowhere else.
  *
- * There are two ways to be in a project: own it, or hold a membership row in it. Both are
- * state in the database, checked against the authenticated user — a share token is read once,
- * when it is accepted, and never again. That is non-negotiable rule 6, and it is why a link
- * that grants more than viewing has to be taken up by somebody with an account.
+ * There are three ways to be in a project: own it, hold a membership row in it, or be in the
+ * organisation that owns it. All three are state in the database, checked against the
+ * authenticated user — a share token is read once, when it is accepted, and never again. That
+ * is non-negotiable rule 6, and it is why a link that grants more than viewing has to be taken
+ * up by somebody with an account.
+ *
+ * The model answers the two questions this asks. `administeredBy` is "may act as its owner",
+ * which is the personal owner or an admin of the organisation that owns it. `effectiveRole` is
+ * "what may this person do to the drawing", which is the row on the project if there is one and
+ * the organisation's default if there is not. Everything below is those two and a message.
  *
  * Denials come in two flavours, and the difference matters. Somebody with no access at all is
  * told 404: a stranger holding a project id should not learn that it exists. Somebody who is
@@ -36,7 +42,7 @@ final class ProjectPolicy
             return Response::denyAsNotFound();
         }
 
-        return $project->isOwnedBy($user) || $project->memberRole($user)?->canEdit() === true
+        return $project->administeredBy($user) || $project->effectiveRole($user)?->canEdit() === true
             ? Response::allow()
             : Response::deny('You can look at this drawing, but not change it.');
     }
@@ -52,7 +58,7 @@ final class ProjectPolicy
             return Response::denyAsNotFound();
         }
 
-        return $project->isOwnedBy($user) || $project->memberRole($user)?->canComment() === true
+        return $project->administeredBy($user) || $project->effectiveRole($user)?->canComment() === true
             ? Response::allow()
             : Response::deny('You can look at this drawing, but not comment on it.');
     }
@@ -79,11 +85,11 @@ final class ProjectPolicy
             return Response::denyAsNotFound();
         }
 
-        return $project->isOwnedBy($user) ? Response::allow() : Response::deny($message);
+        return $project->administeredBy($user) ? Response::allow() : Response::deny($message);
     }
 
     private function hasAccess(User $user, Project $project): bool
     {
-        return $project->isOwnedBy($user) || $project->memberRole($user) !== null;
+        return $project->administeredBy($user) || $project->effectiveRole($user) !== null;
     }
 }

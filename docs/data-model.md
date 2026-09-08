@@ -14,14 +14,33 @@ users
   password          varchar
   timestamps, remember_token
 
+organisations
+  id                ulid pk
+  name              varchar(120)
+  created_by        bigint fk → users, null on delete   -- kept for the record; no policy reads it
+  timestamps
+
+organisation_members
+  id                ulid pk
+  organisation_id   ulid fk → organisations, cascade delete
+  user_id           bigint fk → users, cascade delete
+  role              varchar(16)              -- 'admin' | 'member'
+  joined_at         timestamptz
+  timestamps
+  unique (organisation_id, user_id)
+  index (user_id)
+
 projects
   id                ulid pk
-  user_id           bigint fk → users, cascade delete
+  user_id           bigint fk → users, cascade delete, null           -- one of these two
+  organisation_id   ulid fk → organisations, cascade delete, null     -- and never both
   name              varchar(120)
   description       text null
   archived_at       timestamptz null
   timestamps
   index (user_id, updated_at desc)
+  index (organisation_id, updated_at desc)
+  check (num_nonnulls(user_id, organisation_id) = 1)
 
 documents
   id                ulid pk
@@ -214,11 +233,20 @@ POST   /api/reset-password
 GET    /api/user
 ```
 
+### Organisations
+
+```
+GET    /api/organisations               the firms the caller is in
+POST   /api/organisations               { name } — the caller becomes its first admin
+PATCH  /api/organisations/{id}          { name } — admins only
+DELETE /api/organisations/{id}          admins only; takes the firm's projects with it
+```
+
 ### Projects
 
 ```
-GET    /api/projects                    list the caller's projects, newest activity first
-POST   /api/projects                    { name }
+GET    /api/projects                    the caller's, their firms', and what a link let them into
+POST   /api/projects                    { name, organisationId? }
 GET    /api/projects/{project}
 PATCH  /api/projects/{project}          { name?, description? }
 DELETE /api/projects/{project}

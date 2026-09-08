@@ -47,7 +47,16 @@ final class ReferencedBlocks
             ->get();
     }
 
-    /** @return list<int> */
+    /**
+     * Whose blocks a drawing may refer to: everybody who can put one on this sheet.
+     *
+     * The rule follows editing rather than ownership, which is why an organisation needed no
+     * new case here — its members arrive as editors, so their libraries come with them. A
+     * library belonging to the organisation itself would be a fourth place a block can live,
+     * and Phase 7 deliberately gave them one.
+     *
+     * @return list<int>
+     */
     private static function libraries(Project $project): array
     {
         /** @var list<int> $editors */
@@ -57,7 +66,20 @@ final class ReferencedBlocks
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
 
-        return array_values(array_unique([(int) $project->user_id, ...$editors]));
+        if ($project->organisation_id !== null) {
+            /** @var list<int> $fromOrganisation */
+            $fromOrganisation = $project->organisation()
+                ->getResults()?->members()
+                ->pluck('user_id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all() ?? [];
+
+            $editors = [...$editors, ...$fromOrganisation];
+        }
+
+        $owner = $project->user_id === null ? [] : [(int) $project->user_id];
+
+        return array_values(array_unique([...$owner, ...$editors]));
     }
 
     /**

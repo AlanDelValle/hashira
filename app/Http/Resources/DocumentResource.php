@@ -48,9 +48,9 @@ final class DocumentResource extends JsonResource
              * before it opens: a member who may look but not change is told so, rather than
              * handed a full editor whose every save is refused.
              */
-            'role' => $user === null ? null : ($this->project->isOwnedBy($user)
+            'role' => $user === null ? null : ($this->project->administeredBy($user)
                 ? 'owner'
-                : $this->project->memberRole($user)?->value),
+                : $this->project->effectiveRole($user)?->value),
             'updatedAt' => $this->updated_at->toIso8601String(),
         ];
     }

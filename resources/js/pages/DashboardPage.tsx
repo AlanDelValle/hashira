@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { formatRelativeTime } from '@/lib/time';
 import { MentionsMenu } from '@/mentions/MentionsMenu';
+import { useOrganisations } from '@/projects/useOrganisations';
 import { useProjects } from '@/projects/useProjects';
 import { Button } from '@/ui/Button';
 import { Wordmark } from '@/ui/Logo';
@@ -14,12 +15,17 @@ import { SkipLink } from '@/ui/SkipLink';
 import { TextField } from '@/ui/TextField';
 import type { ProjectSummary } from '@/types/api';
 
-type Pending = { kind: 'create' } | { kind: 'rename'; project: ProjectSummary } | null;
+type Pending =
+    | { kind: 'create' }
+    | { kind: 'rename'; project: ProjectSummary }
+    | { kind: 'organisation' }
+    | null;
 
 export function DashboardPage() {
     const { user, logout } = useAuth();
     const { projects, loading, error, reload, create, rename, duplicate, remove, leave } =
         useProjects();
+    const { organisations, create: createOrganisation } = useOrganisations();
     const navigate = useNavigate();
 
     const [pending, setPending] = useState<Pending>(null);
@@ -27,9 +33,18 @@ export function DashboardPage() {
     const [busy, setBusy] = useState(false);
     const [confirming, setConfirming] = useState<ProjectSummary | null>(null);
 
+    /** Empty means the person themselves; otherwise the id of the firm it goes into. */
+    const [destination, setDestination] = useState('');
+
     function openCreate() {
         setName('Untitled plan');
+        setDestination('');
         setPending({ kind: 'create' });
+    }
+
+    function openNewOrganisation() {
+        setName('');
+        setPending({ kind: 'organisation' });
     }
 
     function openRename(project: ProjectSummary) {
@@ -45,8 +60,10 @@ export function DashboardPage() {
         setBusy(true);
 
         try {
-            if (pending.kind === 'create') {
-                const project = await create(name.trim());
+            if (pending.kind === 'organisation') {
+                await createOrganisation(name.trim());
+            } else if (pending.kind === 'create') {
+                const project = await create(name.trim(), destination === '' ? null : destination);
                 await navigate(`/projects/${project.id}`);
             } else {
                 await rename(pending.project.id, name.trim());
@@ -79,6 +96,7 @@ export function DashboardPage() {
                                 </button>
                             }
                         >
+                            <MenuItem onSelect={openNewOrganisation}>New organisation…</MenuItem>
                             <MenuItem onSelect={() => void logout()}>Sign out</MenuItem>
                         </Menu>
                     </div>
@@ -156,13 +174,19 @@ export function DashboardPage() {
                                         </span>
                                         <span className="text-ink-subtle mt-0.5 block text-xs">
                                             Updated {formatRelativeTime(project.updatedAt)}
-                                            {project.role === 'owner'
-                                                ? project.isShared === true && ' · Shared'
-                                                : ` · ${project.ownerName ?? 'Somebody else'}’s, ${
-                                                      project.role === 'editor'
-                                                          ? 'you can edit'
-                                                          : 'you can comment'
-                                                  }`}
+                                            {project.role === 'owner' ? (
+                                                <>
+                                                    {(project.organisationId ?? null) !== null &&
+                                                        ` · ${project.ownerName ?? 'A firm'}`}
+                                                    {project.isShared === true && ' · Shared'}
+                                                </>
+                                            ) : (
+                                                ` · ${project.ownerName ?? 'Somebody else'}’s, ${
+                                                    project.role === 'editor'
+                                                        ? 'you can edit'
+                                                        : 'you can comment'
+                                                }`
+                                            )}
                                         </span>
                                     </Link>
 
@@ -224,7 +248,13 @@ export function DashboardPage() {
             <Modal
                 open={pending !== null}
                 onOpenChange={(open) => !open && setPending(null)}
-                title={pending?.kind === 'rename' ? 'Rename project' : 'New project'}
+                title={
+                    pending?.kind === 'organisation'
+                        ? 'New organisation'
+                        : pending?.kind === 'rename'
+                          ? 'Rename project'
+                          : 'New project'
+                }
             >
                 <form onSubmit={(event) => void submitName(event)} className="space-y-5">
                     <TextField
@@ -234,6 +264,34 @@ export function DashboardPage() {
                         maxLength={120}
                         onChange={(event) => setName(event.target.value)}
                     />
+
+                    {pending?.kind === 'create' && organisations.length > 0 && (
+                        <div className="flex items-center justify-between gap-3">
+                            <label htmlFor="project-owner" className="text-ink-muted text-[13px]">
+                                Belongs to
+                            </label>
+                            <select
+                                id="project-owner"
+                                value={destination}
+                                onChange={(event) => setDestination(event.target.value)}
+                                className="border-line-strong bg-surface text-ink hover:border-ink-subtle focus:border-accent h-7 rounded-sm border px-1.5 text-[13px] transition-colors"
+                            >
+                                <option value="">Me</option>
+                                {organisations.map((organisation) => (
+                                    <option key={organisation.id} value={organisation.id}>
+                                        {organisation.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {pending?.kind === 'organisation' && (
+                        <p className="text-ink-subtle text-[12px]">
+                            Its drawings belong to it rather than to you, and everybody in it can
+                            open them. You will be its first admin.
+                        </p>
+                    )}
 
                     <div className="flex justify-end gap-2">
                         <Button onClick={() => setPending(null)}>Cancel</Button>
