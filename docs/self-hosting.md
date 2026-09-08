@@ -140,8 +140,11 @@ Phase 10.2 rewrites how a project's owner is recorded.
 
 Two things worth knowing:
 
-- **Pin the version if you would rather decide when this happens.** `HASHIRA_VERSION` in `.env`
-  takes a release tag instead of `latest`.
+- **`HASHIRA_VERSION` is pinned to a release, and that is why `pull` is a decision.** The
+  example environment names a version rather than `latest`, so upgrading means editing that line
+  first. Before 1.0 an upgrade can bring a migration that changes the shape of what you already
+  have, and that should happen on a morning you chose rather than while you were pulling for
+  some other reason. Put `latest` there if you would rather track the newest release.
 - **Read the release notes for anything before `v1.0.0`.** The schema is still moving, and a
   migration that needs a decision from you will say so there rather than making it for you.
 
