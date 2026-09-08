@@ -16,8 +16,10 @@ use App\Http\Controllers\Api\OrganisationInvitationController;
 use App\Http\Controllers\Api\OrganisationMemberController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectDuplicationController;
+use App\Http\Controllers\Api\ProjectMemberAdmissionController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectPeopleController;
+use App\Http\Controllers\Api\ProjectRestrictionController;
 use App\Http\Controllers\Api\SharedDocumentController;
 use App\Http\Controllers\Api\ShareLinkAcceptanceController;
 use App\Http\Controllers\Api\ShareLinkController;
@@ -136,6 +138,17 @@ Route::middleware('auth')->group(function (): void {
 
     Route::post('projects/{project}/duplicate', ProjectDuplicationController::class)
         ->name('projects.duplicate');
+
+    /*
+     * Who in the firm may open this one. Restriction is its own route rather than a field on
+     * the project, because deciding who may open a drawing and renaming it are different acts
+     * asked of different people — and admitting a colleague is the exception a restricted
+     * project is worked with.
+     */
+    Route::put('projects/{project}/restriction', [ProjectRestrictionController::class, 'update'])
+        ->name('projects.restriction.update');
+    Route::post('projects/{project}/members', [ProjectMemberAdmissionController::class, 'store'])
+        ->name('projects.members.store');
 
     Route::get('projects/{project}/document', [DocumentController::class, 'show'])
         ->name('projects.document.show');

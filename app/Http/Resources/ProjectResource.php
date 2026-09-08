@@ -55,6 +55,13 @@ final class ProjectResource extends JsonResource
             // is what lets the dashboard group without asking a second question.
             'organisationId' => $this->organisation_id,
 
+            /*
+             * Whether being in the firm is enough to open it. Only meaningful for a firm's
+             * project, and only acted on by whoever administers one — but sent to everybody who
+             * can see the card, because a drawing not everybody can open is worth saying so on.
+             */
+            'restricted' => $this->restricted_at !== null,
+
             // Their own membership, which is the thing they delete in order to leave. Nobody
             // should be stuck in somebody else's project because they once opened a link.
             'membershipId' => $this->when(

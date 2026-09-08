@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Organisations\OrganisationRole;
 use App\Domain\Projects\Actions\CreateProject;
 use App\Domain\Projects\Models\Project;
 use App\Http\Controllers\Controller;
@@ -41,10 +42,28 @@ final class ProjectController extends Controller
                         'members',
                         fn (Builder $member) => $member->where('user_id', $user->getKey()),
                     )
-                    ->orWhereHas(
-                        'organisation.members',
-                        fn (Builder $member) => $member->where('user_id', $user->getKey()),
-                    );
+                    /*
+                     * Through the firm — but a restricted project is not reached that way. Its
+                     * members clause above still finds it for whoever was named on it, and the
+                     * second condition here keeps it visible to the firm's admins, who have to
+                     * be able to reach a project in order to un-restrict or recover it.
+                     */
+                    ->orWhere(function (Builder $throughTheFirm) use ($user): void {
+                        $throughTheFirm
+                            ->whereHas(
+                                'organisation.members',
+                                fn (Builder $member) => $member->where('user_id', $user->getKey()),
+                            )
+                            ->where(function (Builder $allowed) use ($user): void {
+                                $allowed->whereNull('restricted_at')
+                                    ->orWhereHas(
+                                        'organisation.members',
+                                        fn (Builder $admin) => $admin
+                                            ->where('user_id', $user->getKey())
+                                            ->where('role', OrganisationRole::Admin->value),
+                                    );
+                            });
+                    });
             })
             ->with(['document', 'activeShareLink', 'members', 'owner', 'organisation.members'])
             ->orderByDesc('updated_at')

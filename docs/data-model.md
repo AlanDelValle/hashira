@@ -51,10 +51,12 @@ projects
   name              varchar(120)
   description       text null
   archived_at       timestamptz null
+  restricted_at     timestamptz null  -- the firm's default withheld; a row is then the only way in
   timestamps
   index (user_id, updated_at desc)
   index (organisation_id, updated_at desc)
   check (num_nonnulls(user_id, organisation_id) = 1)
+  check (restricted_at is null or organisation_id is not null)
 
 documents
   id                ulid pk
@@ -285,6 +287,8 @@ GET    /api/projects/{project}
 PATCH  /api/projects/{project}          { name?, description? }
 DELETE /api/projects/{project}
 POST   /api/projects/{project}/duplicate
+PUT    /api/projects/{project}/restriction   { restricted } — whoever administers it
+POST   /api/projects/{project}/members       { userId, role } — names somebody from the firm
 ```
 
 ### Underlays

@@ -1,5 +1,11 @@
 import { api, type Envelope } from '@/lib/api';
-import type { ProjectMember, ProjectSummary, ShareLink, ShareRole } from '@/types/api';
+import type {
+    OrganisationMember,
+    ProjectMember,
+    ProjectSummary,
+    ShareLink,
+    ShareRole,
+} from '@/types/api';
 
 /**
  * A project has at most one live link at a time. Issuing a new one revokes whatever came
@@ -45,4 +51,41 @@ export function fetchMembers(projectId: string): Promise<ProjectMember[]> {
 
 export function removeMember(projectId: string, memberId: string): Promise<void> {
     return api.delete(`/api/projects/${projectId}/members/${memberId}`);
+}
+
+/**
+ * Who in the firm may open this one.
+ *
+ * Restriction is its own endpoint rather than a field on the project, because deciding who may
+ * open a drawing and renaming it are different acts asked of different people.
+ */
+export function setRestriction(projectId: string, restricted: boolean): Promise<ProjectSummary> {
+    return api
+        .put<Envelope<ProjectSummary>>(`/api/projects/${projectId}/restriction`, { restricted })
+        .then((response) => response.data);
+}
+
+/** Naming a colleague on a drawing. Only somebody already in the owning firm can be named. */
+export function admitMember(
+    projectId: string,
+    userId: number,
+    role: Exclude<ShareRole, 'viewer'>,
+): Promise<ProjectMember> {
+    return api
+        .post<Envelope<ProjectMember>>(`/api/projects/${projectId}/members`, { userId, role })
+        .then((response) => response.data);
+}
+
+/** The project itself, for the two things the share dialog cannot learn from a link. */
+export function fetchProject(projectId: string): Promise<ProjectSummary> {
+    return api
+        .get<Envelope<ProjectSummary>>(`/api/projects/${projectId}`)
+        .then((response) => response.data);
+}
+
+/** Everybody in a firm, so an admin can pick one to name. */
+export function fetchFirmMembers(organisationId: string): Promise<OrganisationMember[]> {
+    return api
+        .get<Envelope<OrganisationMember[]>>(`/api/organisations/${organisationId}/members`)
+        .then((response) => response.data);
 }

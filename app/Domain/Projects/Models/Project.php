@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $name
  * @property string|null $description
  * @property Carbon|null $archived_at
+ * @property Carbon|null $restricted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -59,6 +60,7 @@ class Project extends Model
     {
         return [
             'archived_at' => 'datetime',
+            'restricted_at' => 'datetime',
         ];
     }
 
@@ -213,8 +215,31 @@ class Project extends Model
      */
     public function effectiveRole(User $user): ?ShareRole
     {
-        return $this->memberRole($user)
-            ?? $this->loadMissing('organisation')->organisation?->roleFor($user)?->onProject();
+        $granted = $this->memberRole($user);
+
+        if ($granted !== null) {
+            return $granted;
+        }
+
+        // Restricted means the organisation grants nothing here. The row above is then the only
+        // way in, which is what makes restriction a real narrowing rather than a label.
+        if ($this->isRestricted()) {
+            return null;
+        }
+
+        return $this->loadMissing('organisation')->organisation?->roleFor($user)?->onProject();
+    }
+
+    /**
+     * Whether being in the owning organisation is enough to open this.
+     *
+     * It never hides a drawing from somebody who administers the firm: `administeredBy` is
+     * asked before this, and a project its own admins could not reach would be a project nobody
+     * could un-restrict or recover.
+     */
+    public function isRestricted(): bool
+    {
+        return $this->restricted_at !== null;
     }
 
     /**

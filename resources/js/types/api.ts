@@ -32,6 +32,8 @@ export interface ProjectSummary {
     organisationId?: string | null;
     /** Their own membership row — what they delete in order to leave. */
     membershipId?: string;
+    /** Whether being in the owning firm is enough to open it. */
+    restricted?: boolean;
 }
 
 /** A firm, and what the person reading holds in it. */

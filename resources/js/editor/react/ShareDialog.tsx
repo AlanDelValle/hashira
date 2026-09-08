@@ -3,14 +3,24 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { autosave } from '@/editor/persistence/autosave';
 import {
+    admitMember,
+    fetchFirmMembers,
     fetchMembers,
+    fetchProject,
     fetchShareLink,
     issueShareLink,
     removeMember,
     revokeShareLink,
+    setRestriction,
 } from '@/editor/persistence/sharing';
 import { formatRelativeTime } from '@/lib/time';
-import type { ProjectMember, ShareLink, ShareRole } from '@/types/api';
+import type {
+    OrganisationMember,
+    ProjectMember,
+    ProjectSummary,
+    ShareLink,
+    ShareRole,
+} from '@/types/api';
 import { Button } from '@/ui/Button';
 import { Modal } from '@/ui/Modal';
 
@@ -66,11 +76,46 @@ export function ShareDialog({
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    /*
+     * The project itself, for the two things a share link cannot say: whose firm it is, and
+     * whether the firm's default has been taken away from this one.
+     */
+    const [project, setProject] = useState<ProjectSummary | null>(null);
+    const [firm, setFirm] = useState<OrganisationMember[]>([]);
+    const [naming, setNaming] = useState('');
+
+    useEffect(() => {
+        const organisationId = project?.organisationId ?? null;
+
+        if (organisationId === null || project?.role !== 'owner') {
+            return;
+        }
+
+        let cancelled = false;
+
+        void fetchFirmMembers(organisationId)
+            .then((people) => {
+                if (!cancelled) setFirm(people);
+            })
+            .catch(() => {
+                /* Without the list there is nobody to name, which the markup already handles. */
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [project?.organisationId, project?.role]);
+
     const refresh = useCallback(() => {
-        void Promise.all([fetchShareLink(projectId), fetchMembers(projectId)])
-            .then(([current, joined]) => {
+        void Promise.all([
+            fetchShareLink(projectId),
+            fetchMembers(projectId),
+            fetchProject(projectId),
+        ])
+            .then(([current, joined, summary]) => {
                 setLink(current);
                 setMembers(joined);
+                setProject(summary);
                 setRole(current?.role ?? 'viewer');
                 setLoaded(true);
                 setError(null);
@@ -115,6 +160,46 @@ export function ShareDialog({
             setCopied(false);
         } catch {
             setError('Could not revoke the link.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Everybody in the firm who is not already named on this drawing, and not its owner.
+     *
+     * Offering somebody who is already here would produce a second row for the same person,
+     * which the endpoint would fold into the first — correct, and confusing to click.
+     */
+    const available = firm.filter(
+        (person) => !members.some((member) => member.email === person.email),
+    );
+
+    async function restrict(restricted: boolean) {
+        setBusy(true);
+        setError(null);
+
+        try {
+            setProject(await setRestriction(projectId, restricted));
+        } catch {
+            setError('Could not change who in the organisation can open this.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function name(role: 'commenter' | 'editor') {
+        if (naming === '') return;
+
+        setBusy(true);
+        setError(null);
+
+        try {
+            await admitMember(projectId, Number(naming), role);
+            setNaming('');
+            refresh();
+        } catch {
+            setError('Could not name that person on this drawing.');
         } finally {
             setBusy(false);
         }
@@ -238,6 +323,69 @@ export function ShareDialog({
                         </div>
                     </>
                 )}
+
+                {loaded &&
+                    (project?.organisationId ?? null) !== null &&
+                    project?.role === 'owner' && (
+                        <div className="border-line space-y-3 border-t pt-4">
+                            <h3 className="text-ink-subtle text-[11px] tracking-wide uppercase">
+                                Who in the organisation
+                            </h3>
+
+                            <label className="flex items-start gap-2.5 text-[13px]">
+                                <input
+                                    type="checkbox"
+                                    checked={project.restricted === true}
+                                    onChange={(event) => void restrict(event.target.checked)}
+                                    className="accent-accent mt-0.5"
+                                />
+                                <span>
+                                    <span className="text-ink block">
+                                        Only the people named here
+                                    </span>
+                                    <span className="text-ink-subtle block">
+                                        Otherwise everybody in the organisation can open and edit
+                                        it.
+                                    </span>
+                                </span>
+                            </label>
+
+                            {available.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        aria-label="Somebody in the organisation"
+                                        value={naming}
+                                        onChange={(event) => setNaming(event.target.value)}
+                                        className="border-line-strong bg-surface text-ink hover:border-ink-subtle focus:border-accent h-7 min-w-0 flex-1 rounded-sm border px-1.5 text-[13px] transition-colors"
+                                    >
+                                        <option value="">Name somebody…</option>
+                                        {available.map((person) => (
+                                            <option key={person.id} value={String(person.userId)}>
+                                                {person.name}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <Button
+                                        size="sm"
+                                        busy={busy}
+                                        onClick={() => void name('editor')}
+                                        disabled={naming === ''}
+                                    >
+                                        Can edit
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        busy={busy}
+                                        onClick={() => void name('commenter')}
+                                        disabled={naming === ''}
+                                    >
+                                        Can comment
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                 {loaded && members.length > 0 && (
                     <div className="border-line space-y-2 border-t pt-4">

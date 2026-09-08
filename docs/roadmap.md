@@ -553,8 +553,12 @@ something. It changes the licence and the deployment before it changes a line of
   **10.2b is done:** inviting by email — an address rather than an account, because requiring
   one first means telling a colleague to go and register before they can be asked — the offer
   taken up by the person it was written to and nobody else, the member list, promoting and
-  removing, and leaving. **10.2c** is narrowing: a project the organisation cannot open by
-  default, per-project overrides, and teams
+  removing, and leaving. **10.2c is done:** a project the organisation cannot open by default, and
+  naming who may. Teams are not in it — Alan ruled them out at the start of the sub-phase, and
+  the case they were for is covered: restricting a project and naming people on it is what an
+  office actually needs for the competition entry and the client nobody junior is on. A team
+  would be a way of naming several people at once, which is worth having when somebody is doing
+  it often enough to complain
 - [ ] **10.3 Plugin system exposing the command and geometry APIs.** A plugin runs in a worker,
       is handed a read-only snapshot of the document, and can say one kind of thing back: a
       command envelope, read by `parseCommand` like anything else that arrives from elsewhere.
@@ -709,6 +713,30 @@ What 10.2b settled, and what walking it found:
   an email to a page behind the gate, registered and landed on the dashboard instead of the
   invitation they had been asked to answer. Both now read the same remembered destination, which
   removes the race rather than trying to win it.
+
+What 10.2c settled:
+
+- **Restriction is the default taken away, not a list of permissions.** `projects.restricted_at`
+  says the organisation grants nothing here, and the `project_members` row 9.4 has held since
+  becomes the only way in. Expressing it the other way round — a list of who may — would have
+  meant a second grant mechanism beside the one that already works.
+- **It never hides a drawing from the firm's own admins.** A restricted project they could not
+  reach is one nobody could un-restrict or recover, and there is no way back from that. The list
+  query says so as explicitly as the policy does.
+- **Naming somebody admits colleagues and never strangers.** Whoever is named has to be in the
+  owning organisation. A second way to hand access to an arbitrary account would be a path
+  around the invitation 10.2b just built — getting a stranger into a firm's drawing is what a
+  share link is for, because that is a capability somebody chooses to take up rather than a
+  decision made about them.
+- **The same row narrows, on a project nobody restricted.** Naming a colleague as a `commenter`
+  overrides the editing the firm grants them, because a row on the project always wins. One
+  mechanism, both directions.
+- **Restriction is its own route, not a field on the project.** `PATCH /projects/{project}` is
+  gated on `update`, which an editor holds; deciding who may open a drawing is not an editor's
+  act. Riding on the same endpoint would have meant one gate for both, and the weaker of the two
+  winning.
+- **A share link still works on a restricted drawing**, and should: what is withheld is the
+  firm's default, not the owner's ability to hand the drawing to a consultant.
 
 ### Phase 11 — Drafting depth `[x]`
 
