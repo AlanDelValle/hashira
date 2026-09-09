@@ -32,6 +32,7 @@ const ReviewPage = route(() => import('@/pages/ReviewPage'), 'ReviewPage');
 const SharedPlanPage = route(() => import('@/pages/SharedPlanPage'), 'SharedPlanPage');
 const DashboardPage = route(() => import('@/pages/DashboardPage'), 'DashboardPage');
 const OrganisationPage = route(() => import('@/pages/OrganisationPage'), 'OrganisationPage');
+const AccountPage = route(() => import('@/pages/AccountPage'), 'AccountPage');
 const InvitationPage = route(() => import('@/pages/InvitationPage'), 'InvitationPage');
 
 export function Application() {
@@ -63,6 +64,7 @@ export function Application() {
                                 path="/organisations/:organisationId"
                                 element={<OrganisationPage />}
                             />
+                            <Route path="/account" element={<AccountPage />} />
                             {/*
                              * Where the link in an invitation email lands. Behind the gate on
                              * purpose: RequireAuth remembers the destination, so signing in — or

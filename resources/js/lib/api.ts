@@ -142,7 +142,12 @@ export const api = {
     upload: <T>(path: string, form: FormData) => request<T>('POST', path, form),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body ?? {}),
-    delete: <T>(path: string) => request<T>('DELETE', path),
+    /*
+     * A body is optional and almost always absent. Closing an account is the exception: it
+     * carries the password, because a session is a thing somebody can walk up to and the
+     * password is a thing they have to know.
+     */
+    delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
 };
 
 /** Laravel wraps single resources and collections in a `data` key. */

@@ -17,6 +17,13 @@ export interface AuthState {
         confirmation: string,
     ) => Promise<void>;
     logout: () => Promise<void>;
+    /** The name everybody else sees, everywhere at once. */
+    rename: (name: string) => Promise<void>;
+    /**
+     * The end of it. Takes your drawings with it and cannot be undone, which is why it asks
+     * for the password rather than trusting the session it is already holding.
+     */
+    closeAccount: (password: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthState | null>(null);
@@ -77,9 +84,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     }, []);
 
+    const rename = useCallback(async (name: string) => {
+        const response = await api.patch<Envelope<AuthenticatedUser>>('/api/user', { name });
+
+        setUser(response.data);
+    }, []);
+
+    /*
+     * Both of these live here rather than in a hook of their own because this is where `user`
+     * is: a rename has to reach every screen showing the name, and closing the account has to
+     * leave the application looking at nobody. Changing the password changes neither, so it is
+     * a plain function in `auth/account.ts`.
+     */
+    const closeAccount = useCallback(async (password: string) => {
+        await api.delete('/api/user', { password });
+        setUser(null);
+    }, []);
+
     const value = useMemo<AuthState>(
-        () => ({ user, loading, login, register, logout }),
-        [user, loading, login, register, logout],
+        () => ({ user, loading, login, register, logout, rename, closeAccount }),
+        [user, loading, login, register, logout, rename, closeAccount],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

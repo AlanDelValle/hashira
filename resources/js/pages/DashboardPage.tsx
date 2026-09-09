@@ -165,6 +165,9 @@ export function DashboardPage() {
                             ))}
                             {organisations.length > 0 && <MenuSeparator />}
                             <MenuItem onSelect={openNewOrganisation}>New organisation…</MenuItem>
+                            <MenuItem onSelect={() => void navigate('/account')}>
+                                Your account
+                            </MenuItem>
                             <MenuItem onSelect={() => void logout()}>Sign out</MenuItem>
                         </Menu>
                     </div>

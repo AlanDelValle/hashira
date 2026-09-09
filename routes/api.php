@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AccountPasswordController;
 use App\Http\Controllers\Api\AuthenticatedUserController;
 use App\Http\Controllers\Api\BlockController;
 use App\Http\Controllers\Api\CommentReplyController;
@@ -75,6 +77,15 @@ Route::get('share/{token}', [SharedDocumentController::class, 'show'])
 Route::middleware('auth')->group(function (): void {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('user', AuthenticatedUserController::class)->name('user');
+
+    /*
+     * Your own account. No id in any of these: the only account they can reach is the one
+     * asking, which is rule 6 in its strongest form — there is nobody else to address.
+     */
+    Route::patch('user', [AccountController::class, 'update'])->name('user.update');
+    Route::put('user/password', [AccountPasswordController::class, 'update'])
+        ->name('user.password.update');
+    Route::delete('user', [AccountController::class, 'destroy'])->name('user.destroy');
 
     /*
      * The remarks you were named in. Filtered by the authenticated user throughout, so there
